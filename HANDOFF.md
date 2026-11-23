@@ -1,0 +1,12 @@
+# Handoff — Codegeist 2026 (2026-11-24 KST)
+
+1. **Mission:** Finish real Codegeist 2026 Forge installable product before 2026-12-23 05:00 KST. One app, five logical modules, three customer scenarios; differentiate evidence→policy→approved execution→provenance.
+2. **Scope/authority:** User explicitly asked to set up this new repo and detailed canonical blueprint. New P0 design branch and bootstrap main okay. No production, paid AI, granted scopes, sensitive content, changes to source repos or main merge authorized.
+3. **Exact branch/repo:** §hibi89/Atlassian_Codegeist2026@design/codegeist-2026-canonical§ (verify exact current remote HEAD before coding). §main§ bootstrap, §develop§ empty baseline as of initial setup.
+4. **Complete:** README, AGENTS, FINAL_BLUEPRINT, REQUIREMENTS, ARCHITECTURE_CONTRACTS, SWU_QUEUE JSON/ DAG, acceptance, UX, market/OSS study, calendar/cost and submission/legal checklist; design material only.
+5. **Code/test truth:** New Forge app code/build/tests/installation §NOT_RUN§. Existing HAE Python/JS preview sources and prior synthetic tests are references only and not included. No new CI or browser PASS claimed.
+6. **P1/P2:** 23 SWU candidates, none completed. P2 15 planned verification gates, 0 PASS, all NOT_RUN; official weighted rates UNASSESSED, release and Devpost submission HOLD.
+7. **Security/data:** Synthetic allowed in source; no credentials/customer originals/real Jira content in public GitHub, no repo settings modification, no third-party raw source copy. No automatic paid API/Production/permission escalation.
+8. **Risk/blockers:** Forge local CLI/developer credentials and real install site not confirmed; permission scopes and constrained write GO pending. AI model undecided; three branded features still owner-pending; licensing per pinned package version required. No attempt failure counts.
+9. **Next code READY:** On owner §ㄱ§ execute SWU-01 true Forge installable UI entry and minimal smoke, SWU-03 deterministic natural-language fallback, SWU-02 real Jira issue reader after 01; record SHA and run local necessary checks, not only documentation or mock.
+10. **References and change log:** Central policy §hibi89/hackathon-command-center-2026@kmong-productization§ SHA §0257bce9896f048874a46fb147a4b297c245b415§ as read 2026-11-24; supersede if later. New repo design branch exact commit from STATUS/remote, updated after publication. External proof and licensing dates in research doc. User selection/GO required before production and Devpost.
