@@ -46,11 +46,11 @@ function createReviewStore(store,p,clock,digest){
    if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
    // Current source access is required for returning any historical status.
    // Unknown access or topology changes permanently invalidate this snapshot.
-   async function invalidate(reason){
+   async function invalidate(reason,projection=null){
     const existing=await store.get(key(id,"invalidated"));
     const matches=m=>m?.schema_version==="hae.review.invalidation.v1"&&m.snapshot_digest===r.record_digest&&m.review_id===id;
     if(existing!=null)return matches(existing);
-    const value={schema_version:"hae.review.invalidation.v1",review_id:id,snapshot_digest:r.record_digest,reason,at:clock()};
+    const value={schema_version:"hae.review.invalidation.v1",review_id:id,snapshot_digest:r.record_digest,reason,projection,at:clock()};
     try{await store.create(key(id,"invalidated"),value);return true}catch{return matches(await store.get(key(id,"invalidated")))}
    }
    let current;
@@ -68,9 +68,20 @@ function createReviewStore(store,p,clock,digest){
    const marker=await store.get(key(id,"invalidated"));
    if(marker!=null&&(marker.schema_version!=="hae.review.invalidation.v1"||marker.snapshot_digest!==r.record_digest||marker.review_id!==id))return bad("REVIEW_INVALIDATION_UNKNOWN");
    const stale=marker!=null||impact.affected.length>0||policyChanged;
-   if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   const affected=new Set(impact.affected);
+   // A policy or graph-level revision affects the plan/policy even when source
+   // versions match. Source/claim/check nodes are not silently marked verified.
+   if(policyChanged)for(const n of r.graph.nodes)if(n.kind==="PLAN"||n.kind==="POLICY"||n.kind==="APPROVAL"||n.kind==="STEP")affected.add(n.id);
+   const projection={affected:[...affected].sort(),unaffected:r.graph.nodes.filter(n=>n.kind!=="RECEIPT"&&!affected.has(n.id)).map(n=>n.id).sort(),preserved_receipts:r.graph.nodes.filter(n=>n.kind==="RECEIPT").map(n=>n.id).sort(),status:"STALE_REVIEW_REQUIRED"};
+   if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED",projection))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   // Read the immutable marker after a possible competing insert. A reverted
+   // source must not make the old affected set or stale state disappear.
+   const persisted=stale?await store.get(key(id,"invalidated")):null;
+   if(stale&&(!persisted||persisted.snapshot_digest!==r.record_digest))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   const priorProjection=persisted?.projection;
+   const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
    if(internal){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
-   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),authorization:"NONE",execution:"DISABLED"};
+   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
  return {save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true)};

@@ -29,7 +29,7 @@ test("actual comment service only dispatches exact approved synthetic annotation
  assert.equal((await f.writes.approve({...f.ctx,accountId:"other"},r.request_id,r.request_id)).ok,false);
  assert.equal((await f.writes.approve(f.ctx,r.request_id,r.request_id)).ok,true);
  const pair=await Promise.all([f.writes.execute(f.ctx,r.request_id),f.writes.execute(f.ctx,r.request_id)]);
- assert.equal(pair.filter(x=>x.ok).length,1);assert.equal(f.posts(),1);assert.equal(pair.find(x=>x.ok).comment_id,"1");
+ assert.equal(pair.filter(x=>x.ok).length,1);assert.equal(f.posts(),1);assert.equal(pair.find(x=>x.ok).comment_id,"1");assert.equal(pair.find(x=>x.ok).lineage.nodes.length,5);assert.equal(pair.find(x=>x.ok).lineage.edges.length,5);assert.match(pair.find(x=>x.ok).observation_digest,/^[a-f0-9]{64}$/);
  assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
 });
 test("stale, reverted, revoked, expired, wrong target and denied permission never POST",async()=>{
