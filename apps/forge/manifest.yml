@@ -5,6 +5,7 @@ modules:
       resolver:
         function: trustflow-resolver
       title: HAE TrustFlow
+      icon: https://developer.atlassian.com/platform/forge/images/issue-panel-icon.svg
   function:
     - key: trustflow-resolver
       handler: index.handler
