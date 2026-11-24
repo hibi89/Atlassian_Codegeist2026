@@ -17,6 +17,21 @@ function scopedEvent(e,p,runId,seq){
   return !!e&&e.schema_version==="hae.run.event.v1"&&e.tenant===p.tenant&&e.actor===p.actor&&e.target===p.target&&e.run_id===runId&&e.seq===seq&&typeof e.plan_hash==="string"&&/^[a-f0-9]{64}$/.test(e.plan_hash)&&typeof e.state==="string"&&typeof e.at==="string"&&Number.isFinite(Date.parse(e.at));
 }
 
+// Same durable proof is required by both historical inspection and finalization.
+async function verifyReportReceipt(store,p,cur,runId,requestId,stepId,reportDigest,expectedPayloadDigest,clock){
+  if(!cur?.ok||!["RUNNING","RECONCILING","SUCCEEDED"].includes(cur.state)||cur.events?.at(-1)?.report_request_id!==requestId||cur.events?.[0]?.plan_hash!==runId)return false;
+  try{
+      const prefix="cg:step:"+p.tenant+":"+p.actor+":"+runId+":"+stepId+":";
+      const step=await store.get(prefix+"receipt"),reservation=await store.get(prefix+"reserve");
+      const report=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+requestId+":receipt");
+      if(reservation?.schema_version!=="hae.step.reservation.v1"||reservation.tenant!==p.tenant||reservation.actor!==p.actor||reservation.target!==p.target||reservation.run_id!==runId||reservation.step_id!==stepId||reservation.plan_hash!==runId||reservation.approval_id!==requestId||typeof reservation.payload_digest!=="string"||!/^[a-f0-9]{64}$/.test(reservation.payload_digest)||reservation.payload_digest!==step?.payload_digest||reservation.payload_digest!==expectedPayloadDigest||step?.schema_version!=="hae.step.receipt.v1"||step.tenant!==p.tenant||step.actor!==p.actor||step.target!==p.target||step.run_id!==runId||step.step_id!==stepId||step.approval_id!==requestId||step.plan_hash!==runId||step.state!=="OBSERVED_SUCCESS"||step.observation_digest!==reportDigest||report?.schema_version!=="hae.report.receipt.v2"||report.tenant!==p.tenant||report.actor!==p.actor||report.target!==p.target||report.request_id!==requestId||report.review_id!==runId||report.report_digest!==reportDigest||report.effect!=="READ_ONLY_REPORT")return false;
+    const running=cur.events.find(e=>e.state==="RUNNING"),reconciling=cur.events.find(e=>e.state==="RECONCILING");
+    const a=Date.parse(reservation.at),b=Date.parse(step.at),c=report.at,now=clock();
+    if(typeof reservation.at!=="string"||typeof step.at!=="string"||!Number.isFinite(a)||!Number.isFinite(b)||!Number.isSafeInteger(c)||!Number.isSafeInteger(now)||!running||a<Date.parse(running.at)||b<a||c<b||c>now||reconciling&&c>Date.parse(reconciling.at))return false;
+    return true;
+  }catch{return false}
+}
+
 function createRunLedger(store,p,clock){
   const bad=code=>({ok:false,code});
   async function read(runId){
@@ -86,10 +101,7 @@ function createRunLedger(store,p,clock){
     try{
       const cur=await read(runId),last=cur.events?.[cur.events.length-1];
       if(!cur.ok||!["RUNNING","RECONCILING","SUCCEEDED"].includes(cur.state)||last?.execution_kind!=="READ_ONLY_REPORT"||last.report_request_id!==requestId)return bad("REPORT_RUN_NOT_RUNNING");
-      const prefix="cg:step:"+p.tenant+":"+p.actor+":"+runId+":"+stepId+":";
-      const step=await store.get(prefix+"receipt"),reservation=await store.get(prefix+"reserve");
-      const report=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+requestId+":receipt");
-      if(reservation?.schema_version!=="hae.step.reservation.v1"||reservation.tenant!==p.tenant||reservation.actor!==p.actor||reservation.target!==p.target||reservation.run_id!==runId||reservation.step_id!==stepId||reservation.plan_hash!==runId||reservation.approval_id!==requestId||typeof reservation.payload_digest!=="string"||!/^[a-f0-9]{64}$/.test(reservation.payload_digest)||reservation.payload_digest!==step?.payload_digest||reservation.payload_digest!==expectedPayloadDigest||step?.schema_version!=="hae.step.receipt.v1"||step.tenant!==p.tenant||step.actor!==p.actor||step.target!==p.target||step.run_id!==runId||step.step_id!==stepId||step.approval_id!==requestId||step.plan_hash!==runId||step.state!=="OBSERVED_SUCCESS"||step.observation_digest!==reportDigest||report?.schema_version!=="hae.report.receipt.v2"||report.tenant!==p.tenant||report.actor!==p.actor||report.target!==p.target||report.request_id!==requestId||report.review_id!==runId||report.report_digest!==reportDigest||report.effect!=="READ_ONLY_REPORT")return bad("REPORT_RECEIPT_UNKNOWN");
+      if(!await verifyReportReceipt(store,p,cur,runId,requestId,stepId,reportDigest,expectedPayloadDigest,clock))return bad("REPORT_RECEIPT_UNKNOWN");
       if(cur.state!=="RUNNING"&&last.receipt!==reportDigest)return bad("REPORT_RECEIPT_MISMATCH");
       if(cur.state==="SUCCEEDED")return {ok:true,state:"SUCCEEDED",historical:true};
       let prev=last,seq=cur.next_seq;
@@ -103,4 +115,4 @@ function createRunLedger(store,p,clock){
   return {read,create,transition,startReadOnlyReport,finishReadOnlyReport};
 }
 
-export { makeForgeLedgerStore,createRunLedger,allowedTransition };
+export { makeForgeLedgerStore,createRunLedger,allowedTransition,verifyReportReceipt };

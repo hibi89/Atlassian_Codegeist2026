@@ -2,6 +2,7 @@ import {commentBody,commentObservationDigest,commentLineage,reportLineage} from 
 import {canonical} from "../core/ir/plan.js";
 import {validateCommentPlan} from "../security/write-policy.js";
 import {readCommentJournal} from "../state/comment-journal.js";
+import {verifyReportReceipt} from "../state/run-ledger.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const fail=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
 export async function historicalGraph({store,p,record,current,projection,stale,run,digest,clock}){
@@ -44,6 +45,7 @@ export async function historicalGraph({store,p,record,current,projection,stale,r
    const step=record.plan.steps.at(-1);
    if(step?.op_id!=="report.evidence.generate"||!hex(last.receipt))return fail("HISTORY_REPORT_UNKNOWN");
    const payloadDigest=digest(canonical([record.id,id,record.evidence.bundle_hash,g.graph_revision,step]));
+   if(!await verifyReportReceipt(store,p,run,record.id,id,step.step_id,last.receipt,payloadDigest,clock))return fail("HISTORY_REPORT_RECEIPT_UNKNOWN");
    if(receipt?.schema_version!=="hae.report.receipt.v2"||receipt.tenant!==p.tenant||receipt.actor!==p.actor||receipt.target!==p.target||receipt.review_id!==record.id||receipt.request_id!==id||receipt.report_digest!==last.receipt||receipt.effect!=="READ_ONLY_REPORT"||canonical(receipt.lineage)!==canonical(reportLineage(p,record,id,step,payloadDigest,last.receipt,digest))||!append(receipt.lineage,receipt.lineage?.graph_revision))return fail("HISTORY_REPORT_LINEAGE_UNKNOWN");
   }
   if(nodes.length>620||edges.length>1524)return fail("HISTORY_GRAPH_LIMIT");

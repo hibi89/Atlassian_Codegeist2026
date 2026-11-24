@@ -49,6 +49,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
  assert.equal((await reports.approve(ctx,id,id)).ok,true);
  const pair=await Promise.all([reports.generate(ctx,id),reports.generate(ctx,id)]);assert.equal(pair.filter(x=>x.ok).length,1);
  const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal(result.report.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");const history=await reviews.history(ctx,result.report.review_id);assert.equal(history.ok,true);assert.ok(history.nodes.some(n=>n.kind==="RECEIPT"));assert.equal((await reviews.history({...ctx,accountId:"other"},result.report.review_id)).ok,false);assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
+ const storedStep=[...map.values()].find(x=>x.schema_version==="hae.step.receipt.v1"),oldAt=storedStep.at;storedStep.at=new Date(clock()+1000).toISOString();assert.equal((await reviews.history(ctx,result.report.review_id)).ok,false);storedStep.at=oldAt;
  const receipt=[...map.values()].find(x=>x.schema_version==="hae.report.receipt.v2");const edge=receipt.lineage.edges[0],relation=edge.relation;edge.relation="FORGED";assert.equal((await reviews.history(ctx,result.report.review_id)).ok,false);edge.relation=relation;assert.equal((await reviews.history(ctx,result.report.review_id)).ok,true);
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);
  const stale=await create();assert.equal((await reports.approve(ctx,stale,stale)).ok,true);version="2026-11-24T11:05:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);
@@ -136,6 +137,7 @@ for(const fault of ["lost-report-receipt-ack","before-success","missing-report-r
   const storedReceipt=[...map.values()].find(v=>v.schema_version==="hae.report.receipt.v2");const originalRelation=storedReceipt.lineage.edges[0].relation;storedReceipt.lineage.edges[0].relation="FORGED";assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);storedReceipt.lineage.edges[0].relation=originalRelation;
   const reservation=[...map.values()].find(v=>v.schema_version==="hae.step.reservation.v1");const stepReceipt=[...map.values()].find(v=>v.schema_version==="hae.step.receipt.v1");reservation.payload_digest="0".repeat(64);stepReceipt.payload_digest=reservation.payload_digest;
   assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
+  assert.equal((await reviews.history(ctx,reviewId)).ok,false);
   denied=true;assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
  });
 }
