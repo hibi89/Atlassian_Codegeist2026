@@ -70,6 +70,14 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId,
   let response;
   try{response=await transport.post(plan.target,adfComment(plan.typed_args.comment))}catch{response=null}
   const status=response?.status;
+  // Persist the remote ID independently before GET. A failed final outcome write must not discard a known ID.
+  if(status===201&&validId(response?.id)){
+   const known={schema_version:"hae.comment.remote-id.v1",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,payload_digest:attempt.payload_digest,comment_id:response.id};
+   try{await store.create(key(id,"remote-id"),known)}catch{
+    try{const saved=await store.get(key(id,"remote-id"));if(canonical(saved)!==canonical(known))return persist("UNKNOWN_OUTCOME_REVIEW",{known_comment_id:response.id,code:"REMOTE_ID_STORAGE_UNKNOWN"})}
+    catch{return persist("UNKNOWN_OUTCOME_REVIEW",{known_comment_id:response.id,code:"REMOTE_ID_STORAGE_UNKNOWN"})}
+   }
+  }
   if([400,401,403,404,405,413,415,422,429].includes(status))return persist("DEFINITE_REJECTION",{http_status:status});
   const observed=await readback(transport,plan,accountId,response?.id,digest);
   return persist(observed.state,{...(observed.comment_id?{comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:commentLineage(p,plan,id,observed,digest)}:observed.known_comment_id?{known_comment_id:observed.known_comment_id}:{}),...(Number.isInteger(status)?{http_status:status}:{})});
@@ -77,13 +85,14 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId,
  async function reconcile(plan,id){
   if(!hex(id)||!validateCommentPlan(p,plan,clock(),{allowExpired:true}).ok||digest(canonical(plan))!==id)return denyWrite("WRITE_RECONCILE_BINDING_DENIED");
   try{
-   const a=await store.get(key(id,"attempt")),d=await store.get(key(id,"dispatch")),old=await store.get(key(id,"outcome"));
+   const a=await store.get(key(id,"attempt")),d=await store.get(key(id,"dispatch")),old=await store.get(key(id,"outcome")),remote=await store.get(key(id,"remote-id"));
    if(a?.schema_version!=="hae.comment.attempt.v1"||a.tenant!==p.tenant||a.actor!==p.actor||a.target!==p.target||a.request_id!==id||a.review_id!==plan.review_id||a.payload_digest!==digest(canonical(adfComment(plan.typed_args.comment))))return denyWrite("WRITE_ATTEMPT_UNAVAILABLE");
    if(old?.known_comment_id!==undefined&&!validId(old.known_comment_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"OUTCOME_RECORD_INVALID"});
    if(old!=null&&(old.schema_version!=="hae.comment.receipt.v1"||old.request_id!==id||old.tenant!==p.tenant||old.actor!==p.actor||old.target!==p.target||old.payload_digest!==a.payload_digest||old.review_id!==plan.review_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"OUTCOME_RECORD_INVALID"});
    if(old?.state==="BLOCKED_BEFORE_DISPATCH"||old?.state==="DEFINITE_REJECTION")return result(id,old.state,{code:old.code,http_status:old.http_status});
    if(d?.schema_version!=="hae.comment.dispatch.v1"||d.request_id!==id||d.payload_digest!==a.payload_digest)return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"DISPATCH_NOT_ESTABLISHED"});
-   const observed=await readback(transport,plan,accountId,old?.comment_id??old?.known_comment_id,digest);
+   if(remote!=null&&(remote.schema_version!=="hae.comment.remote-id.v1"||remote.tenant!==p.tenant||remote.actor!==p.actor||remote.target!==p.target||remote.request_id!==id||remote.payload_digest!==a.payload_digest||!validId(remote.comment_id)||old?.comment_id!==undefined&&old.comment_id!==remote.comment_id||old?.known_comment_id!==undefined&&old.known_comment_id!==remote.comment_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"REMOTE_ID_RECORD_INVALID"});
+   const observed=await readback(transport,plan,accountId,remote?.comment_id??old?.comment_id??old?.known_comment_id,digest);
    if(observed.state!=="OBSERVED_SUCCESS")return result(id,"UNKNOWN_OUTCOME_REVIEW");
    const record={schema_version:"hae.comment.reconciliation.v1",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,payload_digest:a.payload_digest,comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:commentLineage(p,plan,id,observed,digest)};
    try{await store.create(key(id,"reconciled"),record)}catch{

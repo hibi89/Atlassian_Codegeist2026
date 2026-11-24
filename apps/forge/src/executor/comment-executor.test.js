@@ -154,3 +154,17 @@ test("P2 known response ID survives readback transport failure and reconciliatio
  const receipt=[...f.map.values()].find(x=>x.schema_version==="hae.comment.receipt.v1");assert.equal(receipt.known_comment_id,"1");
  f.setMode("ok");assert.equal((await f.writes.reconcile(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
 });
+
+test("P2 remote ID remains bound when final outcome write is rejected",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;f.setMode("wrong-id");
+ f.store.create=async(k,v)=>{if(k.endsWith(":outcome"))throw Error("receipt unavailable");await create(k,v)};
+ assert.equal((await f.writes.execute(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ f.store.create=create;assert.equal((await f.writes.reconcile(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ const remote=[...f.map.values()].find(x=>x.schema_version==="hae.comment.remote-id.v1");assert.equal(remote.comment_id,"1");
+});
+test("P2 remote ID storage acknowledgement lost is recovered by exact record comparison",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;
+ f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":remote-id"))throw Error("lost acknowledgement")};
+ assert.equal((await f.writes.execute(f.ctx,id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
+ f.store.create=create;assert.equal((await f.writes.reconcile(f.ctx,id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
+});
