@@ -65,3 +65,14 @@ test("P2 journal rejects future timestamps, reverse clock and forged execution t
  m.delete(prefix+"4");last.at=new Date(now-1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
  last.at=new Date(now+1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
 });
+
+
+import {reserveDailySlot as reserveRolloverSlot} from "./daily-budget.js";
+test("P2 admission UTC rollover before reservation or after acknowledgement fails closed",async()=>{
+ const start=Date.parse("2026-11-24T23:59:59.900Z");
+ for(const phase of ["get","set","none"]){let now=start,writes=0;
+ const kvs={get:async()=>{if(phase==="get")now+=200},set:async()=>{writes++;if(phase==="set")now+=200}};
+ const r=await reserveRolloverSlot(kvs,start,24,()=>now);
+ assert.equal(r.ok,phase==="none");if(phase!=="none")assert.equal(r.code,"DEVELOPMENT_BUDGET_DAY_CHANGED");assert.equal(writes,phase==="get"?0:1);
+ }
+});

@@ -60,7 +60,7 @@ async function call(context,input,operation,confirmation){
  if(!syntheticScopeAllowed(context,operation,process.env.TRUSTFLOW_DEMO_CLOUD_ID))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
  try{
   const kvs=getKvs();
-  const admission=await reserveDailySlot(kvs,Date.now());if(!admission.ok)return admission;
+  const admission=await reserveDailySlot(kvs,Date.now(),24,Date.now);if(!admission.ok)return admission;
   const services={store:createDevelopmentStore(kvs),clock:Date.now,digest,preview:previewWithPolicy,development:isDevelopment,nonce:()=>randomBytes(32).toString("hex")};
   if(operation==="read")return readCurrentEvidence(context);
   if(operation==="preview")return previewWithPolicy(context,input);

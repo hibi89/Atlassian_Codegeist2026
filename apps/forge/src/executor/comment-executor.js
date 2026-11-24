@@ -43,18 +43,21 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId,
     return result(id,state,{...extra,receipt_digest:digest(canonical(receipt))});
    }catch{return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"WRITE_RECEIPT_STORAGE_UNKNOWN"})}
   }
+  let approvalExpiresAt;
   try{
    // One immutable attempt per review, even if a second request is prepared.
    const prefix="cg:approval:"+p.tenant+":"+p.actor+":"+id+":";
    const approval=await store.get(prefix+"record"),terminal=await store.get(prefix+"terminal");
    if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==id||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||approval.plan_hash!==id||approval.request_digest!==id||approval.evidence_bundle_hash!==plan.evidence_bundle_hash||approval.dependency_digest!==plan.dependency_digest||approval.policy_version!==plan.policy_version||approval.capability_lock!==plan.capability_lock||!Number.isSafeInteger(approval.created_at)||approval.created_at>clock()||!Number.isSafeInteger(approval.expires_at)||approval.expires_at>plan.expires_at||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==id||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at||terminal.at>clock())return denyWrite("EXECUTOR_APPROVAL_RECEIPT_DENIED");
+   approvalExpiresAt=approval.expires_at;
    await store.create(reservationKey(plan),attempt);
    await store.create(key(id,"attempt"),attempt);
   }catch{return denyWrite("WRITE_RESERVATION_CONFLICT_OR_UNKNOWN")}
+  let reservedAt,day;
   try{
    // Exclusive installation-level one-comment/day cap. The final interlock
    // runs after reservation; no external POST path exists before it.
-   const day=new Date(clock()).toISOString().slice(0,10);
+   reservedAt=clock();day=new Date(reservedAt).toISOString().slice(0,10);
    await store.create("cg:demo-comment-day:"+day,{schema_version:"hae.comment.daily.v1",request_id:id});
   }catch{return persist("BLOCKED_BEFORE_DISPATCH",{code:"DEMO_WRITE_DAILY_CAP_OR_UNKNOWN"})}
   let gate;
@@ -65,7 +68,9 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId,
   // caller accidentally invokes dispatch twice. Never retry POST.
   try{await store.create(key(id,"dispatch"),{schema_version:"hae.comment.dispatch.v1",request_id:id,payload_digest:attempt.payload_digest,at:clock()})}
   catch{return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"DISPATCH_LATCH_UNKNOWN"})}
-  if(!validateCommentPlan(p,plan,clock()).ok)return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_EXPIRED_AT_DISPATCH"});
+  const dispatchAt=clock();
+  if(!validateCommentPlan(p,plan,dispatchAt).ok||approvalExpiresAt<=dispatchAt)return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_EXPIRED_AT_DISPATCH"});
+  if(dispatchAt<reservedAt||new Date(dispatchAt).toISOString().slice(0,10)!==day)return persist("BLOCKED_BEFORE_DISPATCH",{code:"DEMO_WRITE_DAY_CHANGED"});
   if(!canDispatch())return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_INVOCATION_TIME_BUDGET"});
   let response;
   try{response=await transport.post(plan.target,adfComment(plan.typed_args.comment))}catch{response=null}

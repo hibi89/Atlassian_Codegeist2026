@@ -34,9 +34,11 @@ export function createProviderService({store,clock,digest,preview,config,develop
    if(input.consent!==true||!freeProjectReady(config,clock()))reason="FREE_PROJECT_OR_CONSENT_UNVERIFIED";
    else{
     try{
-     const day=new Date(clock()).toISOString().slice(0,10);
-     await store.create("cg:provider-attempt:"+day,{schema_version:"hae.provider.attempt.v1",provider:GEMINI_MODEL,fixture:input.fixture,at:clock()});
-     if(!freeProjectReady(config,clock())||!development()||!allowedInstall(context))throw Error("PROVIDER_QUALIFICATION_CHANGED");
+     const reservedAt=clock(),day=new Date(reservedAt).toISOString().slice(0,10);
+     await store.create("cg:provider-attempt:"+day,{schema_version:"hae.provider.attempt.v1",provider:GEMINI_MODEL,fixture:input.fixture,at:reservedAt});
+     const dispatchAt=clock();
+     if(!Number.isSafeInteger(dispatchAt)||dispatchAt<reservedAt||new Date(dispatchAt).toISOString().slice(0,10)!==day)throw Error("PROVIDER_DAY_CHANGED");
+     if(!freeProjectReady(config,dispatchAt)||!development()||!allowedInstall(context))throw Error("PROVIDER_QUALIFICATION_CHANGED");
      attempted=true;
      const result=await createGeminiProvider({fetch,apiKey:config.apiKey})(input.fixture);
      // Model output can select only the already intended fixture, never IR or scopes.

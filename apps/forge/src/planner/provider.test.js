@@ -39,3 +39,10 @@ test("P2 free qualification expires during admission, no external call",async()=
  const service=createProviderService({store:{create:async()=>{t+=1001}},clock:()=>t,digest,preview:(ctx,input)=>previewTypedIntent(ctx,input,t,()=>"fixture-plan"),config:{enabled:true,billingDisabled:true,verifiedUntil:new Date(now+1000).toISOString(),apiKey:"synthetic-key-fixture"},development:()=>true,allowedInstall:()=>true,fetch:async()=>{calls++;throw Error("must not send")}});
  const r=await service.run(context,{provider:"gemini",fixture:"change",consent:true});assert.equal(r.ok,true);assert.equal(r.provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(r.provider.external_attempted,false);assert.equal(calls,0);
 });
+
+
+test("P2 provider UTC rollover during reservation never sends on the next day",async()=>{
+ let t=Date.parse("2026-11-24T23:59:59.900Z"),calls=0;const m=new Map();
+ const service=createProviderService({store:{create:async(k,v)=>{m.set(k,v);t+=200}},clock:()=>t,digest,preview:(ctx,input)=>previewTypedIntent(ctx,input,t,()=>"fixture-plan"),config:{enabled:true,billingDisabled:true,verifiedUntil:new Date(t+3600000).toISOString(),apiKey:"synthetic-key-fixture"},development:()=>true,allowedInstall:()=>true,fetch:async()=>{calls++;throw Error("must not send")}});
+ const r=await service.run(context,{provider:"gemini",fixture:"change",consent:true});assert.equal(r.ok,true);assert.equal(r.provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(r.provider.external_attempted,false);assert.equal(calls,0);assert.ok(m.has("cg:provider-attempt:2026-11-24"));assert.equal(m.has("cg:provider-attempt:2026-11-25"),false);
+});

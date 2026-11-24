@@ -24,7 +24,7 @@ function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
  async function approved(){const r=await request();assert.equal(r.ok,true);assert.equal((await writes.approve(ctx,r.request_id,r.request_id)).ok,true);return r.request_id}
- return {ctx,map,store,reviews,writes,request,approved,preview,posts:()=>posts,change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
+ return {ctx,map,store,reviews,writes,request,approved,preview,posts:()=>posts,setNow:t=>{now=t},advance:ms=>{now+=ms},change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
 }
 test("actual comment service only dispatches exact approved synthetic annotation once",async()=>{
  const f=fixture(),r=await f.request();assert.equal(r.ok,true);assert.match(r.comment,/not a certification/);
@@ -167,4 +167,17 @@ test("P2 remote ID storage acknowledgement lost is recovered by exact record com
  f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":remote-id"))throw Error("lost acknowledgement")};
  assert.equal((await f.writes.execute(f.ctx,id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
  f.store.create=create;assert.equal((await f.writes.reconcile(f.ctx,id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
+});
+
+
+test("P2 comment UTC rollover after dispatch latch blocks POST without retry",async()=>{
+ const f=fixture();f.setNow(Date.parse("2026-11-24T23:59:59.900Z"));const id=await f.approved(),create=f.store.create;
+ f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":dispatch"))f.advance(200)};
+ const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"BLOCKED_BEFORE_DISPATCH");assert.equal(r.code,"DEMO_WRITE_DAY_CHANGED");assert.equal(f.posts(),0);assert.equal((await f.writes.reconcile(f.ctx,id)).status,"BLOCKED_BEFORE_DISPATCH");assert.equal((await f.writes.execute(f.ctx,id)).ok,false);assert.equal(f.posts(),0);
+});
+test("P2 approval expiration while persisting dispatch latch blocks POST",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;
+ const approval=[...f.map.values()].find(x=>x.schema_version==="hae.approval.v2");approval.expires_at=approval.created_at+100;
+ f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":dispatch"))f.advance(101)};
+ const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"BLOCKED_BEFORE_DISPATCH");assert.equal(r.code,"WRITE_EXPIRED_AT_DISPATCH");assert.equal(f.posts(),0);
 });
