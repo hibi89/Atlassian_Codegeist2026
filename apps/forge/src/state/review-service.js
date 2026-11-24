@@ -1,3 +1,4 @@
+import { historicalGraph } from "../lineage/history.js";
 import { readCommentJournal } from "./comment-journal.js";
 import { principal } from "../evidence/bundle.js";
 import { createRunLedger } from "./run-ledger.js";
@@ -32,6 +33,15 @@ function createReviewService({store,clock,digest,preview,development}){
   const comment_journal=await readCommentJournal(store,p,id);
   return {...review,comment_journal,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
- return {save,refresh};
+ async function history(context,id){
+  const p=principal(context,digest);
+  if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
+  const h=await createReviewStore(store,p,clock,digest).history(id,(intent,record)=>preview(context,aliases[intent],record));
+  if(!h.ok)return h;
+  const run=await createRunLedger(store,p,clock).read(id);
+  if(!run.ok||run.events[0].plan_hash!==id)return deny("HISTORY_JOURNAL_UNKNOWN");
+  return historicalGraph({store,p,...h,run,digest,clock});
+ }
+ return {save,refresh,history};
 }
 export {createReviewService};

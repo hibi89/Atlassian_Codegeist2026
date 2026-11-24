@@ -48,7 +48,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
  assert.equal((await reports.approve({...ctx,accountId:"other"},id,id)).ok,false);
  assert.equal((await reports.approve(ctx,id,id)).ok,true);
  const pair=await Promise.all([reports.generate(ctx,id),reports.generate(ctx,id)]);assert.equal(pair.filter(x=>x.ok).length,1);
- const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
+ const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");const history=await reviews.history(ctx,result.report.review_id);assert.equal(history.ok,true);assert.ok(history.nodes.some(n=>n.kind==="RECEIPT"));assert.equal((await reviews.history({...ctx,accountId:"other"},result.report.review_id)).ok,false);assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);
  const stale=await create();assert.equal((await reports.approve(ctx,stale,stale)).ok,true);version="2026-11-24T11:05:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);
  const revoked=await create();assert.equal((await reports.approve(ctx,revoked,revoked)).ok,true);assert.equal((await reports.revoke(ctx,revoked)).ok,true);assert.equal((await reports.generate(ctx,revoked)).ok,false);
@@ -71,5 +71,5 @@ test("selective revalidation reuses unchanged authorized groups only, recomputes
  version="2026-11-24T11:05:00Z";
  const changed=await service.refresh(ctx,id);assert.equal(changed.status,"STALE_REVIEW_REQUIRED");assert.equal(changed.revalidation.reused,2);assert.equal(changed.revalidation.recomputed,2);
  assert.ok(changed.affected_count>0);assert.ok(changed.unaffected_count>0);
- denied=true;assert.equal((await service.refresh(ctx,id)).ok,false);
+ const historical=await service.history(ctx,id);assert.equal(historical.ok,true);assert.equal(historical.status,"HISTORICAL_STALE");assert.ok(historical.nodes.some(n=>n.state==="STALE_AT_INVALIDATION"));denied=true;assert.equal((await service.history(ctx,id)).ok,false);assert.equal((await service.refresh(ctx,id)).ok,false);
 });
