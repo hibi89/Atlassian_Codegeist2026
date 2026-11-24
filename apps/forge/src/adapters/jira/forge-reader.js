@@ -1,5 +1,7 @@
-import api, { route } from "@forge/api";
+import apiModule, { route } from "@forge/api";
+import { resolveForgeApi } from "../../forge-interop.js";
 import { createHash } from "node:crypto";
+const api = resolveForgeApi(apiModule);
 import { readIssue } from "./reader.js";
 export function readCurrentJiraIssue(context) {
   return readIssue(context, key => api.asUser().requestJira(route`/rest/api/3/issue/${key}?fields=summary,status,issuetype,updated`, {

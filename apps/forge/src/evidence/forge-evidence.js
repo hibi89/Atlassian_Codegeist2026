@@ -1,5 +1,7 @@
-import api, { route } from "@forge/api";
+import apiModule, { route } from "@forge/api";
+import { resolveForgeApi } from "../forge-interop.js";
 import { createHash } from "node:crypto";
+const api = resolveForgeApi(apiModule);
 import { readIssue } from "../adapters/jira/reader.js";
 import { boundedLinks, collectEvidence } from "./bundle.js";
 export const digest = text => createHash("sha256").update(text,"utf8").digest("hex");

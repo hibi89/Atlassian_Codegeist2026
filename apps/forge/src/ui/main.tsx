@@ -8,7 +8,7 @@ type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_eff
 type Evidence = { coverage:string; unknown_count:number; sources:{source_ref:string;uri:string;version:string|null;status:string}[] };
 type Result = { claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[]}; policy?:{decision:string;reason:string;execution:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
-  AUTH_REQUIRED:"Sign in to Jira to continue.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
+  AUTH_REQUIRED:"Sign in to Jira to continue.", BACKEND_UNAVAILABLE:"TrustFlow could not connect to its backend. Reload the issue or contact the developer.", AUTH_CONTEXT_REQUIRED:"The authenticated installation context is unavailable.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
   SOURCE_ACCESS_UNKNOWN:"Current user access could not be verified.", SOURCE_NOT_VISIBLE_OR_MISSING:"Issue is missing or not visible to you.",
   JIRA_RATE_LIMITED:"Jira rate limit reached. Try again later.", JIRA_UNAVAILABLE:"Jira is temporarily unavailable.",
   JIRA_RESPONSE_INVALID:"Jira returned an unexpected response.", JIRA_RESPONSE_TOO_LARGE:"Jira response exceeded the safe limit.",
@@ -22,7 +22,7 @@ function App(){
   const [preview,setPreview]=useState<Result|null>(null);
   const [busy,setBusy]=useState(false);
   const serial=useRef(0);
-  useEffect(()=>{let alive=true;invoke<Result>("getPanelContext").then(v=>{if(alive)setContext(v)}).catch(()=>{if(alive)setContext({ok:false,code:"ISSUE_CONTEXT_REQUIRED"})});return()=>{alive=false}},[]);
+  useEffect(()=>{let alive=true;invoke<Result>("getPanelContext").then(v=>{if(alive)setContext(v)}).catch(()=>{if(alive)setContext({ok:false,code:"BACKEND_UNAVAILABLE"})});return()=>{alive=false}},[]);
   async function loadIssue(){
     const token=++serial.current;setBusy(true);setIssue(null);setPreview(null);
     try{const v=await invoke<Result>("readCurrentIssue");if(token===serial.current)setIssue(v)}
@@ -32,7 +32,7 @@ function App(){
   async function createPreview(e:React.FormEvent){
     e.preventDefault();const token=++serial.current;setBusy(true);setPreview(null);
     try{const v=await invoke<Result>("previewIntent",{intent});if(token===serial.current)setPreview(v)}
-    catch{if(token===serial.current)setPreview({ok:false,code:"UNSUPPORTED_INTENT"})}
+    catch{if(token===serial.current)setPreview({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(token===serial.current)setBusy(false)}
   }
   return <main className="shell"><header><div className="eyebrow">HAE / LA • TRUSTFLOW</div><h1>Decision assurance</h1><p>Know why. Approve what. Revalidate what changes.</p></header>
