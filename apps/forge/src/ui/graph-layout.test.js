@@ -9,3 +9,6 @@ test("UI definite pre-dispatch rejection is not a new unknown outcome; later rej
 
 import {requestDeadline} from "./request-state.js";
 test("UI local approval deadline uses the shorter server deadline and refuses unknown timestamps",()=>{const request={expires_at:2000};assert.deepEqual(requestDeadline(request,{status:"AWAITING"},"APPROVED",1000),{ready:true,remaining:1000});assert.deepEqual(requestDeadline(request,{status:"APPROVED",expires_at:1500},"APPROVED",1000),{ready:true,remaining:500});assert.deepEqual(requestDeadline(request,{status:"APPROVED",expires_at:1500},"APPROVED",1500),{ready:false,remaining:0});assert.equal(requestDeadline(request,{status:"APPROVED"},"APPROVED",1000).ready,false);assert.equal(requestDeadline({expires_at:"2000"},null,"APPROVED",1000).ready,false)});
+
+import {restoreUnresolvedComment} from "./request-state.js";
+test("UI reload recovery restores exact pending comment ID from scoped journal",()=>{const id="a".repeat(64);assert.equal(restoreUnresolvedComment("",{status:"UNKNOWN_OUTCOME_REVIEW",request_id:id}),id);assert.equal(restoreUnresolvedComment("",{status:"HISTORICAL_OBSERVED_SUCCESS",request_id:id}),"");assert.equal(restoreUnresolvedComment("",{status:"UNKNOWN_OUTCOME_REVIEW",request_id:"invalid"}),"");assert.equal(restoreUnresolvedComment(id,{status:"UNKNOWN_OUTCOME_REVIEW",request_id:"b".repeat(64)}),id)});

@@ -27,3 +27,8 @@ export function requestDeadline(request,state,approvedStatus,now){
  const end=approved?Math.min(requestAt,state.expires_at):requestAt;
  return {ready:end>now,remaining:Math.max(0,end-now)};
 }
+
+// Restore a known unresolved request after a saved-review recheck (including reload).
+export function restoreUnresolvedComment(previous,journal){
+ return previous||(journal?.status==="UNKNOWN_OUTCOME_REVIEW"&&typeof journal.request_id==="string"&&/^[a-f0-9]{64}$/.test(journal.request_id)?journal.request_id:"");
+}

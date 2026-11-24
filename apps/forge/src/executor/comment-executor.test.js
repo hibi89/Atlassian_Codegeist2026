@@ -206,3 +206,10 @@ test("P2 historical success requires exact attempt reservation and durable dispa
  f.map.delete(dispatchKey);assert.equal((await readCommentJournal(f.store,p,r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal((await f.reviews.history(f.ctx,r.review_id)).ok,false);assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");
  f.map.set(dispatchKey,dispatch);f.map.get(reservationKey).at+=1;assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"WRITE_ATTEMPT_RESERVATION_INVALID");assert.equal((await readCommentJournal(f.store,p,r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal(f.posts(),1);
 });
+
+ test("P2 preparing another comment for an attempted review returns original recovery reference without a new draft",async()=>{
+ const f=fixture(),r=await f.request();await f.writes.approve(f.ctx,r.request_id,r.request_id);f.setMode("lost");assert.equal((await f.writes.execute(f.ctx,r.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");
+ const count=()=>[...f.map.values()].filter(v=>v.schema_version==="hae.forge.comment-plan.v1").length;assert.equal(count(),1);
+ const again=await f.writes.prepare(f.ctx,r.review_id);assert.equal(again.ok,false);assert.equal(again.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(again.request_id,r.request_id);assert.equal(count(),1);assert.equal(f.posts(),1);
+ const refreshed=await f.reviews.refresh(f.ctx,r.review_id);assert.equal(refreshed.comment_journal.request_id,r.request_id);assert.equal(refreshed.comment_journal.status,"UNKNOWN_OUTCOME_REVIEW");
+ });

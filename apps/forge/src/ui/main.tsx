@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { invoke } from "@forge/bridge";
 import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
-import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline} from "./request-state.js";
+import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
@@ -109,7 +109,7 @@ function App(){
   }
   async function recheckReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);setIssue(null);
-    try{const result=await invoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){setSavedStatus(result);if(result.comment_journal?.request_id)setCommentId(result.comment_journal.request_id)}}
+    try{const result=await invoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){setSavedStatus(result);if(result.comment_journal?.request_id)setCommentId(result.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result.comment_journal))}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -131,7 +131,7 @@ function App(){
     const id=operation==="reconcileDemoComment"?commentId:commentRequest?.request_id;
     try{
       const result=await invoke<CommentResult>(operation,operation==="prepareDemoComment"?{review_id:reviewId}:{request_id:id,expected_digest:id});
-      if(gate.current.current(token)){setCommentState(commentResponse(operation,result));setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",result));if(operation==="prepareDemoComment"&&result.ok){setCommentRequest(result);setCommentId(result.request_id??"");}}
+      if(gate.current.current(token)){setCommentState(commentResponse(operation,result));setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",result));if(operation==="prepareDemoComment"){if(result.ok)setCommentRequest(result);if(result.request_id)setCommentId(result.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result));}}
     }catch{if(gate.current.current(token)){setCommentState({ok:false,code:"BACKEND_UNAVAILABLE",status:operation==="executeDemoComment"?"UNKNOWN_OUTCOME_REVIEW":"REQUEST_UNAVAILABLE"});setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",null));}}
     finally{if(gate.current.end(token))setBusy(false)}
   }
