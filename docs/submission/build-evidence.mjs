@@ -1,0 +1,19 @@
+import {readFileSync,writeFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+function buildEvidence(l){
+ const counts={PASS:0,PARTIAL:0,NOT_RUN:0};if(!Array.isArray(l.records)||l.records.length!==l.p2_total||new Set(l.records.map(r=>r.gate_id)).size!==l.p2_total||!/^[a-f0-9]{40}$/.test(l.source_sha))throw Error("Invalid evidence ledger");
+ for(const r of l.records){if(!Object.hasOwn(counts,r.status))throw Error("Unexpected gate state");counts[r.status]++}
+ if(counts.PASS!==l.p2_pass||counts.PARTIAL!==l.p2_partial||counts.NOT_RUN!==l.p2_not_run)throw Error("Gate count mismatch");
+ const rows=l.benchmark?.rows;if(!Array.isArray(rows)||rows.length!==3||rows.some((r,i)=>r.scenario!==["unchanged","changed","denied"][i]||!Number.isSafeInteger(r.pairs)||r.pairs<1||![r.full_ms,r.selective_ms].every(x=>Number.isFinite(x)&&x>=0)))throw Error("Invalid benchmark");
+ const total=rows.reduce((s,r)=>s+r.pairs,0);if(!Number.isSafeInteger(l.benchmark.decision_equal_pairs)||l.benchmark.decision_equal_pairs<0||l.benchmark.decision_equal_pairs>total)throw Error("Invalid paired decision count");
+ const max=Math.max(1,...rows.flatMap(r=>[r.full_ms,r.selective_ms]));
+ const bars=rows.map((r,i)=>{const y=112+78*i;return `<text x="24" y="${y}" font-size="15" font-weight="bold">${r.scenario}</text>`+[[r.full_ms,"#64748b"],[r.selective_ms,"#137d73"]].map(([v,col],k)=>`<rect x="160" y="${y-15+k*24}" width="${(v/max*400).toFixed(2)}" height="16" rx="2" fill="${col}"/><text x="${166+v/max*400}" y="${y-2+k*24}" font-size="13">${v.toFixed(3)}</text>`).join("")}).join("");
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 390" role="img" aria-labelledby="title desc"><title id="title">Native synthetic full vs selective revalidation</title><desc id="desc">Total milliseconds for each paired scenario. ${l.benchmark.decision_equal_pairs} of ${total} decisions agree. Real Forge latency not measured.</desc><rect width="760" height="390" rx="12" fill="#f3f6fa"/><g font-family="Arial, sans-serif" fill="#172b42"><text x="24" y="35" font-size="20" font-weight="bold">Full vs selective revalidation</text><text x="24" y="58" font-size="13">Synthetic adapter · total milliseconds per scenario</text><rect x="24" y="72" width="14" height="14" fill="#64748b"/><text x="45" y="84" font-size="13">Full</text><rect x="105" y="72" width="14" height="14" fill="#137d73"/><text x="126" y="84" font-size="13">Selective</text>${bars}<text x="24" y="325" font-size="14" font-weight="bold">Decision agreement: ${l.benchmark.decision_equal_pairs}/${total} paired cases</text><text x="24" y="346" font-size="12">No real-network or general accuracy claim. Read actual totals; no speed gain assumed.</text><text x="24" y="369" font-size="12">Source ${l.source_sha}</text></g></svg>\n`;
+ const md=`# Synthetic evidence snapshot — NOT live acceptance\n\nSource SHA: \`${l.source_sha}\`\n\n- P1 candidates ${l.p1_candidates}/${l.p1_total}\n- P2 gates: ${counts.PASS} PASS, ${counts.PARTIAL} PARTIAL, ${counts.NOT_RUN} NOT_RUN. Official weighted rates UNASSESSED.\n- Paired decisions equal: ${l.benchmark.decision_equal_pairs}/${total}. Not an accuracy rate.\n\n| Scenario | Pairs | Full total ms | Selective total ms |\n|---|---:|---:|---:|\n${rows.map(r=>`| ${r.scenario} | ${r.pairs} | ${r.full_ms.toFixed(3)} | ${r.selective_ms.toFixed(3)} |`).join("\n")}\n\nNative synthetic adapter only. Real Forge latency, usage cost, independent verification and production acceptance are not established. Do not present these totals as user time savings.\n`;
+ return {svg,md};
+}
+export {buildEvidence};
+if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
+ const l=JSON.parse(readFileSync(new URL("../P2_VERIFICATION_LEDGER.json",import.meta.url),"utf8"));
+ const e=buildEvidence(l);writeFileSync(new URL("synthetic-evidence.svg",import.meta.url),e.svg);writeFileSync(new URL("SYNTHETIC_EVIDENCE.md",import.meta.url),e.md);
+}
