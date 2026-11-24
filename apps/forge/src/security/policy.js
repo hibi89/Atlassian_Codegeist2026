@@ -1,3 +1,4 @@
+import { analyzeImpact } from "../lineage/impact.js";
 import { buildObservedGraph } from "../lineage/observed-graph.js";
 import { canonical } from "../core/ir/plan.js";
 import { reviewClaims } from "../evidence/typed-claims.js";
@@ -28,9 +29,15 @@ async function guardedPreview(context,input,services){
   const claim_review=reviewClaims(observed.evidence);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
   if(policy.decision==="ALLOW_PREVIEW"&&claim_review.status==="CONFLICT_FOUND")policy={...policy,decision:"REVIEW",reason:"CLAIM_CONFLICT"};
-  const graph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
-  // This graph is a scoped observation, never a persisted dependency projection or authority.
-  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy,graph};
+  // Compare against the first observed dependency graph, never a client-provided graph.
+  const prior=observed.previous_evidence;
+  const priorGraph=buildObservedGraph(p,draft,prior,reviewClaims(prior),policy,services.digest,canonical);
+  const impact=analyzeImpact(p,priorGraph,observed.freshness);
+  // Do not return prior source identifiers after a potentially revoked read.
+  const impact_summary=impact.ok?{status:impact.status,affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,stale_approval_count:impact.stale_approvals.length,authorization:"NONE"}:{status:"HOLD",code:impact.code,authorization:"NONE"};
+  if(!impact.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:impact.code};
+  const visibleGraph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
+  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
 }
 
 export { evaluatePolicy, guardedPreview };
