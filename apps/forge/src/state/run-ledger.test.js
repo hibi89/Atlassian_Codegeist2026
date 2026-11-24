@@ -38,3 +38,21 @@ test("approval broker binds exact context and dependency, rejects replay and con
  const b3={...b,request_digest:"3".repeat(64)};const a3=await broker.issue(p,b3,b3.request_digest);now=301000;
  assert.equal((await broker.consume(p,a3.approval_id,b3)).ok,false);
 });
+
+import {createStepLedger} from "./step-ledger.js";
+test("step reservations are exclusive and missing receipt means unknown outcome",async()=>{
+ const backing=new Map(),store=makeForgeLedgerStore({get:async k=>backing.get(k),set:async(k,v,o)=>{if(o.keyPolicy!=="FAIL_IF_EXISTS"||backing.has(k))throw Error("conflict");backing.set(k,JSON.parse(JSON.stringify(v)))}});
+ const p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"},b={plan_hash:"c".repeat(64),payload_digest:"d".repeat(64),approval_id:"e".repeat(64)};
+ let state="AWAITING_APPROVAL";const runLedger={read:async()=>({ok:true,state,events:[{plan_hash:b.plan_hash}]})};
+ const steps=createStepLedger(store,runLedger,p,()=>1000);
+ assert.equal((await steps.reserve("r1","s1",b)).ok,false);
+ state="RUNNING";assert.equal((await steps.reserve("r1","s1",{...b,plan_hash:"0".repeat(64)})).ok,false);
+ assert.equal((await Promise.all([steps.reserve("r1","s1",b),steps.reserve("r1","s1",b)])).filter(x=>x.ok).length,1);
+ assert.equal((await steps.read("r1","s1")).state,"UNKNOWN_OUTCOME_REVIEW");
+ const outcome={state:"OBSERVED_SUCCESS",observation_digest:"f".repeat(64),payload_digest:b.payload_digest};
+ assert.equal((await steps.record("r1","s1",{...outcome,payload_digest:"0".repeat(64)})).ok,false);
+ assert.equal((await Promise.all([steps.record("r1","s1",outcome),steps.record("r1","s1",outcome)])).filter(x=>x.ok).length,1);
+ assert.equal((await createStepLedger(store,runLedger,p,()=>1000).read("r1","s1")).state,"OBSERVED_SUCCESS");
+ assert.equal((await steps.reserve("r1","s1",b)).ok,false);
+ assert.equal((await createStepLedger(store,runLedger,{...p,target:"DEMO-2"},()=>1000).read("r1","s1")).ok,false);
+});
