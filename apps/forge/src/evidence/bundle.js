@@ -95,7 +95,7 @@ async function refreshEvidence(context,adapter,digest,clock){
   if(!first.ok)return first;
   const second=await collectEvidence(context,adapter,digest,clock);
   if(!second.ok)return {ok:false,code:second.code||"SOURCE_ACCESS_UNKNOWN"};
-  return {...second,freshness:compareEvidence(first.evidence,second.evidence,clock())};
+  return {...second,previous_evidence:first.evidence,freshness:compareEvidence(first.evidence,second.evidence,clock())};
 }
 
 export { principal, boundedLinks, normalizedEvidence, collectEvidence, compareEvidence, refreshEvidence };
