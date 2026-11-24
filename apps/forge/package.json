@@ -1,0 +1,23 @@
+{
+  "name": "hae-trustflow-forge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "build": "node src/ui/build.mjs",
+    "test:smoke": "node --test src/smoke.test.js"
+  },
+  "dependencies": {
+    "@forge/api": "8.4.0",
+    "@forge/bridge": "7.4.0",
+    "@forge/resolver": "2.0.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

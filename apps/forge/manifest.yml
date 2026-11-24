@@ -1,0 +1,23 @@
+modules:
+  jira:issuePanel:
+    - key: hae-trustflow-panel
+      resource: trustflow-ui
+      resolver:
+        function: trustflow-resolver
+      title: HAE TrustFlow
+  function:
+    - key: trustflow-resolver
+      handler: index.handler
+resources:
+  - key: trustflow-ui
+    path: src/ui/dist
+permissions:
+  scopes:
+    - read:jira-work
+app:
+  id: "ari:cloud:ecosystem::app/${FORGE_APP_ID}"
+  runtime:
+    name: nodejs22.x
+environment:
+  variables:
+    - FORGE_APP_ID
