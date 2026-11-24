@@ -17,11 +17,11 @@ test("development save and recheck use immutable metadata and never revive stale
  assert.equal((await createReviewService({store,clock,digest,preview,development:()=>false}).save(ctx,"review change")).ok,false);
  const saved=await service.save(ctx,"review change");assert.equal(saved.ok,true);assert.equal(saved.saved_review.run_state,"POLICY_REVIEW");assert.equal(saved.saved_review.metadata.raw_originals,"NOT_STORED");assert.ok(saved.saved_review.metadata.record_bytes>0);const id=saved.saved_review.review_id;
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);assert.equal(JSON.stringify([...map.values()]).includes("/browse/"),false);
- const unchanged=await service.refresh(ctx,id);assert.equal(unchanged.status,"NO_CHANGE_OBSERVED");assert.equal(unchanged.revalidation.reused,2);assert.equal(unchanged.revalidation.recomputed,0);
+ const unchanged=await service.refresh(ctx,id);assert.equal(unchanged.status,"NO_CHANGE_OBSERVED");const initialHistory=await service.history(ctx,id);assert.equal(initialHistory.source_comparison.status,"CURRENT_OBSERVED");assert.deepEqual(initialHistory.source_comparison.rows,[{uri:"/browse/DEMO-1",saved_version:"2026-11-24T11:00:00.000Z",current_version:"2026-11-24T11:00:00.000Z",state:"UNCHANGED",content_changed:false,revision_changed:false}]);assert.equal(unchanged.revalidation.reused,2);assert.equal(unchanged.revalidation.recomputed,0);
  assert.equal((await service.refresh({...ctx,accountId:"other"},id)).ok,false);
- version="2026-11-24T11:05:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
- version="2026-11-24T11:00:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
- const fresh=await service.save(ctx,"review change");assert.equal(fresh.ok,true);denied=true;assert.equal((await service.refresh(ctx,fresh.saved_review.review_id)).ok,false);denied=false;
+ version="2026-11-24T11:05:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");const changedHistory=await service.history(ctx,id);assert.equal(changedHistory.source_comparison.status,"STALE_VERSION");assert.equal(changedHistory.source_comparison.rows[0].state,"CHANGED");assert.equal(changedHistory.source_comparison.rows[0].content_changed,true);assert.equal(changedHistory.source_comparison.rows[0].saved_version,"2026-11-24T11:00:00.000Z");
+ version="2026-11-24T11:00:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");const reverted=await service.history(ctx,id);assert.equal(reverted.status,"HISTORICAL_STALE");assert.equal(reverted.source_comparison.rows[0].state,"UNCHANGED");
+ const fresh=await service.save(ctx,"review change");assert.equal(fresh.ok,true);denied=true;assert.equal((await service.refresh(ctx,fresh.saved_review.review_id)).ok,false);assert.equal((await service.history(ctx,fresh.saved_review.review_id)).ok,false);denied=false;
  assert.equal((await service.refresh(ctx,fresh.saved_review.review_id)).status,"STALE_REVIEW_REQUIRED");
 });
 test("KVS adapter uses only bounded conditional writes, package export resolved",async()=>{

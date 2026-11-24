@@ -1,5 +1,6 @@
 import {commentBody,commentObservationDigest,commentLineage,reportLineage} from "./receipt-lineage.js";
 import {canonical} from "../core/ir/plan.js";
+import {compareEvidence} from "../evidence/bundle.js";
 import {validateCommentPlan} from "../security/write-policy.js";
 import {readCommentJournal} from "../state/comment-journal.js";
 import {verifyReportReceipt} from "../state/run-ledger.js";
@@ -49,6 +50,18 @@ export async function historicalGraph({store,p,record,current,projection,stale,r
    if(receipt?.schema_version!=="hae.report.receipt.v2"||receipt.tenant!==p.tenant||receipt.actor!==p.actor||receipt.target!==p.target||receipt.review_id!==record.id||receipt.request_id!==id||receipt.report_digest!==last.receipt||receipt.effect!=="READ_ONLY_REPORT"||canonical(receipt.lineage)!==canonical(reportLineage(p,record,id,step,payloadDigest,last.receipt,digest))||!append(receipt.lineage,receipt.lineage?.graph_revision))return fail("HISTORY_REPORT_LINEAGE_UNKNOWN");
   }
   if(nodes.length>620||edges.length>1524)return fail("HISTORY_GRAPH_LIMIT");
-  return {ok:true,review_id:record.id,status:stale?"HISTORICAL_STALE":"HISTORICAL_CURRENT_OBSERVATION",nodes,edges,metadata:{classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(record),"utf8"),record_digest:record.record_digest,graph_revision:g.graph_revision,expires_at:record.expires_at,source_count:record.evidence.sources.length,node_count:nodes.length,edge_count:edges.length},authorization:"NONE",execution:"DISABLED"};
+  // Expose saved/current revision comparison only for currently authorized sources.
+  const now=clock();
+  if(record.expires_at<=now||[...currentSources.values()].some(s=>!Number.isFinite(Date.parse(s.freshness_deadline))||Date.parse(s.freshness_deadline)<=now))return fail("HISTORY_ACCESS_UNKNOWN");
+  const comparison=compareEvidence(record.evidence,current.evidence,now);
+  let source_comparison=null;
+  if(comparison.status!=="UNKNOWN"){
+   const oldSources=new Map(record.evidence.sources.map(s=>[s.source_ref,s]));
+   source_comparison={status:comparison.status,rows:current.evidence.sources.map(s=>{
+    const old=oldSources.get(s.source_ref);
+    return {uri:s.uri,saved_version:old?.version??null,current_version:s.version,state:!old?"NEW_DEPENDENCY":comparison.changed.includes(s.source_ref)?"CHANGED":"UNCHANGED",content_changed:old?old.content_digest!==s.content_digest:null,revision_changed:old?old.revision_key!==s.revision_key:null};
+   })};
+  }
+  return {ok:true,review_id:record.id,source_comparison,status:stale?"HISTORICAL_STALE":"HISTORICAL_CURRENT_OBSERVATION",nodes,edges,metadata:{classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(record),"utf8"),record_digest:record.record_digest,graph_revision:g.graph_revision,expires_at:record.expires_at,source_count:record.evidence.sources.length,node_count:nodes.length,edge_count:edges.length},authorization:"NONE",execution:"DISABLED"};
  }catch{return fail("HISTORY_STORAGE_UNKNOWN")}
 }
