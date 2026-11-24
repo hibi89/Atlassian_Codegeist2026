@@ -26,10 +26,21 @@ export function createCommentService({store,clock,digest,preview,development,non
   return validateCommentPlan(p,plan,clock(),{allowExpired}).ok&&digest(canonical(plan))===id?plan:null;
  }
  async function current(p,context,plan,id){
-  if(!actor(context)||!await permissions(p))return denyWrite("WRITE_PERMISSION_DENIED");
-  const m=await material(p,context,plan.review_id);
-  if(!m.ok)return denyWrite("WRITE_REVIEW_STALE_OR_UNKNOWN");
-  return writeBinding(p,plan,m.record,m.current,id,digest,clock());
+  const blockKey="cg:comment-block:"+p.tenant+":"+p.actor+":"+id;
+  try{
+   if(await store.get(blockKey)!=null)return denyWrite("WRITE_REQUEST_PERMANENTLY_BLOCKED");
+   async function block(code){
+    try{await store.create(blockKey,{schema_version:"hae.comment.block.v1",request_id:id,review_id:plan.review_id,code,at:clock()})}
+    catch{if(await store.get(blockKey)==null)return denyWrite("WRITE_BLOCK_STORAGE_UNKNOWN")}
+    return denyWrite(code);
+   }
+   if(!actor(context)||!await permissions(p))return await block("WRITE_PERMISSION_DENIED");
+   const m=await material(p,context,plan.review_id);
+   if(!m.ok)return await block("WRITE_REVIEW_STALE_OR_UNKNOWN");
+   const binding=writeBinding(p,plan,m.record,m.current,id,digest,clock());
+   if(!binding.ok)return await block(binding.code);
+   return binding;
+  }catch{return denyWrite("WRITE_INTERLOCK_STORAGE_UNKNOWN")}
  }
  async function prepare(context,reviewId){
   const p=actor(context);if(!p||!hex(reviewId))return denyWrite("DEMO_WRITE_NOT_CONFIGURED_OR_CONTEXT_DENIED");

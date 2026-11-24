@@ -5,6 +5,8 @@ import {guardedPreview} from "../security/policy.js";
 import {previewTypedIntent} from "../core/ir/preview.js";
 import {canonical,validatePlan} from "../core/ir/plan.js";
 import {createReviewService} from "../state/review-service.js";
+import {readCommentJournal} from "../state/comment-journal.js";
+import {principal} from "../evidence/bundle.js";
 import {createCommentService} from "../security/approval/comment-service.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
 function fixture(){
@@ -20,7 +22,7 @@ function fixture(){
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
  async function approved(){const r=await request();assert.equal(r.ok,true);assert.equal((await writes.approve(ctx,r.request_id,r.request_id)).ok,true);return r.request_id}
- return {ctx,map,writes,request,approved,posts:()=>posts,change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
+ return {ctx,map,store,writes,request,approved,posts:()=>posts,change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
 }
 test("actual comment service only dispatches exact approved synthetic annotation once",async()=>{
  const f=fixture(),r=await f.request();assert.equal(r.ok,true);assert.match(r.comment,/not a certification/);
@@ -31,12 +33,13 @@ test("actual comment service only dispatches exact approved synthetic annotation
  const pair=await Promise.all([f.writes.execute(f.ctx,r.request_id),f.writes.execute(f.ctx,r.request_id)]);
  assert.equal(pair.filter(x=>x.ok).length,1);assert.equal(f.posts(),1);assert.equal(pair.find(x=>x.ok).comment_id,"1");assert.equal(pair.find(x=>x.ok).lineage.nodes.length,5);assert.equal(pair.find(x=>x.ok).lineage.edges.length,5);assert.match(pair.find(x=>x.ok).observation_digest,/^[a-f0-9]{64}$/);
  assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
+ const journal=await readCommentJournal(f.store,principal(f.ctx,digest),r.review_id);assert.equal(journal.status,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(journal.request_id,r.request_id);
 });
 test("stale, reverted, revoked, expired, wrong target and denied permission never POST",async()=>{
  const f=fixture(),id=await f.approved();f.change();assert.equal((await f.writes.execute(f.ctx,id)).ok,false);f.restore();assert.equal((await f.writes.execute(f.ctx,id)).ok,false);assert.equal(f.posts(),0);
  const g=fixture(),gid=await g.approved();assert.equal((await g.writes.revoke(g.ctx,gid)).ok,true);assert.equal((await g.writes.execute(g.ctx,gid)).ok,false);assert.equal(g.posts(),0);
  const h=fixture(),hid=await h.approved();h.expire();assert.equal((await h.writes.execute(h.ctx,hid)).ok,false);assert.equal(h.posts(),0);
- const j=fixture(),jid=await j.approved();j.deny();assert.equal((await j.writes.execute(j.ctx,jid)).ok,false);assert.equal(j.posts(),0);
+ const j=fixture(),jid=await j.approved();j.deny();assert.equal((await j.writes.execute(j.ctx,jid)).ok,false);j.allow();assert.equal((await j.writes.execute(j.ctx,jid)).ok,false);assert.equal(j.posts(),0);
  const k=fixture(),kid=await k.approved();assert.equal((await k.writes.execute({...k.ctx,extension:{issue:{key:"HTF-3"}}},kid)).ok,false);k.unconfigure();assert.equal((await k.writes.execute(k.ctx,kid)).ok,false);assert.equal(k.posts(),0);
  const l=fixture();assert.equal((await l.request("review release")).ok,false);assert.equal(l.posts(),0);
 });

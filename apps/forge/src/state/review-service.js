@@ -1,3 +1,4 @@
+import { readCommentJournal } from "./comment-journal.js";
 import { principal } from "../evidence/bundle.js";
 import { createRunLedger } from "./run-ledger.js";
 import { createReviewStore } from "../lineage/review-store.js";
@@ -28,7 +29,8 @@ function createReviewService({store,clock,digest,preview,development}){
   if(!review.ok)return review;
   const run=await createRunLedger(store,p,clock).read(id);
   if(!run.ok||run.events[0].plan_hash!==id||!["POLICY_REVIEW","AWAITING_APPROVAL","READY","RUNNING","RECONCILING","SUCCEEDED"].includes(run.state))return deny("REVIEW_JOURNAL_PARTIAL");
-  return {...review,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
+  const comment_journal=await readCommentJournal(store,p,id);
+  return {...review,comment_journal,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
  return {save,refresh};
 }
