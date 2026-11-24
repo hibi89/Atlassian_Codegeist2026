@@ -21,5 +21,8 @@ test("reject unsafe or cyclic IR",()=>{
   const p=base();p.steps[0]={...p.steps[0],op_id:"jira.issue.comment.create",side_effect:"WRITE",permitted_scopes:["write:jira-work"],typed_args:{issue_key:"DEMO-1",comment:"preview"}};
   assert.equal(validatePlan(p,now).code,"IR_WRITE_NOT_ADMITTED");
   assert.equal(validatePlan(base(),now+900000).code,"IR_STALE");
+  const malformed=base();malformed.steps[0].permitted_scopes=[{unexpected:true}];
+  assert.equal(validatePlan(malformed,now).code,"IR_EFFECT_OR_SCOPE_INVALID");
+  assert.equal(makeDraftPlan("change-review","DEMO-1",1e30,"plan-1").code,"IR_SCHEMA_INVALID");
   assert.equal(canonical({b:2,a:1}),'{"a":1,"b":2}');
 });

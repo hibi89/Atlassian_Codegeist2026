@@ -21,7 +21,7 @@ function validatePlan(plan,nowMs){
     if(!exactKeys(s,["step_id","op_id","version","typed_args","predecessor_ids","side_effect","permitted_scopes"])||typeof s.step_id!=="string"||!/^[a-z0-9_-]{1,40}$/.test(s.step_id)||map.has(s.step_id)||s.version!==1)return invalid("IR_STEP_INVALID");
     const spec=operationSpec(s.op_id);
     if(!spec)return invalid("IR_UNKNOWN_OPERATION");
-    if(s.side_effect!==spec.effect||!Array.isArray(s.permitted_scopes)||canonical(s.permitted_scopes)!==canonical(spec.scopes)||!validateArgs(s.op_id,s.typed_args,plan.issue_key))return invalid("IR_EFFECT_OR_SCOPE_INVALID");
+    if(s.side_effect!==spec.effect||!Array.isArray(s.permitted_scopes)||s.permitted_scopes.length!==spec.scopes.length||s.permitted_scopes.some((scope,i)=>scope!==spec.scopes[i])||!validateArgs(s.op_id,s.typed_args,plan.issue_key))return invalid("IR_EFFECT_OR_SCOPE_INVALID");
     // P1 draft never carries a write-capable operation yet. Registry retains
     // the typed write contract for the future guarded executor.
     if(spec.effect==="WRITE")return invalid("IR_WRITE_NOT_ADMITTED");
@@ -42,7 +42,7 @@ function validatePlan(plan,nowMs){
 }
 
 function makeDraftPlan(intentId,target,nowMs,planId){
-  if(!validIssueKey(target)||!Number.isFinite(nowMs)||!["change-review","incident-coordinate","release-review"].includes(intentId))return invalid("IR_SCHEMA_INVALID");
+  if(!validIssueKey(target)||!Number.isFinite(nowMs)||Math.abs(nowMs)>8640000000000000-900000||!["change-review","incident-coordinate","release-review"].includes(intentId))return invalid("IR_SCHEMA_INVALID");
   const ops=intentId==="incident-coordinate"?["jira.issue.read","jira.issue.links.read","evidence.version.check","evidence.contradiction.check","report.evidence.generate"]:["jira.issue.read","evidence.version.check","evidence.contradiction.check","report.evidence.generate"];
   const plan={schema_version:"hae.forge.plan.v2",plan_id:planId,issue_key:target,intent:intentId,capability_lock:"cg-registry-v1",created_at:new Date(nowMs).toISOString(),expires_at:new Date(nowMs+900000).toISOString(),authorization:"NONE",status:"EVIDENCE_PENDING",steps:ops.map((op,i)=>{const spec=operationSpec(op);return {step_id:"s"+(i+1),op_id:op,version:1,typed_args:{issue_key:target},predecessor_ids:i?["s"+i]:[],side_effect:spec.effect,permitted_scopes:spec.scopes}})};
   const valid=validatePlan(plan,nowMs);
