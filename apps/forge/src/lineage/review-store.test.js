@@ -5,7 +5,7 @@ import {guardedPreview} from "../security/policy.js";
 import {previewTypedIntent} from "../core/ir/preview.js";
 import {canonical,validatePlan} from "../core/ir/plan.js";
 import {createReviewService} from "../state/review-service.js";
-import {getKvs,createDevelopmentStore,syntheticScopeAllowed} from "../state/forge-review.js";
+import {getKvs,createDevelopmentStore,syntheticScopeAllowed,syntheticReadiness} from "../state/forge-review.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
 test("development save and recheck use immutable metadata and never revive stale review",async()=>{
  const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
@@ -164,4 +164,9 @@ test("P2 full report journey fits the production storage adapter budget per invo
  const prepared=await call((r,s)=>s.prepare(ctx,reviewId)),id=prepared.request_id;
  await call((r,s)=>s.approve(ctx,id,id));const generated=await call((r,s)=>s.generate(ctx,id));assert.equal(generated.status,"READ_ONLY_REPORT_GENERATED");await call(r=>r.history(ctx,reviewId));await call(r=>r.recoverReport(ctx,reviewId));await call(r=>r.refresh(ctx,reviewId));
  assert.ok(maxReads<=64);assert.ok(maxWrites<=12);console.log("CG_P2_REPORT_STORAGE_PEAK:"+JSON.stringify({reads:maxReads,writes:maxWrites}));
+});
+
+test("P2 synthetic readiness reports precise safe setup reason without site identifiers",()=>{
+ const cloud="12345678-1234-1234-1234-123456789abc",ctx={installContext:"ari:cloud:jira::site/"+cloud,extension:{issue:{key:"HTF-2"}}};
+ assert.equal(syntheticReadiness(ctx,true,cloud),"READY_FOR_SYNTHETIC_REQUESTS");assert.equal(syntheticReadiness(ctx,false,cloud),"DEVELOPMENT_ENVIRONMENT_REQUIRED");assert.equal(syntheticReadiness(ctx,true,undefined),"DEMO_SITE_NOT_CONFIGURED");assert.equal(syntheticReadiness({...ctx,installContext:"foreign"},true,cloud),"DEMO_SITE_MISMATCH");assert.equal(syntheticReadiness({...ctx,extension:{issue:{key:"HTF-3"}}},true,cloud),"SYNTHETIC_ISSUE_REQUIRED");
 });

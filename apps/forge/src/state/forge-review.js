@@ -46,7 +46,15 @@ function allowedDemoInstall(context){
 function providerConfig(){return {enabled:process.env.TRUSTFLOW_GEMINI_ENABLED==="true",billingDisabled:process.env.TRUSTFLOW_GEMINI_BILLING_DISABLED==="true",verifiedUntil:process.env.TRUSTFLOW_GEMINI_FREE_VERIFIED_UNTIL,apiKey:process.env.TRUSTFLOW_GEMINI_API_KEY}}
 export function getSafetySettings(context){
  if(!principal(context,digest))return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
- return {ok:true,synthetic_storage_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2",environment:isDevelopment()?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
+ const development=isDevelopment(),readiness=syntheticReadiness(context,development,process.env.TRUSTFLOW_DEMO_CLOUD_ID);
+ return {ok:true,synthetic_storage_ready:readiness==="READY_FOR_SYNTHETIC_REQUESTS",synthetic_readiness:readiness,environment:development?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
+}
+export function syntheticReadiness(context,development,cloudId){
+ if(!development)return "DEVELOPMENT_ENVIRONMENT_REQUIRED";
+ if(!context||context.extension?.issue?.key!=="HTF-2")return "SYNTHETIC_ISSUE_REQUIRED";
+ if(typeof cloudId!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cloudId))return "DEMO_SITE_NOT_CONFIGURED";
+ if(!syntheticScopeAllowed(context,"save",cloudId))return "DEMO_SITE_MISMATCH";
+ return "READY_FOR_SYNTHETIC_REQUESTS";
 }
 function requiresSyntheticScope(operation){return operation!=="read"&&operation!=="preview"}
 function syntheticScopeAllowed(context,operation,cloudId){
