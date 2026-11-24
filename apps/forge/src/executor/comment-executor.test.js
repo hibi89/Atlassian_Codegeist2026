@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {typedTags} from "../evidence/typed-claims.js";
 import {guardedPreview} from "../security/policy.js";
 import {previewTypedIntent} from "../core/ir/preview.js";
 import {canonical,validatePlan} from "../core/ir/plan.js";
@@ -9,12 +10,12 @@ import {readCommentJournal} from "../state/comment-journal.js";
 import {principal} from "../evidence/bundle.js";
 import {createCommentService} from "../security/approval/comment-service.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
-function fixture(){
+function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"]){
  const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/demo",extension:{issue:{key:"HTF-2"}}};
  let now=Date.parse("2026-11-24T12:00:00Z"),version="2026-11-24T11:00:00Z",allowed=true,add=true,posts=0,counter=0,mode="ok",reads=0,changeAt=Infinity;
  const clock=()=>now;
  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
- const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>{if(++reads===changeAt)version="2026-11-24T11:05:00Z";return {ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}}}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>{if(++reads===changeAt)version="2026-11-24T11:05:00Z";return {ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task",reportedTags:typedTags(labels)},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version+JSON.stringify(labels))}}}};
  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  let comments=[];
  const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
@@ -50,4 +51,11 @@ test("timeout reconciliation uses observed comment, no duplicate or blind retry"
  const f=fixture(),id=await f.approved();f.setMode("timeout");const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
  const g=fixture(),gid=await g.approved();g.setMode("lost");assert.equal((await g.writes.execute(g.ctx,gid)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal((await g.writes.execute(g.ctx,gid)).ok,false);assert.equal((await g.writes.reconcile(g.ctx,gid)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(g.posts(),1);
  const h=fixture(),hid=await h.approved();h.setMode("reject");assert.equal((await h.writes.execute(h.ctx,hid)).status,"DEFINITE_REJECTION");assert.equal(h.posts(),1);
+});
+
+test("critical reported evidence gaps deny writes and incident ownership is required",async()=>{
+ const f=fixture([]);assert.equal((await f.request()).code,"WRITE_CRITICAL_EVIDENCE_MISSING");assert.equal(f.posts(),0);
+ const g=fixture(["tf-req-DEMO-1","tf-test-DEMO-2-pass","tf-policy-DEMO-v1"]);assert.equal((await g.request()).code,"WRITE_REQUIREMENT_TEST_LINK_MISSING");assert.equal(g.posts(),0);
+ const h=fixture(["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1"]);assert.equal((await h.request("coordinate incident")).code,"WRITE_CRITICAL_EVIDENCE_MISSING");assert.equal(h.posts(),0);
+ const j=fixture();assert.equal((await j.request("coordinate incident")).ok,true);
 });

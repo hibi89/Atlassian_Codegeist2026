@@ -63,7 +63,7 @@ function createReviewStore(store,p,clock,digest){
    }
    const now=clock();if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
    const f=compareEvidence(r.evidence,current.evidence,now);
-   const impact=analyzeImpact(p,r.graph,f);
+   const impact=analyzeImpact(p,r.graph,f,r.reverse_index);
    if(!impact.ok){if(!await invalidate("DEPENDENCY_UNKNOWN_OR_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");return bad(impact.code)}
    const rebound=buildObservedGraph(p,{plan:{...r.plan,plan_hash:id}},current.evidence,current.claim_review,current.policy,digest,canonical);
    const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW"||current.freshness?.status!=="CURRENT_OBSERVED"||!rebound.ok||rebound.graph_revision!==r.graph.graph_revision;

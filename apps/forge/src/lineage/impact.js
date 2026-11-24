@@ -1,5 +1,6 @@
 // Scoped, bounded reverse dependency traversal. Observational impact only; no durable invalidation or execution authority.
-function analyzeImpact(p,graph,freshness){
+import { validReverseIndex } from "./reverse-index.js";
+function analyzeImpact(p,graph,freshness,index){
   const hold=code=>({ok:false,code,status:"HOLD",authorization:"NONE",execution:"DISABLED"});
   const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
   const kinds=new Set(["SOURCE","CLAIM","CHECK","PLAN","POLICY","APPROVAL","STEP","RECEIPT"]);
@@ -26,11 +27,14 @@ function analyzeImpact(p,graph,freshness){
   // inaccessible dependencies missing from this snapshot must cause a full HOLD.
   const all=[...freshness.changed,...freshness.unchanged];
   if(!sources.size||all.length!==sources.size||new Set(all).size!==all.length||all.some(ref=>!sources.has(ref))||(freshness.status==="CURRENT_OBSERVED")!==(freshness.changed.length===0))return hold("GRAPH_SOURCE_COVERAGE_MISMATCH");
-  const affected=new Set(),walk=freshness.changed.map(ref=>sources.get(ref)),history=new Set();
+  if(index!==undefined&&!validReverseIndex(graph,index))return hold("GRAPH_INDEX_INVALID");
+  const traversal=index?new Map(index.adjacency):out;
+  const roots=index?new Map(index.source_roots):sources;
+  const affected=new Set(),walk=freshness.changed.map(ref=>roots.get(ref)),history=new Set();
   for(let i=0;i<walk.length;i++){
     const id=walk[i];if(affected.has(id)||history.has(id))continue;
     if(nodes.get(id).kind==="RECEIPT"){history.add(id);continue}
-    affected.add(id);for(const next of out.get(id))walk.push(next);
+    affected.add(id);for(const next of traversal.get(id)??[])walk.push(next);
   }
   const preserved=[...nodes.values()].filter(n=>n.kind==="RECEIPT").map(n=>n.id).sort();
   const unaffected=[...nodes.keys()].filter(id=>!affected.has(id)&&nodes.get(id).kind!=="RECEIPT").sort();

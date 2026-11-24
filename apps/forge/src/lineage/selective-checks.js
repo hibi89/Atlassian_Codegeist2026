@@ -5,7 +5,7 @@ import {analyzeImpact} from "./impact.js";
 // matches an immutable, digest-validated saved graph and fresh authorized reads.
 export function selectiveChecks(p,record,evidence,digest,now){
  const none=()=>null;
- const f=compareEvidence(record?.evidence,evidence,now),impact=analyzeImpact(p,record?.graph,f);
+ const f=compareEvidence(record?.evidence,evidence,now),impact=analyzeImpact(p,record?.graph,f,record?.reverse_index);
  if(!impact.ok)return none;
  const unaffected=new Set(impact.unaffected),fresh=new Set(f.unchanged);
  const nodes=new Map(record.graph.nodes.map(n=>[n.id,n]));

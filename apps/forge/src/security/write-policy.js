@@ -1,7 +1,7 @@
 import {canonical} from "../core/ir/plan.js";
 import {exactKeys,validateArgs} from "../core/registry/operations.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
-export const WRITE_POLICY="cg-demo-comment-v1";
+export const WRITE_POLICY="cg-demo-comment-v2";
 export const WRITE_CAPABILITY="cg-demo-comment-registry-v1";
 export const DEMO_ISSUE="HTF-2";
 export const denyWrite=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
@@ -23,6 +23,14 @@ export function validateCommentPlan(p,plan,now,{allowExpired=false}={}){
 }
 export function writeBinding(p,plan,record,current,id,digest,now){
  if(!validateCommentPlan(p,plan,now).ok||record?.id!==plan.review_id||record.intent!==plan.intent||record.evidence?.bundle_hash!==plan.evidence_bundle_hash||record.graph?.graph_revision!==plan.dependency_digest||!record.graph.nodes.some(n=>n.kind==="POLICY"&&n.id===plan.policy_node_id&&n.ref===record.id)||current?.policy?.decision!=="ALLOW_PREVIEW"||current?.freshness?.status!=="CURRENT_OBSERVED"||current?.claim_review?.status==="CONFLICT_FOUND"||!["HUMAN_REVIEW_REQUIRED","CONFLICT_FOUND"].includes(current?.claim_review?.status)||!Array.isArray(current.evidence?.sources)||!current.evidence.sources.length||current.evidence.coverage!=="BOUNDED_READ_COMPLETE")return denyWrite("WRITE_DEPENDENCY_OR_POLICY_DENIED");
+ // Required reported evidence must be present and internally consistent.
+ // Reported PASS labels are not independent proof; annotation never certifies.
+ const checks=current.claim_review.checks;
+ if(!Array.isArray(checks))return denyWrite("WRITE_CRITICAL_EVIDENCE_UNKNOWN");
+ const required=["requirement.id","test.reported_result","policy.reported_version",...(plan.intent==="incident-coordinate"?["ownership.reported_team"]:[])];
+ if(required.some(predicate=>!checks.some(c=>c.predicate===predicate&&c.status==="UNVERIFIED_CLAIM"&&Array.isArray(c.values)&&c.values.length===1)))return denyWrite("WRITE_CRITICAL_EVIDENCE_MISSING");
+ const reqs=new Set(checks.filter(c=>c.predicate==="requirement.id").map(c=>c.subject));
+ if(!checks.some(c=>c.predicate==="test.reported_result"&&reqs.has(c.subject)))return denyWrite("WRITE_REQUIREMENT_TEST_LINK_MISSING");
  const freshUntil=Math.min(...current.evidence.sources.map(s=>Date.parse(s.freshness_deadline)));
  if(!Number.isFinite(freshUntil)||freshUntil<=now||plan.expires_at>freshUntil)return denyWrite("WRITE_EVIDENCE_EXPIRED");
  const plan_hash=digest(canonical(plan));
