@@ -38,3 +38,6 @@ Current feature/forge-p1 tested source SHA eac161dfeefb76dedbc84d6a899b773540361
 - Schedule: 11/24 continued implementation, 11/28 foundation target unchanged, actual build/installation are schedule risk; early code advancement not milestone PASS. SPEED_EFFECT=UNMEASURED. Main/develop/design branches unchanged.
 
 Next ㄱ: use current feature HEAD, AGENTS and latest ledger; prioritize 10/17 and unblock 01/11 with explicit owner gates. Do not claim live storage or use fake app ID.
+
+## Cross-chat resume shortcut — owner 2026-11-24
+The standalone user message `2026` means resume ONLY Codegeist 2026 (hibi89/Atlassian_Codegeist2026, feature/forge-p1). Treat it as a fresh `ㄱ` execution instruction, not a year question or status-only request. Fetch current remote HEAD and central policy, read AGENTS/HANDOFF/STATUS/REQ/final blueprint/SWU queue and actual code; choose next safe READY wave and implement/test/commit. Do not reset progress, branch-switch, deploy, grant scopes or infer new approvals. Existing safety gates and owner model policy remain unchanged. Project roadmap: https://chatgpt.com/space/page_61838d108b5c8191abcf32cde7ce6e45 . Account-wide shortcut recognition depends on ChatGPT context/custom instructions; this repository rule alone does not configure account settings.
