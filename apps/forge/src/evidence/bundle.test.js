@@ -32,3 +32,16 @@ test("actual typed preview policy and denial of stale/forged/cross-tenant",async
  assert.equal(evaluatePolicy(p,g,g.evidence,{status:"STALE_VERSION"},now,validatePlan,services.planDigest).decision,"REVIEW");
  assert.equal((await guardedPreview(ctx,"review change and delete issue",services)).ok,false);
 });
+
+test("guarded preview projects affected nodes from actual first and second observations",async()=>{
+ const services={adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))};
+ const same=await guardedPreview(ctx,"review change",services);
+ assert.equal(same.impact_summary.status,"NO_CHANGE_OBSERVED");assert.equal(same.impact_summary.affected_count,0);
+ let i=0;const changed=await guardedPreview(ctx,"review change",{...services,adapter:{...adapter,read:async k=>sample(k,k==="DEMO-1"&&++i>1?"2026-11-24T11:05:00Z":"2026-11-24T11:00:00Z")}});
+ assert.equal(changed.impact_summary.status,"STALE_REVIEW_REQUIRED");
+ assert.ok(changed.impact_summary.affected_count>0);assert.ok(changed.impact_summary.unaffected_count>0);
+ assert.equal(changed.policy.decision,"REVIEW");assert.equal(changed.policy.execution,"DISABLED");
+ assert.equal(Object.hasOwn(changed,"previous_evidence"),false);
+ let reads=0;const denied=await guardedPreview(ctx,"review change",{...services,adapter:{...adapter,read:async k=>k==="DEMO-2"&&++reads>1?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:sample(k)}});
+ assert.equal(denied.impact_summary.status,"HOLD");assert.equal(denied.policy.execution,"DISABLED");assert.equal(JSON.stringify(denied).includes("/browse/DEMO-2"),false);
+});
