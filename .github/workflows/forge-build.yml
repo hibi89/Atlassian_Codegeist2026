@@ -44,6 +44,8 @@ jobs:
         run: npm run test:smoke
       - name: P2 oracle and security regression
         run: npm run test:p2
+      - name: Installed dependency license inventory
+        run: node scripts/dependency-inventory.mjs
       - name: Custom UI build
         run: npm run build
       - name: Check build outputs
@@ -58,6 +60,7 @@ jobs:
           name: forge-build-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             apps/forge/package-lock.json
+            apps/forge/dependency-inventory.json
             apps/forge/src/ui/dist/
           if-no-files-found: error
           retention-days: 7
