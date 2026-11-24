@@ -2,7 +2,7 @@
   "schema_version": "hae.codegen.p2.ledger.v1",
   "project": "HAE TrustFlow",
   "date_kst": "2026-11-24",
-  "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+  "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
   "p1_candidates": 25,
   "p1_total": 25,
   "p2_total": 15,
@@ -18,19 +18,19 @@
         "CG-01",
         "CG-19"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-01",
-      "observed": "Locked npm install, native syntax and Custom UI build PASS. Exact Forge CLI lint with real configuration NOT_RUN. Latest exact CI locked install, source syntax and UI build PASS; Forge CLI lint still pending. Exact final CI locked install, source syntax, UI build PASS; real Forge lint remains NOT_RUN. Latest locked dependencies, source syntax and UI build passed.",
+      "observed": "Locked npm install, native syntax and Custom UI build PASS. Exact Forge CLI lint with real configuration NOT_RUN. Latest exact CI locked install, source syntax and UI build PASS; Forge CLI lint still pending. Exact final CI locked install, source syntax, UI build PASS; real Forge lint remains NOT_RUN. Latest locked dependencies, source syntax and UI build passed. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Forge CLI lint on owner PC",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-02",
@@ -125,19 +125,19 @@
         "CG-21",
         "CG-22"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-06",
-      "observed": "Native actor/tenant/target, invalid graph/index, corrupted marker, forged/legacy/expired approval and direct writer without consumed approval blocked. Not independent or live security audit. Forged journal execution/receipt and wrong synthetic scope denied; external classifier rejects arbitrary lower-level inputs. KVS metadata reads deny malformed or expired returned records rather than treating them as absent; invalid keys denied. Historical receipt graph is reconstructed from scoped canonical plan and expected digest; altered edges and mismatched observation/payload digest rejected. This is consistency checking, not an independent tamper-proof store.",
+      "observed": "Native actor/tenant/target, invalid graph/index, corrupted marker, forged/legacy/expired approval and direct writer without consumed approval blocked. Not independent or live security audit. Forged journal execution/receipt and wrong synthetic scope denied; external classifier rejects arbitrary lower-level inputs. KVS metadata reads deny malformed or expired returned records rather than treating them as absent; invalid keys denied. Historical receipt graph is reconstructed from scoped canonical plan and expected digest; altered edges and mismatched observation/payload digest rejected. This is consistency checking, not an independent tamper-proof store. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Forge trusted identity, live permission, independent security review",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-07",
@@ -147,19 +147,19 @@
         "CG-09",
         "CG-22"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-07",
-      "observed": "Synthetic transport duplicate/timeout/changed-source denial/reapproval/readback and strict ADF mismatch unknown, no replay. No real mutation executed. Three added storage-fault cases: latch acknowledgement lost -> no POST; outcome acknowledgement lost or write rejected -> one POST and read-only reconciliation, no replay. Runtime pre-dispatch guard reserves 10s of documented 25s invocation budget; insufficient time before consumption, after final check, or after latch causes zero synthetic POST. Actual network latency NOT_RUN. Known remote Jira ID cannot be substituted by a different matching comment after GET failure. Persisted response ID survives missing final outcome; lost ID-record acknowledgement checked against exact stored value. No additional POST in regressions.",
+      "observed": "Synthetic transport duplicate/timeout/changed-source denial/reapproval/readback and strict ADF mismatch unknown, no replay. No real mutation executed. Three added storage-fault cases: latch acknowledgement lost -> no POST; outcome acknowledgement lost or write rejected -> one POST and read-only reconciliation, no replay. Runtime pre-dispatch guard reserves 10s of documented 25s invocation budget; insufficient time before consumption, after final check, or after latch causes zero synthetic POST. Actual network latency NOT_RUN. Known remote Jira ID cannot be substituted by a different matching comment after GET failure. Persisted response ID survives missing final outcome; lost ID-record acknowledgement checked against exact stored value. No additional POST in regressions. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Approved synthetic comment write/read-back and live retry controls",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-08",
@@ -169,19 +169,19 @@
         "CG-18",
         "CG-21"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-08",
-      "observed": "Native conditional in-memory storage, immutable receipts, history, invalidation marker integrity, reverse-index fixtures and corrupted receipt denial. Actual KVS atomic/TTL not verified. Run journal timestamps/authority checked; synthetic storage faults and receipt recovery tested; 600-node traversal fixture passed (not a stored 600-node snapshot). Real KVS adapter now requests EXPIRE_TIME; native SDK-shape fixture passes expiry, wrong key, missing metadata cases. Read-only report receipt recovery handles lost receipt acknowledgement and interrupted final state without regeneration; mismatched/missing reservation/receipt and denied access fail closed. Recovery binds step reservation/receipt payload to original review, canonical historical lineage and remote comment ID; malformed records fail closed.",
+      "observed": "Native conditional in-memory storage, immutable receipts, history, invalidation marker integrity, reverse-index fixtures and corrupted receipt denial. Actual KVS atomic/TTL not verified. Run journal timestamps/authority checked; synthetic storage faults and receipt recovery tested; 600-node traversal fixture passed (not a stored 600-node snapshot). Real KVS adapter now requests EXPIRE_TIME; native SDK-shape fixture passes expiry, wrong key, missing metadata cases. Read-only report receipt recovery handles lost receipt acknowledgement and interrupted final state without regeneration; mismatched/missing reservation/receipt and denied access fail closed. Recovery binds step reservation/receipt payload to original review, canonical historical lineage and remote comment ID; malformed records fail closed. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Real KVS storage/expiry/conditional semantics",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-09",
@@ -190,19 +190,19 @@
         "CG-12",
         "CG-22"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-09",
-      "observed": "Native final reread and policy deny, direct writer missing/unconsumed approval blocked, stale/revoked/foreign and malformed inputs. Live writer security not verified. Latest scope/approval/journal regression PASS in native tests; real Jira enforcement NOT_RUN. Pre-dispatch time guard added without weakening existing approval, source and permission checks. All prior writer and approval gate regressions passed at exact SHA.",
+      "observed": "Native final reread and policy deny, direct writer missing/unconsumed approval blocked, stale/revoked/foreign and malformed inputs. Live writer security not verified. Latest scope/approval/journal regression PASS in native tests; real Jira enforcement NOT_RUN. Pre-dispatch time guard added without weakening existing approval, source and permission checks. All prior writer and approval gate regressions passed at exact SHA. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Actual Forge prewrite deny, runtime permissions",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-10",
@@ -210,19 +210,19 @@
         "CG-13",
         "CG-17"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-10",
-      "observed": "Native deterministic no-key fallback and synthetic-only body, consent/quota and malformed provider output tests; actual free-project billing and egress not verified. Exact lower-level fixed fixture gate, qualification expiry after reservation, full 24-action daily cap and concurrency/ambiguous admission rejection tested; no external calls. Existing fixed-fixture, quota and consent tests rerun; no real external calls.",
+      "observed": "Native deterministic no-key fallback and synthetic-only body, consent/quota and malformed provider output tests; actual free-project billing and egress not verified. Exact lower-level fixed fixture gate, qualification expiry after reservation, full 24-action daily cap and concurrency/ambiguous admission rejection tested; no external calls. Existing fixed-fixture, quota and consent tests rerun; no real external calls. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Owner console and optional real free synthetic provider",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     },
     {
       "gate_id": "P2-11",
@@ -311,19 +311,19 @@
         "CG-13",
         "CG-20"
       ],
-      "source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead",
+      "source_sha": "a0cc89dcd9b848c6f841c1d651a84064c35f6c85",
       "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
       "actor": "same-author web GPT-6.2",
-      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45410556600",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45414911972",
       "expected": "docs/ACCEPTANCE_MATRIX.md P2-15",
-      "observed": "Installed dependency inventory: 164 lock entries, 139 installed, 25 optional absent, 10 installed packages need manual license-file review. Actual legal rights, usage/billing and distribution approval NOT_RUN. Identified exact ten installed package entries without recognized license files; metadata declaration only, legal review pending. Actual recognized installed license and NOTICE file contents collected as third-party-notices-review.txt in CI artifact. Ten missing-file entries still require exact-version source text/NOTICE review. Upstream license family metadata corroborates several entries, not legal clearance. Installed inventory unchanged (10 entries require review); license and billing acceptance not complete.",
+      "observed": "Installed dependency inventory: 164 lock entries, 139 installed, 25 optional absent, 10 installed packages need manual license-file review. Actual legal rights, usage/billing and distribution approval NOT_RUN. Identified exact ten installed package entries without recognized license files; metadata declaration only, legal review pending. Actual recognized installed license and NOTICE file contents collected as third-party-notices-review.txt in CI artifact. Ten missing-file entries still require exact-version source text/NOTICE review. Upstream license family metadata corroborates several entries, not legal clearance. Installed inventory unchanged (10 entries require review); license and billing acceptance not complete. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance.",
       "status": "PARTIAL",
-      "artifact_ref": "Actions 45410556600 job 138502837477",
+      "artifact_ref": "Actions 45414911972 job 138518384048",
       "risk": "Review license/NOTICE terms and owner consoles; production/submission HOLD",
-      "timestamp_kst": "2026-11-24T23:07:27+09:00",
+      "timestamp_kst": "2026-11-24T23:31:02+09:00",
       "independent_reviewer": "NOT_RUN",
       "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
-      "prior_evidence_source_sha": "753bcc3dc2b593376625dc41f024ae298f6a0b3d"
+      "prior_evidence_source_sha": "f19ac3bbaf70e658a7160c6154e6f8b594fa2ead"
     }
   ],
   "benchmark": {
@@ -332,22 +332,22 @@
       {
         "scenario": "unchanged",
         "pairs": 20,
-        "full_ms": 36.964,
-        "selective_ms": 63.884,
+        "full_ms": 34.907,
+        "selective_ms": 62.916,
         "reused": 8
       },
       {
         "scenario": "changed",
         "pairs": 20,
-        "full_ms": 20.831,
-        "selective_ms": 34.834,
+        "full_ms": 22.21,
+        "selective_ms": 37.518,
         "reused": 4
       },
       {
         "scenario": "denied",
         "pairs": 20,
-        "full_ms": 11.565,
-        "selective_ms": 10.965,
+        "full_ms": 12.527,
+        "selective_ms": 12.548,
         "reused": 0
       }
     ],
@@ -447,22 +447,22 @@
       {
         "scenario": "unchanged",
         "pairs": 20,
-        "full_ms": 35.987,
-        "selective_ms": 58.214,
+        "full_ms": 36.964,
+        "selective_ms": 63.884,
         "reused": 8
       },
       {
         "scenario": "changed",
         "pairs": 20,
-        "full_ms": 23.005,
-        "selective_ms": 38.393,
+        "full_ms": 20.831,
+        "selective_ms": 34.834,
         "reused": 4
       },
       {
         "scenario": "denied",
         "pairs": 20,
-        "full_ms": 10.943,
-        "selective_ms": 11.171,
+        "full_ms": 11.565,
+        "selective_ms": 10.965,
         "reused": 0
       }
     ],
