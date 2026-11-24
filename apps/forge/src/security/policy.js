@@ -27,7 +27,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const draft=services.preview(context,input,services.clock());
   if(!draft.ok)return draft;
   const observed=await refreshEvidence(context,services.adapter,services.digest,services.clock);
-  if(!observed.ok)return {...draft,policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
+  if(!observed.ok)return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(null,null,null)}:{}),policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
   const reuse=savedRecord?selectiveChecks(p,savedRecord,observed.evidence,services.digest,services.clock()):undefined;
   const claim_review=reviewClaims(observed.evidence,reuse);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);

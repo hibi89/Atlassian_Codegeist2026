@@ -20,6 +20,7 @@ test("provider default, consent, fixed synthetic text, one-call limit and same t
  assert.equal((await a.service.run(context,{provider:"gemini",fixture:"change",consent:true})).provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(a.calls(),1);
  assert.equal((await a.service.run(context,{provider:"gemini",fixture:"change",consent:true,text:"customer"})).ok,false);
  assert.equal((await a.service.run({...context,installContext:"foreign"},{provider:"gemini",fixture:"change",consent:true})).ok,false);
+ assert.equal((await a.service.run({...context,extension:{issue:{key:"HTF-3"}}},{provider:"gemini",fixture:"change",consent:true})).ok,false);assert.equal(a.calls(),1);
 });
 test("unknown billing, malicious model output and failure fall back without retry",async()=>{
  const disabled=setup({enabled:false});assert.equal((await disabled.service.run(context,{provider:"gemini",fixture:"change",consent:true})).provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(disabled.calls(),0);

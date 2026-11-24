@@ -74,3 +74,10 @@ test("release assessment distinguishes missing, stale, contradictory and unknown
  denied=true;r=await run();assert.equal(r.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(r.policy.decision,"REVIEW");
  denied=false;linked=["tf-req-DEMO-2","tf-test-DEMO-2-pass"];r=await run();assert.equal(r.release_assessment.status,"HUMAN_RELEASE_REVIEW_REQUIRED");assert.equal(r.release_assessment.authorization,"NONE");
 });
+
+test("release source version changes and root access failures never imply release readiness",async()=>{
+ let count=0;
+ const services={adapter:{...adapter,read:async k=>sample(k,k==="DEMO-1"&&++count>1?"2026-11-24T11:05:00Z":"2026-11-24T11:00:00Z")},digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))};
+ const stale=await guardedPreview(ctx,"review release",services);assert.equal(stale.release_assessment.status,"STALE_EVIDENCE");assert.equal(stale.policy.decision,"REVIEW");
+ const unknown=await guardedPreview(ctx,"review release",{...services,adapter:{...adapter,read:async()=>({ok:false,code:"SOURCE_ACCESS_UNKNOWN"})}});assert.equal(unknown.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(unknown.release_assessment.source_count,0);
+});
