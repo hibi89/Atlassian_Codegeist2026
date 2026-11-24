@@ -12,12 +12,12 @@ test("development save and recheck use immutable metadata and never revive stale
  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
  let version="2026-11-24T11:00:00Z",denied=false;
  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>denied?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:{ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",summary:"RAW_SECRET_FIXTURE"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}}};
- const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  const service=createReviewService({store,clock,digest,preview,development:()=>true});
  assert.equal((await createReviewService({store,clock,digest,preview,development:()=>false}).save(ctx,"review change")).ok,false);
  const saved=await service.save(ctx,"review change");assert.equal(saved.ok,true);assert.equal(saved.saved_review.run_state,"POLICY_REVIEW");assert.equal(saved.saved_review.metadata.raw_originals,"NOT_STORED");assert.ok(saved.saved_review.metadata.record_bytes>0);const id=saved.saved_review.review_id;
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);assert.equal(JSON.stringify([...map.values()]).includes("/browse/"),false);
- assert.equal((await service.refresh(ctx,id)).status,"NO_CHANGE_OBSERVED");
+ const unchanged=await service.refresh(ctx,id);assert.equal(unchanged.status,"NO_CHANGE_OBSERVED");assert.equal(unchanged.revalidation.reused,2);assert.equal(unchanged.revalidation.recomputed,0);
  assert.equal((await service.refresh({...ctx,accountId:"other"},id)).ok,false);
  version="2026-11-24T11:05:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
  version="2026-11-24T11:00:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
@@ -38,7 +38,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
  let version="2026-11-24T11:00:00Z",counter=0;
  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",summary:"RAW_SECRET_FIXTURE"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}})};
- const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++counter))};
  const reviews=createReviewService(deps),reports=createReportService(deps);
  const create=async()=>{const saved=await reviews.save(ctx,"review release");assert.equal(saved.ok,true);const q=await reports.prepare(ctx,saved.saved_review.review_id);assert.equal(q.ok,true);return q.request_id};
@@ -57,4 +57,19 @@ test("development daily budget admits at most the configured number, fails close
  const m=new Map(),kvs={get:async k=>m.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");if(m.has(k))throw Error("conflict");m.set(k,v)}};
  assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.equal((await reserveDailySlot(kvs,86401000,2)).ok,true);
  assert.equal((await reserveDailySlot({get:async()=>{throw Error("network")}},1000)).ok,false);
+});
+
+test("selective revalidation reuses unchanged authorized groups only, recomputes changed groups",async()=>{
+ const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
+ let version="2026-11-24T11:00:00Z",denied=false,reads=0;
+ const adapter={links:async()=>({ok:true,keys:["DEMO-2"],complete:true}),read:async k=>{reads++;if(denied&&k==="DEMO-2")return {ok:false,code:"SOURCE_ACCESS_UNKNOWN"};const v=k==="DEMO-1"?version:"2026-11-24T11:00:00Z",objectId=k.slice(-1);return {ok:true,snapshot:{objectId,key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId,uri:"/browse/"+k,version:v,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+v)}}}};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const service=createReviewService({store,clock,digest,preview,development:()=>true});
+ const s=await service.save(ctx,"review change");assert.equal(s.ok,true);const id=s.saved_review.review_id;reads=0;
+ const same=await service.refresh(ctx,id);assert.equal(same.revalidation.reused,4);assert.equal(same.revalidation.recomputed,0);assert.equal(reads,4);
+ version="2026-11-24T11:05:00Z";
+ const changed=await service.refresh(ctx,id);assert.equal(changed.status,"STALE_REVIEW_REQUIRED");assert.equal(changed.revalidation.reused,2);assert.equal(changed.revalidation.recomputed,2);
+ assert.ok(changed.affected_count>0);assert.ok(changed.unaffected_count>0);
+ denied=true;assert.equal((await service.refresh(ctx,id)).ok,false);
 });

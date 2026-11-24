@@ -1,3 +1,4 @@
+import { selectiveChecks } from "../lineage/selective-checks.js";
 import { analyzeImpact } from "../lineage/impact.js";
 import { buildObservedGraph } from "../lineage/observed-graph.js";
 import { canonical } from "../core/ir/plan.js";
@@ -19,19 +20,20 @@ function evaluatePolicy(p,planResult,evidence,freshness,now,checkPlan,digest){
   return {decision:"ALLOW_PREVIEW",reason:"SCOPED_READ_ONLY_DRAFT",policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED",graph_status:"NOT_IMPLEMENTED"};
 }
 
-async function guardedPreview(context,input,services){
+async function guardedPreview(context,input,services,savedRecord){
   const p=principal(context,services.digest);
   if(!p)return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
   const draft=services.preview(context,input,services.clock());
   if(!draft.ok)return draft;
   const observed=await refreshEvidence(context,services.adapter,services.digest,services.clock);
   if(!observed.ok)return {...draft,policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
-  const claim_review=reviewClaims(observed.evidence);
+  const reuse=savedRecord?selectiveChecks(p,savedRecord,observed.evidence,services.digest,services.clock()):undefined;
+  const claim_review=reviewClaims(observed.evidence,reuse);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
   if(policy.decision==="ALLOW_PREVIEW"&&claim_review.status==="CONFLICT_FOUND")policy={...policy,decision:"REVIEW",reason:"CLAIM_CONFLICT"};
   // Compare against the first observed dependency graph, never a client-provided graph.
   const prior=observed.previous_evidence;
-  const priorGraph=buildObservedGraph(p,draft,prior,reviewClaims(prior),policy,services.digest,canonical);
+  const priorGraph=buildObservedGraph(p,draft,prior,reviewClaims(prior,savedRecord?selectiveChecks(p,savedRecord,prior,services.digest,services.clock()):undefined),policy,services.digest,canonical);
   const impact=analyzeImpact(p,priorGraph,observed.freshness);
   // Do not return prior source identifiers after a potentially revoked read.
   const impact_summary=impact.ok?{status:impact.status,affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,stale_approval_count:impact.stale_approvals.length,authorization:"NONE"}:{status:"HOLD",code:impact.code,authorization:"NONE"};

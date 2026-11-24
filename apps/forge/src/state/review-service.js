@@ -25,7 +25,7 @@ function createReviewService({store,clock,digest,preview,development}){
  async function refresh(context,id){
   const p=principal(context,digest);
   if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
-  const review=await createReviewStore(store,p,clock,digest).refresh(id,async intent=>preview(context,aliases[intent]));
+  const review=await createReviewStore(store,p,clock,digest).refresh(id,async (intent,record)=>preview(context,aliases[intent],record));
   if(!review.ok)return review;
   const run=await createRunLedger(store,p,clock).read(id);
   if(!run.ok||run.events[0].plan_hash!==id||!["POLICY_REVIEW","AWAITING_APPROVAL","READY","RUNNING","RECONCILING","SUCCEEDED"].includes(run.state))return deny("REVIEW_JOURNAL_PARTIAL");

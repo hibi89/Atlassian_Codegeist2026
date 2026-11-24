@@ -54,7 +54,7 @@ function createReviewStore(store,p,clock,digest){
     try{await store.create(key(id,"invalidated"),value);return true}catch{return matches(await store.get(key(id,"invalidated")))}
    }
    let current;
-   try{current=await loadCurrent(r.intent)}catch{current=null}
+   try{current=await loadCurrent(r.intent,r)}catch{current=null}
    if(!current?.ok||!scopedEvidence(p,current.evidence)||!scopedGraph(p,current.graph)){
     if(!await invalidate("ACCESS_OR_COVERAGE_UNKNOWN"))return bad("REVIEW_INVALIDATION_UNKNOWN");
     return bad("REVIEW_ACCESS_OR_COVERAGE_UNKNOWN");
@@ -81,7 +81,7 @@ function createReviewStore(store,p,clock,digest){
    const priorProjection=persisted?.projection;
    const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
    if(internal){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
-   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),authorization:"NONE",execution:"DISABLED"};
+   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
  return {save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true)};

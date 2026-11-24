@@ -12,7 +12,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
  function actor(context){return development()?principal(context,digest):null}
  function key(p,id,kind){return "cg:report:"+p.tenant+":"+p.actor+":"+id+":"+kind}
  async function material(p,context,reviewId){
-  const verified=await createReviewStore(store,p,clock,digest).authorizeReadOnly(reviewId,intent=>preview(context,aliases[intent]));
+  const verified=await createReviewStore(store,p,clock,digest).authorizeReadOnly(reviewId,(intent,record)=>preview(context,aliases[intent],record));
   if(!verified.ok)return verified;
   const run=await createRunLedger(store,p,clock).read(reviewId);
   if(!run.ok||run.state!=="POLICY_REVIEW"||run.events[0].plan_hash!==reviewId)return fail("REPORT_JOURNAL_UNKNOWN");

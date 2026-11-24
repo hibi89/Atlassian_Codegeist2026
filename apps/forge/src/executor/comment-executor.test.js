@@ -15,7 +15,7 @@ function fixture(){
  const clock=()=>now;
  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>{if(++reads===changeAt)version="2026-11-24T11:05:00Z";return {ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}}}};
- const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  let comments=[];
  const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++counter)),allowedInstall:()=>allowed,transport};

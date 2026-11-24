@@ -11,7 +11,7 @@ export function createCommentService({store,clock,digest,preview,development,non
  function actor(context){const p=development()&&allowedInstall(context)?principal(context,digest):null;return p?.target===DEMO_ISSUE?p:null}
  const key=(p,id)=>"cg:comment-request:"+p.tenant+":"+p.actor+":"+id;
  async function material(p,context,reviewId){
-  const m=await createReviewStore(store,p,clock,digest).authorizeReadOnly(reviewId,intent=>preview(context,aliases[intent]));
+  const m=await createReviewStore(store,p,clock,digest).authorizeReadOnly(reviewId,(intent,record)=>preview(context,aliases[intent],record));
   if(!m.ok)return m;
   const run=await createRunLedger(store,p,clock).read(reviewId);
   if(!run.ok||run.state!=="POLICY_REVIEW"||run.events[0].plan_hash!==reviewId)return denyWrite("WRITE_REVIEW_JOURNAL_UNAVAILABLE");
