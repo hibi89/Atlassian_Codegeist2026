@@ -1,3 +1,6 @@
+import { createProviderService, freeProjectReady, providerLimits, GEMINI_MODEL } from "../planner/provider.js";
+import { readCurrentEvidence } from "../evidence/forge-evidence.js";
+import { fetch as forgeFetch } from "@forge/api";
 import { createCommentService } from "../security/approval/comment-service.js";
 import { createForgeCommentTransport } from "../executor/forge-comment.js";
 import { randomBytes } from "node:crypto";
@@ -26,12 +29,20 @@ function allowedDemoInstall(context){
  const id=process.env.TRUSTFLOW_DEMO_CLOUD_ID;
  return typeof id==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)&&context.installContext==="ari:cloud:jira::site/"+id;
 }
+function providerConfig(){return {enabled:process.env.TRUSTFLOW_GEMINI_ENABLED==="true",billingDisabled:process.env.TRUSTFLOW_GEMINI_BILLING_DISABLED==="true",verifiedUntil:process.env.TRUSTFLOW_GEMINI_FREE_VERIFIED_UNTIL,apiKey:process.env.TRUSTFLOW_GEMINI_API_KEY}}
+export function getSafetySettings(context){
+ if(!principal(context,digest))return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
+ return {ok:true,environment:isDevelopment()?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
+}
 async function call(context,input,operation,confirmation){
  if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
  try{
   const kvs=getKvs();
   const admission=await reserveDailySlot(kvs,Date.now());if(!admission.ok)return admission;
   const services={store:createDevelopmentStore(kvs),clock:Date.now,digest,preview:previewWithPolicy,development:isDevelopment,nonce:()=>randomBytes(32).toString("hex")};
+  if(operation==="read")return readCurrentEvidence(context);
+  if(operation==="preview")return previewWithPolicy(context,input);
+  if(operation==="provider")return createProviderService({...services,config:providerConfig(),allowedInstall:allowedDemoInstall,fetch:forgeFetch}).run(context,input);
   if(operation.startsWith("comment:")){
    const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport()});
    return await service[operation.slice(8)](context,input,confirmation);
@@ -53,4 +64,7 @@ export const revokeDemoComment=(context,id)=>call(context,id,"comment:revoke");
 export const reconcileDemoComment=(context,id)=>call(context,id,"comment:reconcile");
 export const revalidateSavedReview=(context,id)=>call(context,id,"revalidate");
 export const readSavedGraph=(context,id)=>call(context,id,"history");
+export const budgetedRead=(context)=>call(context,null,"read");
+export const budgetedPreview=(context,input)=>call(context,input,"preview");
+export const runSyntheticProvider=(context,input)=>call(context,input,"provider");
 export {getKvs,createDevelopmentStore};

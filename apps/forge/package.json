@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node src/ui/build.mjs",
-    "test:smoke": "node --test src/smoke.test.js src/core/ir/plan.test.js src/evidence/bundle.test.js src/evidence/typed-claims.test.js src/state/run-ledger.test.js src/forge-interop.test.js src/lineage/review-store.test.js src/executor/comment-executor.test.js"
+    "test:smoke": "node --test src/smoke.test.js src/core/ir/plan.test.js src/evidence/bundle.test.js src/evidence/typed-claims.test.js src/state/run-ledger.test.js src/forge-interop.test.js src/lineage/review-store.test.js src/executor/comment-executor.test.js src/planner/provider.test.js"
   },
   "dependencies": {
     "@forge/api": "8.4.0",

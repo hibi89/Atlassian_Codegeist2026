@@ -1,16 +1,14 @@
 import ResolverModule from "@forge/resolver";
 import { resolveResolver } from "./forge-interop.js";
 import { issueHint } from "./security-context.js";
-import { previewWithPolicy } from "./security/forge-policy.js";
-import { readCurrentEvidence } from "./evidence/forge-evidence.js";
-import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph, revalidateSavedReview } from "./state/forge-review.js";
+import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph, revalidateSavedReview, budgetedRead, budgetedPreview, runSyntheticProvider, getSafetySettings } from "./state/forge-review.js";
 const Resolver = resolveResolver(ResolverModule);
 const resolver = new Resolver();
 // Extension issue key is a hint, never a grant. Jira asUser enforces access.
 // No client-provided tenant, issue key, scopes, approval or URL is trusted.
 resolver.define("getPanelContext", ({ context }) => issueHint(context));
-resolver.define("readCurrentIssue", ({ context }) => readCurrentEvidence(context));
-resolver.define("previewIntent", ({ context, payload }) => previewWithPolicy(context, payload?.intent));
+resolver.define("readCurrentIssue", ({ context }) => budgetedRead(context));
+resolver.define("previewIntent", ({ context, payload }) => budgetedPreview(context, payload?.intent));
 resolver.define("saveCurrentReview", ({context,payload})=>saveCurrentReview(context,payload?.intent));
 resolver.define("refreshSavedReview", ({context,payload})=>refreshSavedReview(context,payload?.review_id));
 resolver.define("prepareReadOnlyReport",({context,payload})=>prepareReadOnlyReport(context,payload?.review_id));
@@ -24,4 +22,6 @@ resolver.define("revokeDemoComment",({context,payload})=>revokeDemoComment(conte
 resolver.define("reconcileDemoComment",({context,payload})=>reconcileDemoComment(context,payload?.request_id));
 resolver.define("readSavedGraph",({context,payload})=>readSavedGraph(context,payload?.review_id));
 resolver.define("revalidateSavedReview",({context,payload})=>revalidateSavedReview(context,payload?.review_id));
+resolver.define("getSafetySettings",({context})=>getSafetySettings(context));
+resolver.define("runSyntheticProvider",({context,payload})=>runSyntheticProvider(context,payload));
 export const handler = resolver.getDefinitions();

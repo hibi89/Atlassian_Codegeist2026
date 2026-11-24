@@ -18,6 +18,10 @@ permissions:
     - write:jira-work
     - storage:app
     - read:page:confluence
+  external:
+    fetch:
+      backend:
+        - https://generativelanguage.googleapis.com
 app:
   id: "ari:cloud:ecosystem::app/${FORGE_APP_ID}"
   runtime:
