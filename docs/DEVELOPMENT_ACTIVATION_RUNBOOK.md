@@ -22,3 +22,5 @@ Scope: approved synthetic demo only. No production, customer data, paid call, ma
 Official docs: https://developer.atlassian.com/platform/forge/migrating-a-forge-app-to-support-multiple-atlassian-apps/ ; https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/ ; https://developer.atlassian.com/platform/forge/forge-platform-pricing/ ; https://ai.google.dev/gemini-api/docs/pricing .
 
 - Plan the live sequence within the existing 24 admitted actions per installation per UTC day. Reconciliation is read-only but consumes admission budget; if exhausted, do not bypass the cap or retry a write. Record the request digest and resume read-only reconciliation after the next UTC day.
+
+- Verify real KVS get metadata shape and expired-value denial during P2; platform deletion may lag by up to 48 hours. No deletion or TTL bypass. Verify ordinary Forge 25s invocation limit and the 15s pre-dispatch cutoff under real latency. If blocked or ambiguous, do not retry POST; use read-only reconciliation. For interrupted report finalization, use Recover existing report receipt; missing receipt stays unknown and no report is regenerated.
