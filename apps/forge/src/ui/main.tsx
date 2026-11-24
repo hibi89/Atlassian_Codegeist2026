@@ -6,7 +6,8 @@ type Draft = { title: string; steps: string[]; status: string; authorization: st
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
 type Evidence = { coverage:string; unknown_count:number; sources:{source_ref:string;uri:string;version:string|null;status:string;status_reason?:string;retrieved_at?:string;freshness_deadline?:string}[] };
-type Result = { claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string;reason?:string;source_refs?:string[]}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[];unchanged?:string[];unknown?:string[]}; policy?:{decision:string;reason:string;execution:string;authorization?:string;policy_version?:string;graph_status?:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
+type Graph = {ok:boolean;code?:string;status?:string;coverage?:string;graph_revision?:string;nodes?:{id:string;kind:string;ref:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[]};
+type Result = { graph?:Graph; claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string;reason?:string;source_refs?:string[]}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[];unchanged?:string[];unknown?:string[]}; policy?:{decision:string;reason:string;execution:string;authorization?:string;policy_version?:string;graph_status?:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
   AUTH_REQUIRED:"Sign in to Jira to continue.", BACKEND_UNAVAILABLE:"TrustFlow could not connect to its backend. Reload the issue or contact the developer.", AUTH_CONTEXT_REQUIRED:"The authenticated installation context is unavailable.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
   SOURCE_ACCESS_UNKNOWN:"Current user access could not be verified.", SOURCE_NOT_VISIBLE_OR_MISSING:"Issue is missing or not visible to you.",
@@ -40,6 +41,16 @@ function EvidencePanel({result}:{result:Result}){
   </section>;
 }
 
+function ProofGraphPanel({result}:{result:Result}){
+  const g=result.graph;
+  if(!g?.ok||!g.nodes||!g.edges)return <section aria-label="ProofGraph"><h4>ProofGraph</h4><p role="status">{g?.code??"Graph not available"} · No execution authorization.</p></section>;
+  const sourceNames=new Map((result.evidence?.sources??[]).map(s=>[s.source_ref,s.uri]));
+  const labels=new Map(g.nodes.map((n,i)=>[n.id,n.kind==="SOURCE"?(sourceNames.get(n.ref)??"Observed source"):n.kind+" "+(i+1)]));
+  return <section aria-label="ProofGraph"><h4>ProofGraph · observed lineage</h4><p>{g.nodes.length} nodes · {g.edges.length} dependencies · {g.coverage}</p>
+    <p className="muted">Current review snapshot only. Historical receipts, approval and execution are not enabled.</p>
+    <details><summary>Dependency table</summary><table><thead><tr><th scope="col">Dependency</th><th scope="col">Relation</th><th scope="col">Dependent</th></tr></thead><tbody>{g.edges.map((e,i)=><tr key={i}><td>{labels.get(e.from_dependency)??"Unknown"}</td><td>{e.relation}</td><td>{labels.get(e.to_dependent)??"Unknown"}</td></tr>)}</tbody></table></details>
+  </section>;
+}
 function App(){
   const [context,setContext]=useState<Result|null>(null);
   const [issue,setIssue]=useState<Result|null>(null);
@@ -68,7 +79,7 @@ function App(){
       <section><h2>Start a review</h2><div className="choices">{["Review this change","Coordinate incident","Review release"].map(t=><button type="button" key={t} onClick={()=>{setIntent(t);setPreview(null)}} disabled={busy} aria-pressed={intent===t}>{t}</button>)}</div>
         <form onSubmit={createPreview}><label htmlFor="intent">Supported natural-language intent</label><input id="intent" maxLength={300} value={intent} disabled={busy} onChange={e=>{setIntent(e.target.value);setPreview(null)}}/><button disabled={busy||!intent.trim()} type="submit">Preview review</button></form>
         {preview&&!preview.ok&&<p role="alert">{msg(preview.code)}</p>}
-        {preview?.ok&&preview.draft&&<article aria-live="polite"><div className="eyebrow">DRAFT · EVIDENCE PENDING</div><h3>{preview.draft.title}</h3><ol>{preview.draft.steps.map(step=><li key={step}>{step}</li>)}</ol>{preview.plan&&<><h4>Validated draft operations</h4><ol>{preview.plan.steps.map(s=><li key={s.step_id}><code>{s.op_id}</code> · {s.side_effect}{s.predecessor_ids.length?` · after ${s.predecessor_ids.join(", ")}`:""}</li>)}</ol><p className="muted">Draft digest: <code>{preview.plan.plan_hash}</code></p></>}<EvidencePanel result={preview}/><p>Authorization: none. No execution is available.</p></article>}
+        {preview?.ok&&preview.draft&&<article aria-live="polite"><div className="eyebrow">DRAFT · EVIDENCE PENDING</div><h3>{preview.draft.title}</h3><ol>{preview.draft.steps.map(step=><li key={step}>{step}</li>)}</ol>{preview.plan&&<><h4>Validated draft operations</h4><ol>{preview.plan.steps.map(s=><li key={s.step_id}><code>{s.op_id}</code> · {s.side_effect}{s.predecessor_ids.length?` · after ${s.predecessor_ids.join(", ")}`:""}</li>)}</ol><p className="muted">Draft digest: <code>{preview.plan.plan_hash}</code></p></>}<EvidencePanel result={preview}/><ProofGraphPanel result={preview}/><p>Authorization: none. No execution is available.</p></article>}
       </section></>}
     {busy&&<p role="status">Request in progress…</p>}
   </main>
