@@ -24,7 +24,7 @@ export function createGeminiProvider({fetch,apiKey}){
   return candidate.content.parts[0].text.trim();
  };
 }
-export function createProviderService({store,clock,digest,preview,config,development,allowedInstall,fetch}){
+export function createProviderService({store,clock,digest,preview,config,development,allowedInstall,fetch,canDispatch=()=>true}){
  async function run(context,input){
   if(!development()||!allowedInstall(context)||context.extension?.issue?.key!=="HTF-2")return fail("PROVIDER_DEMO_CONTEXT_DENIED");
   if(!input||Object.getPrototypeOf(input)!==Object.prototype||typeof input.fixture!=="string"||!Object.hasOwn(fixtures,input.fixture)||!["template","gemini"].includes(input.provider)||Object.keys(input).some(k=>!["fixture","provider","consent"].includes(k)))return fail("PROVIDER_INPUT_INVALID");
@@ -32,6 +32,7 @@ export function createProviderService({store,clock,digest,preview,config,develop
   let mode="DETERMINISTIC_TEMPLATE",reason="NO_EXTERNAL_REQUEST",attempted=false;
   if(input.provider==="gemini"){
    if(input.consent!==true||!freeProjectReady(config,clock()))reason="FREE_PROJECT_OR_CONSENT_UNVERIFIED";
+   else if(!canDispatch())reason="PROVIDER_INVOCATION_TIME_BUDGET";
    else{
     try{
      const reservedAt=clock(),day=new Date(reservedAt).toISOString().slice(0,10);
@@ -39,6 +40,7 @@ export function createProviderService({store,clock,digest,preview,config,develop
      const dispatchAt=clock();
      if(!Number.isSafeInteger(dispatchAt)||dispatchAt<reservedAt||new Date(dispatchAt).toISOString().slice(0,10)!==day)throw Error("PROVIDER_DAY_CHANGED");
      if(!freeProjectReady(config,dispatchAt)||!development()||!allowedInstall(context))throw Error("PROVIDER_QUALIFICATION_CHANGED");
+     if(!canDispatch())throw Error("PROVIDER_INVOCATION_TIME_BUDGET");
      attempted=true;
      const result=await createGeminiProvider({fetch,apiKey:config.apiKey})(input.fixture);
      // Model output can select only the already intended fixture, never IR or scopes.

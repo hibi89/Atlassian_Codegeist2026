@@ -76,3 +76,11 @@ test("P2 admission UTC rollover before reservation or after acknowledgement fail
  assert.equal(r.ok,phase==="none");if(phase!=="none")assert.equal(r.code,"DEVELOPMENT_BUDGET_DAY_CHANGED");assert.equal(writes,phase==="get"?0:1);
  }
 });
+
+ test("P2 admission uses at most five KVS reads per action, preserves exact 24-slot cap",async()=>{
+ const slots=new Map();let reads=0,writes=0;const kvs={get:async k=>{reads++;return slots.get(k)},set:async(k,v,o)=>{writes++;assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.equal(o.ttl.value,2);if(slots.has(k))throw Error("conflict");slots.set(k,v)}};
+ for(let i=0;i<24;i++){reads=0;assert.equal((await reserveRolloverSlot(kvs,1000)).ok,true);assert.ok(reads<=5);assert.ok(slots.has("cg:dev-budget:1970-01-01:"+i))}
+ reads=0;assert.equal((await reserveRolloverSlot(kvs,1000)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.ok(reads<=5);assert.equal(writes,24);
+ // A hole caused by external corruption must never extend the key range.
+ slots.delete("cg:dev-budget:1970-01-01:0");const result=await reserveRolloverSlot(kvs,1000);assert.equal(result.ok,false);assert.equal(writes,24);
+ });

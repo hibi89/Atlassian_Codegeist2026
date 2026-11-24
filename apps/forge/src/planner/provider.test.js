@@ -46,3 +46,10 @@ test("P2 provider UTC rollover during reservation never sends on the next day",a
  const service=createProviderService({store:{create:async(k,v)=>{m.set(k,v);t+=200}},clock:()=>t,digest,preview:(ctx,input)=>previewTypedIntent(ctx,input,t,()=>"fixture-plan"),config:{enabled:true,billingDisabled:true,verifiedUntil:new Date(t+3600000).toISOString(),apiKey:"synthetic-key-fixture"},development:()=>true,allowedInstall:()=>true,fetch:async()=>{calls++;throw Error("must not send")}});
  const r=await service.run(context,{provider:"gemini",fixture:"change",consent:true});assert.equal(r.ok,true);assert.equal(r.provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(r.provider.external_attempted,false);assert.equal(calls,0);assert.ok(m.has("cg:provider-attempt:2026-11-24"));assert.equal(m.has("cg:provider-attempt:2026-11-25"),false);
 });
+
+ test("P2 provider time budget denies external dispatch before or after reservation",async()=>{
+ for(const before of [true,false]){let allowed=!before,calls=0,writes=0;
+ const service=createProviderService({store:{create:async()=>{writes++;allowed=false}},clock,digest,preview:(ctx,input)=>previewTypedIntent(ctx,input,now,()=>"fixture-plan"),config:{enabled:true,billingDisabled:true,verifiedUntil:new Date(now+3600000).toISOString(),apiKey:"synthetic-key-fixture"},development:()=>true,allowedInstall:()=>true,canDispatch:()=>allowed,fetch:async()=>{calls++;throw Error("must not send")}});
+ const r=await service.run(context,{provider:"gemini",fixture:"change",consent:true});assert.equal(r.ok,true);assert.equal(r.provider.external_attempted,false);assert.equal(r.provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(calls,0);assert.equal(writes,before?0:1);
+ }
+ });

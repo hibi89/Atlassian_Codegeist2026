@@ -62,9 +62,9 @@ async function call(context,input,operation,confirmation){
   const kvs=getKvs();
   const admission=await reserveDailySlot(kvs,Date.now(),24,Date.now);if(!admission.ok)return admission;
   const services={store:createDevelopmentStore(kvs),clock:Date.now,digest,preview:previewWithPolicy,development:isDevelopment,nonce:()=>randomBytes(32).toString("hex")};
-  if(operation==="read")return readCurrentEvidence(context);
-  if(operation==="preview")return previewWithPolicy(context,input);
-  if(operation==="provider")return createProviderService({...services,config:providerConfig(),allowedInstall:allowedDemoInstall,fetch:forgeFetch}).run(context,input);
+  if(operation==="read")return await readCurrentEvidence(context);
+  if(operation==="preview")return await previewWithPolicy(context,input);
+  if(operation==="provider")return await createProviderService({...services,config:providerConfig(),allowedInstall:allowedDemoInstall,fetch:forgeFetch,canDispatch}).run(context,input);
   if(operation.startsWith("comment:")){
    const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport(),canDispatch});
    return await service[operation.slice(8)](context,input,confirmation);
