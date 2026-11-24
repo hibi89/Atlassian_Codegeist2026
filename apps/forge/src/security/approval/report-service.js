@@ -1,3 +1,4 @@
+import { reportLineage } from "../../lineage/receipt-lineage.js";
 import { canonical } from "../../core/ir/plan.js";
 import { principal } from "../../evidence/bundle.js";
 import { createReviewStore } from "../../lineage/review-store.js";
@@ -74,12 +75,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    const recorded=await stepLedger.record(r.review_id,step.step_id,{state:"OBSERVED_SUCCESS",observation_digest:reportDigest,payload_digest:payloadDigest});if(!recorded.ok)return recorded;
    // Persist lineage metadata, never report text. Link the saved policy and
    // immutable approval/step/receipt nodes. It is not a Jira write read-back.
-   const policyNode=m.record.graph.nodes.find(n=>n.kind==="POLICY");
-   if(!policyNode)return fail("REPORT_LINEAGE_UNKNOWN");
-   const approvalNode=digest(canonical([p.tenant,"APPROVAL",id]));
-   const stepNode=digest(canonical([p.tenant,"STEP",r.review_id,step.step_id,id]));
-   const receiptNode=digest(canonical([p.tenant,"RECEIPT",id,reportDigest]));
-   const lineage={schema_version:"hae.report.lineage.v1",graph_revision:m.record.graph.graph_revision,nodes:[{id:approvalNode,kind:"APPROVAL",digest:id},{id:stepNode,kind:"STEP",digest:payloadDigest},{id:receiptNode,kind:"RECEIPT",digest:reportDigest}],edges:[{from_dependency:policyNode.id,to_dependent:approvalNode,relation:"AUTHORIZED_READ_ONLY"},{from_dependency:approvalNode,to_dependent:stepNode,relation:"APPROVED_STEP"},{from_dependency:stepNode,to_dependent:receiptNode,relation:"OBSERVED_REPORT"}]};
+   const lineage=reportLineage(p,m.record,id,step,payloadDigest,reportDigest,digest);if(!lineage)return fail("REPORT_LINEAGE_UNKNOWN");
    await store.create(key(p,id,"receipt"),{schema_version:"hae.report.receipt.v2",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,review_id:r.review_id,report_digest:reportDigest,lineage,at:clock(),effect:"READ_ONLY_REPORT"});
    const finished=await runLedger.finishReadOnlyReport(r.review_id,id,step.step_id,reportDigest);
    if(!finished.ok)return finished;

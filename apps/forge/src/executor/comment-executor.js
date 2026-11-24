@@ -1,8 +1,9 @@
+import {commentBody,commentObservationDigest,commentLineage} from "../lineage/receipt-lineage.js";
 import {canonical} from "../core/ir/plan.js";
 import {validateCommentPlan,denyWrite} from "../security/write-policy.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const validId=x=>typeof x==="string"&&/^[1-9][0-9]{0,30}$/.test(x);
-export function adfComment(text){return {version:1,type:"doc",content:[{type:"paragraph",content:[{type:"text",text}]}]}}
+export const adfComment=commentBody;
 function observedComment(c,plan,accountId){
  if(!c||!validId(c.id)||typeof accountId!=="string"||c.author?.accountId!==accountId)return false;
  const b=c.body;
@@ -14,25 +15,21 @@ async function readback(transport,plan,accountId,id,digest){
  try{
   if(validId(id)){
    const r=await transport.get(plan.target,id);
-   if(r?.status===200&&r.comment?.id===id&&observedComment(r.comment,plan,accountId))return {state:"OBSERVED_SUCCESS",comment_id:id,observation_digest:digest(canonical([id,plan.target,adfComment(plan.typed_args.comment)]))};
+   if(r?.status===200&&r.comment?.id===id&&observedComment(r.comment,plan,accountId))return {state:"OBSERVED_SUCCESS",comment_id:id,observation_digest:commentObservationDigest(plan,id,digest)};
+   // A known remote ID must never be substituted with a different comment.
+   return {state:"UNKNOWN_OUTCOME_REVIEW",known_comment_id:id};
   }
   // For ambiguous transport responses, bounded recent-comment lookup only.
   // Absence in this window never proves that the write did not happen.
   const list=await transport.recent(plan.target);
   if(list?.status!==200||!Array.isArray(list.comments)||list.comments.length>20)return {state:"UNKNOWN_OUTCOME_REVIEW"};
   const hits=list.comments.filter(c=>observedComment(c,plan,accountId));
-  return hits.length===1?{state:"OBSERVED_SUCCESS",comment_id:hits[0].id,observation_digest:digest(canonical([hits[0].id,plan.target,adfComment(plan.typed_args.comment)]))}:{state:"UNKNOWN_OUTCOME_REVIEW"};
+  return hits.length===1?{state:"OBSERVED_SUCCESS",comment_id:hits[0].id,observation_digest:commentObservationDigest(plan,hits[0].id,digest)}:{state:"UNKNOWN_OUTCOME_REVIEW"};
  }catch{return {state:"UNKNOWN_OUTCOME_REVIEW"}}
 }
 export function createCommentExecutor({store,p,clock,digest,transport,accountId,canDispatch=()=>true}){
  const key=(id,kind)=>"cg:comment:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  const reservationKey=plan=>"cg:comment-review:"+p.tenant+":"+p.actor+":"+plan.review_id;
- function lineage(plan,id,observation){
-  const node=(kind,ref,value)=>({id:digest(canonical([p.tenant,p.actor,kind,ref])),installation_ref:p.tenant,kind,ref,digest:value});
-  const planNode=node("PLAN",id,id),policyNode=node("POLICY",id,digest(canonical([plan.policy_version,plan.dependency_digest]))),approvalNode=node("APPROVAL",id,id),stepNode=node("STEP",id,digest(canonical(adfComment(plan.typed_args.comment)))),receiptNode=node("RECEIPT",id,observation.observation_digest);
-  const edge=(from,to,relation)=>({from_dependency:from,to_dependent:to.id,relation});
-  return {schema_version:"hae.comment.lineage.v1",base_graph_revision:plan.dependency_digest,nodes:[planNode,policyNode,approvalNode,stepNode,receiptNode],edges:[edge(plan.policy_node_id,planNode,"BOUND_EVIDENCE_PLAN"),edge(planNode.id,policyNode,"WRITE_POLICY"),edge(policyNode.id,approvalNode,"EXACT_APPROVAL"),edge(approvalNode.id,stepNode,"APPROVED_COMMENT"),edge(stepNode.id,receiptNode,"JIRA_READBACK")]};
- }
  const result=(id,state,extra={})=>({ok:state==="OBSERVED_SUCCESS",request_id:id,status:state,execution:state==="OBSERVED_SUCCESS"?"JIRA_COMMENT_READBACK_OBSERVED":state==="BLOCKED_BEFORE_DISPATCH"?"NO_JIRA_MUTATION":"REVIEW_REQUIRED",...extra});
  async function dispatch(plan,id,preflight){
   if(!hex(id)||!validateCommentPlan(p,plan,clock()).ok||digest(canonical(plan))!==id||typeof preflight!=="function")return denyWrite("WRITE_EXECUTOR_BINDING_DENIED");
@@ -75,19 +72,20 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId,
   const status=response?.status;
   if([400,401,403,404,405,413,415,422,429].includes(status))return persist("DEFINITE_REJECTION",{http_status:status});
   const observed=await readback(transport,plan,accountId,response?.id,digest);
-  return persist(observed.state,{...(observed.comment_id?{comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:lineage(plan,id,observed)}:{}),...(Number.isInteger(status)?{http_status:status}:{})});
+  return persist(observed.state,{...(observed.comment_id?{comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:commentLineage(p,plan,id,observed,digest)}:observed.known_comment_id?{known_comment_id:observed.known_comment_id}:{}),...(Number.isInteger(status)?{http_status:status}:{})});
  }
  async function reconcile(plan,id){
   if(!hex(id)||!validateCommentPlan(p,plan,clock(),{allowExpired:true}).ok||digest(canonical(plan))!==id)return denyWrite("WRITE_RECONCILE_BINDING_DENIED");
   try{
    const a=await store.get(key(id,"attempt")),d=await store.get(key(id,"dispatch")),old=await store.get(key(id,"outcome"));
    if(a?.schema_version!=="hae.comment.attempt.v1"||a.tenant!==p.tenant||a.actor!==p.actor||a.target!==p.target||a.request_id!==id||a.review_id!==plan.review_id||a.payload_digest!==digest(canonical(adfComment(plan.typed_args.comment))))return denyWrite("WRITE_ATTEMPT_UNAVAILABLE");
+   if(old?.known_comment_id!==undefined&&!validId(old.known_comment_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"OUTCOME_RECORD_INVALID"});
    if(old!=null&&(old.schema_version!=="hae.comment.receipt.v1"||old.request_id!==id||old.tenant!==p.tenant||old.actor!==p.actor||old.target!==p.target||old.payload_digest!==a.payload_digest||old.review_id!==plan.review_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"OUTCOME_RECORD_INVALID"});
    if(old?.state==="BLOCKED_BEFORE_DISPATCH"||old?.state==="DEFINITE_REJECTION")return result(id,old.state,{code:old.code,http_status:old.http_status});
    if(d?.schema_version!=="hae.comment.dispatch.v1"||d.request_id!==id||d.payload_digest!==a.payload_digest)return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"DISPATCH_NOT_ESTABLISHED"});
-   const observed=await readback(transport,plan,accountId,old?.comment_id,digest);
+   const observed=await readback(transport,plan,accountId,old?.comment_id??old?.known_comment_id,digest);
    if(observed.state!=="OBSERVED_SUCCESS")return result(id,"UNKNOWN_OUTCOME_REVIEW");
-   const record={schema_version:"hae.comment.reconciliation.v1",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,payload_digest:a.payload_digest,comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:lineage(plan,id,observed)};
+   const record={schema_version:"hae.comment.reconciliation.v1",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,payload_digest:a.payload_digest,comment_id:observed.comment_id,observation_digest:observed.observation_digest,lineage:commentLineage(p,plan,id,observed,digest)};
    try{await store.create(key(id,"reconciled"),record)}catch{
     const prior=await store.get(key(id,"reconciled"));
     if(!prior||canonical(prior)!==canonical(record))return result(id,"UNKNOWN_OUTCOME_REVIEW");

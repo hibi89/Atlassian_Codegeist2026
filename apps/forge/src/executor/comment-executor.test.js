@@ -19,7 +19,7 @@ function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v
  const adapter={links:async()=>({ok:true,keys:linkedLabels===null?[]:["HTF-3"],complete:true}),read:async k=>{if(++reads===changeAt)version="2026-11-24T11:05:00Z";const root=k==="HTF-2",v=root?version:"2026-11-24T11:00:00Z",tags=root?labels:linkedLabels,objectId=root?"2":"3";return {ok:true,snapshot:{objectId,key:k,status:"Open",issueType:"Task",reportedTags:typedTags(tags)},source:{provider:"jira",objectId,uri:"/browse/"+k,version:v,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+v+JSON.stringify(tags))}}}};
  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  let comments=[];
- const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="marked"){comments[comments.length-1].body.content[0].content[0].marks=[{type:"strong"}]};if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
+ const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="wrong-id"){comments[comments.length-1].id="999";return {status:201,id:"1"}};if(mode==="marked"){comments[comments.length-1].body.content[0].content[0].marks=[{type:"strong"}]};if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++counter)),allowedInstall:()=>allowed,transport,canDispatch};
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
@@ -132,4 +132,18 @@ test("P2 insufficient invocation time before approval consumption or after final
  let afterLatch=0;const h=fixture(undefined,null,()=>++afterLatch<3),hid=await h.approved();
  const result=await h.writes.execute(h.ctx,hid);assert.equal(result.status,"BLOCKED_BEFORE_DISPATCH");assert.equal(result.code,"WRITE_INVOCATION_TIME_BUDGET");assert.equal(h.posts(),0);
  assert.equal((await h.writes.reconcile(h.ctx,hid)).status,"BLOCKED_BEFORE_DISPATCH");
+});
+
+test("P2 known comment ID cannot be replaced by another matching comment",async()=>{
+ const f=fixture(),id=await f.approved();f.setMode("wrong-id");
+ assert.equal((await f.writes.execute(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");
+ assert.equal((await f.writes.reconcile(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+});
+test("P2 corrupted historical comment graph is denied even with valid-looking digests",async()=>{
+ const f=fixture(),r=await f.request();await f.writes.approve(f.ctx,r.request_id,r.request_id);assert.equal((await f.writes.execute(f.ctx,r.request_id)).ok,true);
+ const rec=[...f.map.values()].find(x=>x.schema_version==="hae.comment.receipt.v1");assert.ok(rec);
+ assert.equal((await f.reviews.history(f.ctx,r.review_id)).ok,true);
+ const edge=rec.lineage.edges[0],old=edge.relation;edge.relation="FORGED";
+ assert.equal((await f.reviews.history(f.ctx,r.review_id)).ok,false);edge.relation=old;
+ rec.observation_digest="f".repeat(64);assert.equal((await f.reviews.history(f.ctx,r.review_id)).ok,false);
 });

@@ -31,7 +31,7 @@ async function readIssue(context,request,clock,digest){
     const contentLength=res.headers?.get?.("content-length");
     if(contentLength&&Number(contentLength)>131072)return fail("JIRA_RESPONSE_TOO_LARGE");
     const body=await res.text();
-    if(typeof body!=="string"||body.length>131072)return fail("JIRA_RESPONSE_TOO_LARGE");
+    if(typeof body!=="string"||Buffer.byteLength(body,"utf8")>131072)return fail("JIRA_RESPONSE_TOO_LARGE");
     let raw;
     try{raw=JSON.parse(body)}catch{return fail("JIRA_RESPONSE_INVALID");}
     const out=normalizeIssue(raw,hint.key,clock());

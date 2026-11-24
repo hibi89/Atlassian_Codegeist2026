@@ -27,7 +27,7 @@ export function scopedAdapter(context){
         const length=res.headers?.get?.("content-length");
         if(length&&Number(length)>131072)return {ok:false,code:"LINKS_UNKNOWN"};
         const body=await res.text();
-        if(body.length>131072)return {ok:false,code:"LINKS_UNKNOWN"};
+        if(typeof body!=="string"||Buffer.byteLength(body,"utf8")>131072)return {ok:false,code:"LINKS_UNKNOWN"};
         const json=JSON.parse(body);
         if(json.key!==key)return {ok:false,code:"LINKS_UNKNOWN"};
         return boundedLinks(json.fields?.issuelinks,key);
