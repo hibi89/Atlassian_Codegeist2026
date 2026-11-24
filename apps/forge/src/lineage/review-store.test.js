@@ -103,11 +103,11 @@ test("P2 real KVS adapter contract: expired returned data is denied, not treated
  const kvs={get:async(k,o)=>{reads++;assert.deepEqual(o.metadataFields,["EXPIRE_TIME"]);return result},set:async()=>{writes++}};
  const store=createDevelopmentStore(kvs,()=>now);
  assert.equal(await store.get("cg:test"),undefined);
- for(const bad of [{key:"cg:test",value:{x:1},expireTime:new Date(now).toISOString()},{key:"cg:test",value:{x:1}}, {key:"wrong",value:{x:1},expireTime:new Date(now+1000).toISOString()},{key:"cg:test",expireTime:new Date(now+1000).toISOString()}]){
+ for(const bad of [null,{key:"cg:test",value:null,expireTime:new Date(now+1000).toISOString()},{key:"cg:test",value:{x:1},expireTime:new Date(now).toISOString()},{key:"cg:test",value:{x:1}}, {key:"wrong",value:{x:1},expireTime:new Date(now+1000).toISOString()},{key:"cg:test",expireTime:new Date(now+1000).toISOString()}]){
   result=bad;await assert.rejects(store.get("cg:test"),/EXPIRY_UNKNOWN/);
  }
  result={key:"cg:test",value:{x:1},expireTime:new Date(now+1000).toISOString()};assert.deepEqual(await store.get("cg:test"),{x:1});
- await assert.rejects(store.get("../bad"));await assert.rejects(store.create("x".repeat(501),{x:1}));assert.equal(writes,0);assert.equal(reads,6);
+ await assert.rejects(store.get("../bad"));await assert.rejects(store.create("x".repeat(501),{x:1}));assert.equal(writes,0);assert.equal(reads,8);
 });
 
 for(const fault of ["lost-report-receipt-ack","before-success","missing-report-receipt"]){
@@ -152,4 +152,16 @@ test("P2 read-only report cannot generate after approval expiry during durable s
  const saved=await reviews.save(ctx,"review release"),reviewId=saved.saved_review.review_id,q=await reports.prepare(ctx,reviewId);assert.equal(q.ok,true);
  assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);const approval=[...map.values()].find(v=>v.schema_version==="hae.approval.v2");approval.expires_at=now+100;inject=true;
  const result=await reports.generate(ctx,q.request_id);assert.equal(result.code,"REPORT_APPROVAL_OR_EVIDENCE_EXPIRED");assert.equal(result.report,undefined);assert.equal([...map.values()].some(v=>v.schema_version==="hae.report.receipt.v2"),false);assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);assert.equal((await reports.generate(ctx,q.request_id)).ok,false);
+});
+
+test("P2 full report journey fits the production storage adapter budget per invocation",async()=>{
+ const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"HTF-2"}}};let reads=0,writes=0,maxReads=0,maxWrites=0,nonce=0;
+ const kvs={get:async(k,o)=>{reads++;assert.deepEqual(o.metadataFields,["EXPIRE_TIME"]);return map.has(k)?{key:k,value:structuredClone(map.get(k)),expireTime:new Date(clock()+86400000).toISOString()}:undefined},set:async(k,v,o)=>{writes++;assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.deepEqual(o.ttl,{unit:"DAYS",value:1});if(map.has(k))throw Error("conflict");map.set(k,structuredClone(v))}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const call=async(fn)=>{reads=0;writes=0;const deps={store:createDevelopmentStore(kvs,clock),clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++nonce))};const result=await fn(createReviewService(deps),createReportService(deps));maxReads=Math.max(maxReads,reads);maxWrites=Math.max(maxWrites,writes);assert.equal(result.ok,true,result.code);return result};
+ const saved=await call(r=>r.save(ctx,"review release")),reviewId=saved.saved_review.review_id;
+ const prepared=await call((r,s)=>s.prepare(ctx,reviewId)),id=prepared.request_id;
+ await call((r,s)=>s.approve(ctx,id,id));const generated=await call((r,s)=>s.generate(ctx,id));assert.equal(generated.status,"READ_ONLY_REPORT_GENERATED");await call(r=>r.history(ctx,reviewId));await call(r=>r.recoverReport(ctx,reviewId));await call(r=>r.refresh(ctx,reviewId));
+ assert.ok(maxReads<=64);assert.ok(maxWrites<=12);console.log("CG_P2_REPORT_STORAGE_PEAK:"+JSON.stringify({reads:maxReads,writes:maxWrites}));
 });

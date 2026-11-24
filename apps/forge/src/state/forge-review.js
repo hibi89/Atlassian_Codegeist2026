@@ -28,8 +28,9 @@ function createDevelopmentStore(kvs,clock=Date.now){
    // Forge may return expired values until asynchronous deletion completes.
    // A present-but-expired or malformed record is UNKNOWN, not an empty slot.
    const result=await kvs.get(key,{metadataFields:["EXPIRE_TIME"]});
-   if(result===undefined||result===null)return undefined;
-   if(result.key!==key||!Object.hasOwn(result,"value")||typeof result.expireTime!=="string"||!Number.isFinite(Date.parse(result.expireTime))||!Number.isSafeInteger(clock())||Date.parse(result.expireTime)<=clock())throw Error("REVIEW_STORAGE_EXPIRY_UNKNOWN");
+   if(result===undefined)return undefined;
+   const now=clock();
+   if(!result||typeof result!=="object"||result.key!==key||!Object.hasOwn(result,"value")||result.value==null||typeof result.expireTime!=="string"||!Number.isFinite(Date.parse(result.expireTime))||!Number.isSafeInteger(now)||Date.parse(result.expireTime)<=now)throw Error("REVIEW_STORAGE_EXPIRY_UNKNOWN");
    return result.value;
   },
   async create(key,value){

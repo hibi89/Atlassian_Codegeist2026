@@ -10,6 +10,7 @@ import {readCommentJournal} from "../state/comment-journal.js";
 import {principal} from "../evidence/bundle.js";
 import {createCommentExecutor} from "./comment-executor.js";
 import {createCommentService} from "../security/approval/comment-service.js";
+import {createDevelopmentStore} from "../state/forge-review.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
 function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"],linkedLabels=null,canDispatch=()=>true){
  const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/demo",extension:{issue:{key:"HTF-2"}}};
@@ -24,7 +25,7 @@ function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
  async function approved(){const r=await request();assert.equal(r.ok,true);assert.equal((await writes.approve(ctx,r.request_id,r.request_id)).ok,true);return r.request_id}
- return {ctx,map,store,reviews,writes,request,approved,preview,posts:()=>posts,setNow:t=>{now=t},advance:ms=>{now+=ms},change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
+ return {ctx,map,store,reviews,writes,request,approved,preview,deps,posts:()=>posts,setNow:t=>{now=t},advance:ms=>{now+=ms},change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
 }
 test("actual comment service only dispatches exact approved synthetic annotation once",async()=>{
  const f=fixture(),r=await f.request();assert.equal(r.ok,true);assert.match(r.comment,/not a certification/);
@@ -213,3 +214,12 @@ test("P2 historical success requires exact attempt reservation and durable dispa
  const again=await f.writes.prepare(f.ctx,r.review_id);assert.equal(again.ok,false);assert.equal(again.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(again.request_id,r.request_id);assert.equal(count(),1);assert.equal(f.posts(),1);
  const refreshed=await f.reviews.refresh(f.ctx,r.review_id);assert.equal(refreshed.comment_journal.request_id,r.request_id);assert.equal(refreshed.comment_journal.status,"UNKNOWN_OUTCOME_REVIEW");
  });
+
+test("P2 guarded comment and recovery fit the production storage adapter budget per invocation",async()=>{
+ const f=fixture();let reads=0,writes=0,maxReads=0,maxWrites=0;
+ const kvs={get:async(k,o)=>{reads++;assert.deepEqual(o.metadataFields,["EXPIRE_TIME"]);return f.map.has(k)?{key:k,value:structuredClone(f.map.get(k)),expireTime:new Date(f.deps.clock()+86400000).toISOString()}:undefined},set:async(k,v,o)=>{writes++;assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.deepEqual(o.ttl,{unit:"DAYS",value:1});if(f.map.has(k))throw Error("conflict");f.map.set(k,structuredClone(v))}};
+ const call=async(fn)=>{reads=0;writes=0;const deps={...f.deps,store:createDevelopmentStore(kvs,f.deps.clock)};const result=await fn(createReviewService(deps),createCommentService(deps));maxReads=Math.max(maxReads,reads);maxWrites=Math.max(maxWrites,writes);assert.equal(result.ok,true,result.code);return result};
+ const saved=await call(r=>r.save(f.ctx,"review change")),reviewId=saved.saved_review.review_id;const prepared=await call((r,s)=>s.prepare(f.ctx,reviewId)),id=prepared.request_id;
+ await call((r,s)=>s.approve(f.ctx,id,id));const observed=await call((r,s)=>s.execute(f.ctx,id));assert.equal(observed.status,"OBSERVED_SUCCESS");await call((r,s)=>s.reconcile(f.ctx,id));await call(r=>r.history(f.ctx,reviewId));await call(r=>r.refresh(f.ctx,reviewId));
+ assert.equal(f.posts(),1);assert.ok(maxReads<=64);assert.ok(maxWrites<=12);console.log("CG_P2_COMMENT_STORAGE_PEAK:"+JSON.stringify({reads:maxReads,writes:maxWrites}));
+});
