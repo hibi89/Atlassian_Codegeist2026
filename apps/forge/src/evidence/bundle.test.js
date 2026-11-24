@@ -109,3 +109,12 @@ test("P2 linked-source reads are bounded to three in flight and merged in input 
  assert.deepEqual(r.evidence.sources.map(s=>s.uri),["/browse/DEMO-1",...keys.filter(k=>k!=="DEMO-4").map(k=>"/browse/"+k)]);
  const all={...a,read:async k=>sample(k)};const f=await refreshEvidence(ctx,all,digest,clock);assert.equal(f.freshness.status,"CURRENT_OBSERVED");assert.equal(f.evidence.sources.length,7);
 });
+
+test("P2 release assessment exposes unmatched reported failure and does not hide malformed reserved evidence",async()=>{
+ let labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS","tf-test-OTHER-7-fail"];
+ const a={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({...sample(k),snapshot:{...sample(k).snapshot,reportedTags:typedTags(labels)},source:{...sample(k).source,contentHash:digest(JSON.stringify(labels))}})};
+ const run=()=>guardedPreview(ctx,"review release",{adapter:a,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ let result=await run();assert.equal(result.release_assessment.status,"REPORTED_FAILURE");assert.equal(result.release_assessment.unmatched_tests[0].subject,"OTHER-7");assert.deepEqual(result.release_assessment.unmatched_tests[0].source_refs,["/browse/DEMO-1"]);
+ labels=labels.map(x=>x==="tf-test-OTHER-7-fail"?"tf-test-OTHER-7-pass":x);result=await run();assert.equal(result.release_assessment.status,"MISSING_REPORTED_EVIDENCE");
+ labels.push("tf-test-DEMO-1-FAIL");result=await run();assert.equal(result.policy.decision,"REVIEW");assert.equal(result.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");
+});

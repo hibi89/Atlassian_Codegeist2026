@@ -7,7 +7,7 @@ import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline} f
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
-type ReleaseAssessment={status:string;requirements:{requirement:string;state:string;source_refs:string[]}[];missing_predicates:string[];document_status:string;source_count:number;unknown_count:number|null;conflicts:{predicate:string;subject:string;sources:string[]}[]};
+type ReleaseAssessment={status:string;unmatched_tests?:{subject:string;values:string[];status:string;source_refs:string[]}[];requirements:{requirement:string;state:string;source_refs:string[]}[];missing_predicates:string[];document_status:string;source_count:number;unknown_count:number|null;conflicts:{predicate:string;subject:string;sources:string[]}[]};
 type SafetySettings={ok:boolean;synthetic_storage_ready?:boolean;environment?:string;daily_admitted_actions?:number;external_ai_config_ready?:boolean;model?:string;external_attempts_per_utc_day?:number;max_output_tokens?:number;max_record_bytes?:number;retention_hours?:number;document_page_configured?:boolean;billing?:string;paid_fallback?:string};
 type Evidence = { document_status?:string;coverage:string; unknown_count:number; sources:{source_ref:string;uri:string;version:string|null;status:string;status_reason?:string;retrieved_at?:string;freshness_deadline?:string}[] };
 type Graph = {ok:boolean;code?:string;status?:string;coverage?:string;graph_revision?:string;nodes?:{id:string;kind:string;ref:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[]};
@@ -29,6 +29,7 @@ function msg(code?: string){return labels[code||""] || "Request failed or could 
 function ReleasePanel({assessment}:{assessment:ReleaseAssessment}){
  return <section aria-label="Release evidence assessment"><h4>Release assurance · read-only</h4><p role="status">{assessment.status}</p><p>Sources: {assessment.source_count} · Unknown reads: {assessment.unknown_count??"Unknown"} · Confluence: {assessment.document_status}</p><p>Missing reported fields: {assessment.missing_predicates.join(", ")||"None reported"}</p>
  {assessment.requirements.length>0&&<table><thead><tr><th scope="col">Requirement</th><th scope="col">Observed test state</th><th scope="col">Authorized sources</th></tr></thead><tbody>{assessment.requirements.map(r=><tr key={r.requirement}><td>{r.requirement}</td><td>{r.state}</td><td>{r.source_refs.join(", ")||"Unknown"}</td></tr>)}</tbody></table>}
+ {!!assessment.unmatched_tests?.length&&<><h5>Reported tests without matching requirement</h5><ul>{assessment.unmatched_tests.map(t=><li key={t.subject}>{t.subject} · {t.values.join(" / ")} · {t.status} · {t.source_refs.join(", ")||"Unknown source"}</li>)}</ul></>}
  {assessment.conflicts.length>0&&<ul>{assessment.conflicts.map((c,i)=><li key={i}>{c.predicate}: {c.subject} · {c.sources.join(", ")}</li>)}</ul>}<p>No release certification or Jira mutation is granted.</p></section>
 }
 function EvidencePanel({result}:{result:Result}){

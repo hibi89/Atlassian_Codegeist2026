@@ -7,6 +7,7 @@ function typedTags(labels){
     else if((m=/^tf-test-([A-Z][A-Z0-9]{0,15}-[1-9][0-9]{0,8})-(pass|fail)$/u.exec(tag)))values.push({subject:m[1],predicate:"test.reported_result",value:m[2]});
     else if((m=/^tf-policy-([A-Z][A-Z0-9]{0,15})-v([1-9][0-9]{0,8})$/u.exec(tag)))values.push({subject:m[1],predicate:"policy.reported_version",value:m[2]});
     else if((m=/^tf-owner-([A-Z][A-Z0-9]{0,15}-[1-9][0-9]{0,8})-([A-Z][A-Z0-9]{0,15})$/u.exec(tag)))values.push({subject:m[1],predicate:"ownership.reported_team",value:m[2]});
+    else if(/^tf-(req|test|policy|owner)(?:-|$)/iu.test(tag))return {status:"UNKNOWN",values:[]};
   }
   if(values.length>32)return {status:"UNKNOWN",values:[]};
   return {status:"OBSERVED",values:values.sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))};

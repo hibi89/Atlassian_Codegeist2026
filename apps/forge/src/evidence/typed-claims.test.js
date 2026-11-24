@@ -27,3 +27,5 @@ test("observed graph only links authorized sources and complete claims",()=>{
  assert.equal(run(e,{checks:[]}).ok,false);
  assert.equal(run(e,{checks:[...reviewClaims(e).checks,...reviewClaims(e).checks]}).ok,false);
 });
+
+test("P2 malformed reserved labels do not become silently missing evidence",()=>{for(const label of ["tf-test-REQ-1-FAIL","tf-policy-OPS-v0","TF-REQ-REQ-1","tf-owner"])assert.equal(typedTags(["tf-req-REQ-1",label]).status,"UNKNOWN");assert.equal(typedTags(["ordinary-label","tf-other-label"]).status,"OBSERVED")});
