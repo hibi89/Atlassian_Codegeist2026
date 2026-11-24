@@ -42,7 +42,16 @@ async function guardedPreview(context,input,services,savedRecord){
   if(!impact.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:impact.code};
   const visibleGraph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
   if(!visibleGraph.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:"GRAPH_UNKNOWN"};
-  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness:observed.freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
+  // Compare using complete internal refs, but never expose an identifier from a
+  // previous observation when it is absent from the final authorized read.
+  const visibleRefs=new Set(observed.evidence.sources.map(s=>s.source_ref));
+  const freshness={...observed.freshness};
+  for(const k of ["changed","unchanged","unknown"]){
+    const refs=Array.isArray(freshness[k])?freshness[k]:[];
+    freshness[k]=refs.filter(ref=>visibleRefs.has(ref));
+    freshness[k+"_count"]=refs.length;
+  }
+  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
 }
 
 export { evaluatePolicy, guardedPreview };

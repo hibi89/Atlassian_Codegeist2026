@@ -66,7 +66,7 @@ async function collectEvidence(context,adapter,digest,clock){
   };
   if(!add(root,p.target))return {ok:false,code:"EVIDENCE_INVALID"};
   let links;
-  try{links=await adapter.links(p.target)}catch{links={ok:false,code:"LINKS_UNKNOWN"}}
+  try{links=await adapter.links(p.target,root.source.objectId)}catch{links={ok:false,code:"LINKS_UNKNOWN"}}
   let unknown=root.snapshot?.reportedTags?.status==="UNKNOWN"?1:0;
   if(links?.ok&&Array.isArray(links.keys)){
     if(links.keys.length>6||new Set(links.keys).size!==links.keys.length)unknown++;
@@ -104,8 +104,11 @@ function compareEvidence(before,after,now){
     else unchanged.push(prior.source_ref);
     current.delete(prior.source_ref);
   }
-  // New dependencies are changes, not silently ignored.
-  for(const [id] of current)if(!unknown.includes(id))changed.push(id);
+  // A newly observed dependency still needs a valid, current observation.
+  for(const [id,s] of current)if(!unknown.includes(id)){
+    if(s.status!=="VERSION_OBSERVED"||!validDate(s.version)||Date.parse(s.version)>now||!validDate(s.freshness_deadline)||Date.parse(s.freshness_deadline)<=now)unknown.push(id);
+    else changed.push(id);
+  }
   const partial=before.coverage!=="BOUNDED_READ_COMPLETE"||after.coverage!=="BOUNDED_READ_COMPLETE";
   return {status:unknown.length||partial?"UNKNOWN":changed.length?"STALE_VERSION":"CURRENT_OBSERVED",reason:unknown.length||partial?"INCOMPLETE_OR_STALE_ACCESS":changed.length?"DEPENDENCY_CHANGED":"SAME_BOUNDED_OBSERVATIONS",changed,unchanged,unknown,authorization:"NONE"};
 }

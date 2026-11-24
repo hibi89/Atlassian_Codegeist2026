@@ -20,7 +20,7 @@ export function scopedAdapter(context){
       if(!validPageId(id))return {ok:false,code:"CONFLUENCE_TARGET_INVALID"};
       budget();return readPage(id,pageId=>api.asUser().requestConfluence(route`/wiki/api/v2/pages/${pageId}?body-format=storage`,{method:"GET",headers:{Accept:"application/json"}}),Date.now,digest);
     },
-    links: async key=>{
+    links: async (key,expectedObjectId)=>{
       try{budget();
         const res=await api.asUser().requestJira(route`/rest/api/3/issue/${key}?fields=issuelinks`,{method:"GET",headers:{Accept:"application/json"}});
         if(res.status!==200)return {ok:false,code:"LINKS_UNKNOWN"};
@@ -29,7 +29,7 @@ export function scopedAdapter(context){
         const body=await res.text();
         if(typeof body!=="string"||Buffer.byteLength(body,"utf8")>131072)return {ok:false,code:"LINKS_UNKNOWN"};
         const json=JSON.parse(body);
-        if(json.key!==key)return {ok:false,code:"LINKS_UNKNOWN"};
+        if(json.key!==key||typeof expectedObjectId!=="string"||json.id!==expectedObjectId)return {ok:false,code:"LINKS_UNKNOWN"};
         return boundedLinks(json.fields?.issuelinks,key);
       }catch{return {ok:false,code:"LINKS_UNKNOWN"}}
     }

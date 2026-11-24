@@ -81,3 +81,18 @@ test("release source version changes and root access failures never imply releas
  const stale=await guardedPreview(ctx,"review release",services);assert.equal(stale.release_assessment.status,"STALE_EVIDENCE");assert.equal(stale.policy.decision,"REVIEW");
  const unknown=await guardedPreview(ctx,"review release",{...services,adapter:{...adapter,read:async()=>({ok:false,code:"SOURCE_ACCESS_UNKNOWN"})}});assert.equal(unknown.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(unknown.release_assessment.source_count,0);
 });
+
+
+test("P2 revoked linked source opaque identity is withheld in actual preview while unknown count remains",async()=>{
+ const hiddenRef=digest("jira:"+principal(ctx,digest).tenant+":2");let reads=0;
+ const services={adapter:{...adapter,read:async k=>k==="DEMO-2"&&++reads>1?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:sample(k)},digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))};
+ const r=await guardedPreview(ctx,"review change",services);
+ assert.equal(r.policy.decision,"REVIEW");assert.equal(r.freshness.status,"UNKNOWN");assert.equal(r.freshness.unknown_count,1);assert.equal(r.freshness.unknown.length,0);assert.equal(r.impact_summary.status,"HOLD");assert.equal(JSON.stringify(r).includes(hiddenRef),false);
+});
+test("P2 link lookup is bound to actual issue object identity; invalid new source is UNKNOWN",async()=>{
+ let identity;
+ const before=await collectEvidence(ctx,{...adapter,links:async(k,id)=>{identity=id;return {ok:true,keys:[],complete:true}}},digest,clock);
+ assert.equal(identity,"1");
+ const after=await collectEvidence(ctx,{...adapter,read:async k=>sample(k,k==="DEMO-2"?"2026-11-25T11:00:00Z":"2026-11-24T11:00:00Z")},digest,clock);
+ const r=compareEvidence(before.evidence,after.evidence,now);assert.equal(r.status,"UNKNOWN");assert.equal(r.changed.length,0);assert.equal(r.unknown.length,1);
+});
