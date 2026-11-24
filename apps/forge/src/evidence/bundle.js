@@ -43,6 +43,12 @@ function normalizedEvidence(result,p,digest,now){
   return {record,claims};
 }
 
+function normalizedPage(result,p,digest,now){
+ const s=result?.page;
+ if(!result?.ok||!s||!(/^[1-9][0-9]{0,30}$/.test(s.objectId))||s.visibility!=="OBSERVED_AS_USER"||!validDate(s.version)||!validDate(s.retrievedAt)||Date.parse(s.version)>now||Date.parse(s.retrievedAt)>now||!Number.isSafeInteger(s.versionNumber)||s.versionNumber<1||typeof s.contentHash!=="string"||!/^[a-f0-9]{64}$/.test(s.contentHash))return null;
+ const stable=digest("confluence:"+p.tenant+":"+s.objectId),revision=digest(JSON.stringify([stable,s.version,s.versionNumber,s.contentHash])),claim_id=digest(revision+":page_version");
+ return {record:{schema_version:"hae.evidence.v2",source_ref:stable,installation_ref:p.tenant,source_kind:"CONFLUENCE_PAGE",object_id:s.objectId,uri:"/wiki/pages/viewpage.action?pageId="+s.objectId,version:s.version,revision_key:revision,content_digest:s.contentHash,retrieved_at:s.retrievedAt,permission_check_at:s.retrievedAt,freshness_deadline:new Date(Date.parse(s.retrievedAt)+120000).toISOString(),claim_ids:[claim_id],comparison_rule_version:"cg-claims-v1",independent_source_group:null,status:"VERSION_OBSERVED",status_reason:"AUTHORIZED_READ"},claims:[{claim_id,source_ref:stable,revision_key:revision,subject:stable,predicate:"confluence.page_version",value:String(s.versionNumber),status:"SOURCE_OBSERVED"}]};
+}
 async function collectEvidence(context,adapter,digest,clock){
   const p=principal(context,digest);
   if(!p)return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
@@ -68,9 +74,20 @@ async function collectEvidence(context,adapter,digest,clock){
       try{if(!add(await adapter.read(key),key))unknown++}catch{unknown++}
     }
   }else unknown++;
+  let document_status="NOT_CONFIGURED";
+  if(typeof adapter.page==="function"){
+   try{
+    const result=await adapter.page();
+    if(result!==null){
+     const n=normalizedPage(result,p,digest,clock());
+     if(n&&!seen.has(n.record.source_ref)){seen.add(n.record.source_ref);sources.push(n.record);claims.push(...n.claims);document_status="AUTHORIZED_PAGE_OBSERVED"}
+     else{unknown++;document_status=["CONFLUENCE_ACCESS_UNKNOWN","CONFLUENCE_NOT_VISIBLE_OR_MISSING","CONFLUENCE_RATE_LIMITED"].includes(result?.code)?result.code:"CONFLUENCE_UNKNOWN"}
+    }
+   }catch{unknown++;document_status="CONFLUENCE_UNKNOWN"}
+  }
   const complete=links?.ok===true&&links.complete===true&&unknown===0;
   const bundle_hash=digest(JSON.stringify(sources.map(x=>[x.source_ref,x.revision_key]).sort((a,b)=>a[0].localeCompare(b[0]))));
-  return {ok:true,snapshot:root.snapshot,source:root.source,evidence:{schema_version:"hae.evidence.bundle.v2",installation_ref:p.tenant,actor_ref:p.actor,target:p.target,sources,claims,bundle_hash,coverage:complete?"BOUNDED_READ_COMPLETE":"INCOMPLETE_OR_UNKNOWN",unknown_count:unknown,authorization:"NONE",status:"OBSERVED_NOT_VERIFIED"}};
+  return {ok:true,snapshot:root.snapshot,source:root.source,evidence:{schema_version:"hae.evidence.bundle.v2",installation_ref:p.tenant,actor_ref:p.actor,target:p.target,sources,claims,bundle_hash,coverage:complete?"BOUNDED_READ_COMPLETE":"INCOMPLETE_OR_UNKNOWN",unknown_count:unknown,document_status,authorization:"NONE",status:"OBSERVED_NOT_VERIFIED"}};
 }
 
 function compareEvidence(before,after,now){

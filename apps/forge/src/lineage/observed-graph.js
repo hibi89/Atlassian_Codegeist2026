@@ -2,7 +2,7 @@
 function buildObservedGraph(p,draft,evidence,review,policy,digest,canonical){
   const bad=code=>({ok:false,code,authorization:"NONE"});
   const hash=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
-  if(!p||!hash(p.tenant)||!hash(p.actor)||!draft?.plan||!hash(draft.plan.plan_hash)||draft.plan.issue_key!==p.target||evidence?.installation_ref!==p.tenant||evidence.actor_ref!==p.actor||evidence.target!==p.target||!Array.isArray(evidence.sources)||!Array.isArray(evidence.claims)||!Array.isArray(review?.checks)||evidence.sources.length>7||evidence.claims.length>256||review.checks.length>256)return bad("GRAPH_INCOMPLETE");
+  if(!p||!hash(p.tenant)||!hash(p.actor)||!draft?.plan||!hash(draft.plan.plan_hash)||draft.plan.issue_key!==p.target||evidence?.installation_ref!==p.tenant||evidence.actor_ref!==p.actor||evidence.target!==p.target||!Array.isArray(evidence.sources)||!Array.isArray(evidence.claims)||!Array.isArray(review?.checks)||evidence.sources.length>8||evidence.claims.length>256||review.checks.length>256)return bad("GRAPH_INCOMPLETE");
   try{
     const nodes=[],edges=[],ids=new Set(),sourceMap=new Map(),claimMap=new Map(),checkIds=[];
     function node(kind,ref,version,content){

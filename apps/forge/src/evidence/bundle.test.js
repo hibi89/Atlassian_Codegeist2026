@@ -45,3 +45,20 @@ test("guarded preview projects affected nodes from actual first and second obser
  let reads=0;const denied=await guardedPreview(ctx,"review change",{...services,adapter:{...adapter,read:async k=>k==="DEMO-2"&&++reads>1?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:sample(k)}});
  assert.equal(denied.impact_summary.status,"HOLD");assert.equal(denied.policy.execution,"DISABLED");assert.equal(JSON.stringify(denied).includes("/browse/DEMO-2"),false);
 });
+
+import {readPage} from "../adapters/confluence/reader.js";
+test("Confluence configured read integrates versioned evidence without raw page or denied identity",async()=>{
+ let version=1,deny=false;
+ const transport=async id=>({status:deny?403:200,text:async()=>JSON.stringify({id,status:"current",title:"SECRET_FIXTURE_TITLE",version:{number:version,createdAt:"2026-11-24T11:00:00Z"},body:{storage:{representation:"storage",value:"SECRET_FIXTURE_BODY"}}})});
+ const mixed={...adapter,page:()=>readPage("12345",transport,clock,digest)};
+ const first=await collectEvidence(ctx,mixed,digest,clock);
+ assert.equal(first.evidence.sources.length,3);assert.equal(first.evidence.document_status,"AUTHORIZED_PAGE_OBSERVED");
+ assert.equal(first.evidence.claims.find(c=>c.predicate==="confluence.page_version").value,"1");
+ assert.equal(JSON.stringify(first).includes("SECRET_FIXTURE"),false);
+ version=2;const next=await collectEvidence(ctx,mixed,digest,clock);
+ assert.equal(compareEvidence(first.evidence,next.evidence,now).status,"STALE_VERSION");
+ deny=true;const blocked=await collectEvidence(ctx,mixed,digest,clock);
+ assert.equal(blocked.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");assert.equal(blocked.evidence.document_status,"CONFLUENCE_ACCESS_UNKNOWN");assert.equal(JSON.stringify(blocked).includes("12345"),false);
+ assert.equal((await readPage("../bad",transport,clock,digest)).ok,false);
+ const other=await collectEvidence({...ctx,installContext:"ari:cloud:jira::site/test-b"},{...mixed,page:()=>null},digest,clock);assert.equal(other.evidence.document_status,"NOT_CONFIGURED");
+});

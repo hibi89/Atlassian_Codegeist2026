@@ -26,7 +26,7 @@ export function selectiveChecks(p,record,evidence,digest,now){
   const ref=digest(canonical([group[0].subject,group[0].predicate,group.map(c=>c.claim_id).sort()]));
   const checkId=digest(canonical([p.tenant,"CHECK",ref,"cg-claims-v1"])),check=nodes.get(checkId);
   if(!unaffected.has(checkId)||check?.kind!=="CHECK"||check.version!=="cg-claims-v1"||claimIds.some(id=>!edges.has(canonical([id,checkId,"COMPARE_CLAIM"]))))return null;
-  const choices=[{status:"CONFLICT_FOUND",reason:"COMPARABLE_VALUES_DIFFER"},group[0].predicate.startsWith("jira.")?{status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD_NOT_CERTIFICATION"}:{status:"UNVERIFIED_CLAIM",reason:"REPORTED_LABEL_NOT_INDEPENDENT_TEST_OR_POLICY"}];
+  const choices=[{status:"CONFLICT_FOUND",reason:"COMPARABLE_VALUES_DIFFER"},(group[0].predicate.startsWith("jira.")||group[0].predicate==="confluence.page_version")?{status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD_NOT_CERTIFICATION"}:{status:"UNVERIFIED_CLAIM",reason:"REPORTED_LABEL_NOT_INDEPENDENT_TEST_OR_POLICY"}];
   return choices.find(c=>check.digest===digest(canonical([c.status,c.reason])))??null;
  };
 }

@@ -16,7 +16,7 @@ function reviewClaims(bundle,reuse){
   if(!bundle||!Array.isArray(bundle.claims)||!Array.isArray(bundle.sources)||bundle.claims.length>256)return {status:"HUMAN_REVIEW_REQUIRED",checks:[],reason:"CLAIMS_UNKNOWN"};
   const ids=new Set(bundle.sources.map(x=>x.source_ref));
   const groups=new Map(),checks=[];let reused=0,recomputed=0;
-  const known=["jira.status","jira.issue_type","requirement.id","test.reported_result","policy.reported_version","ownership.reported_team"];
+  const known=["jira.status","jira.issue_type","requirement.id","test.reported_result","policy.reported_version","ownership.reported_team","confluence.page_version"];
   for(const c of bundle.claims){
     if(!c||!ids.has(c.source_ref)||!known.includes(c.predicate)||typeof c.subject!=="string"||typeof c.value!=="string"||typeof c.claim_id!=="string")return {status:"HUMAN_REVIEW_REQUIRED",checks:[],reason:"CLAIMS_UNKNOWN"};
     const k=JSON.stringify([c.subject,c.predicate]);
@@ -28,7 +28,7 @@ function reviewClaims(bundle,reuse){
     const saved=typeof reuse==="function"?reuse(group):null;
     let classification;
     if(saved){classification=saved;reused++}
-    else{const conflict=values.length>1;classification={status:conflict?"CONFLICT_FOUND":predicate.startsWith("jira.")?"SOURCE_OBSERVED":"UNVERIFIED_CLAIM",reason:conflict?"COMPARABLE_VALUES_DIFFER":predicate.startsWith("jira.")?"OBSERVED_FIELD_NOT_CERTIFICATION":"REPORTED_LABEL_NOT_INDEPENDENT_TEST_OR_POLICY"};recomputed++}
+    else{const conflict=values.length>1;classification={status:conflict?"CONFLICT_FOUND":(predicate.startsWith("jira.")||predicate==="confluence.page_version")?"SOURCE_OBSERVED":"UNVERIFIED_CLAIM",reason:conflict?"COMPARABLE_VALUES_DIFFER":(predicate.startsWith("jira.")||predicate==="confluence.page_version")?"OBSERVED_FIELD_NOT_CERTIFICATION":"REPORTED_LABEL_NOT_INDEPENDENT_TEST_OR_POLICY"};recomputed++}
     checks.push({subject:group[0].subject,predicate,values,source_refs:refs,claim_ids:group.map(c=>c.claim_id),...classification});
   }
   const predicates=new Set(bundle.claims.map(c=>c.predicate));
