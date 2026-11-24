@@ -1,4 +1,4 @@
-import { canonical } from "../core/ir/plan.js";
+import { canonical, validatePlan } from "../core/ir/plan.js";
 import { compareEvidence } from "../evidence/bundle.js";
 import { analyzeImpact } from "./impact.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
@@ -23,7 +23,9 @@ function createReviewStore(store,p,clock,digest){
   const now=clock();
   if(!scope(p)||!Number.isSafeInteger(now)||!preview?.ok||preview.policy?.decision!=="ALLOW_PREVIEW"||preview.freshness?.status!=="CURRENT_OBSERVED"||!hex(preview.plan?.plan_hash)||preview.plan.issue_key!==p.target||!intents.has(preview.plan.intent)||!scopedGraph(p,preview.graph)||!scopedEvidence(p,preview.evidence))return bad("REVIEW_NOT_SAVEABLE");
   try{
-   const id=preview.plan.plan_hash;
+   const {plan_hash:id,...plan}=preview.plan;
+   if(!validatePlan(plan,now).ok||digest(canonical(plan))!==id)return bad("REVIEW_PLAN_INVALID");
+   const coverage=analyzeImpact(p,preview.graph,preview.freshness);if(!coverage.ok||coverage.affected.length)return bad("REVIEW_GRAPH_INVALID");
    const body={schema_version:"hae.review.snapshot.v1",id,tenant:p.tenant,actor:p.actor,target:p.target,intent:preview.plan.intent,created_at:now,expires_at:now+ttlMs,graph:graphMetadata(preview.graph),evidence:evidenceMetadata(preview.evidence),policy_version:preview.policy.policy_version};
    const record={...body,record_digest:digest(canonical(body))};
    if(!validRecord(record,id)||Buffer.byteLength(JSON.stringify(record),"utf8")>61440)return bad("REVIEW_STORAGE_LIMIT");
@@ -37,24 +39,30 @@ function createReviewStore(store,p,clock,digest){
   try{
    const r=await store.get(key(id,"snapshot"));
    if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
-   // Never return historical source identity, even when access has been revoked.
-   const current=await loadCurrent(r.intent);
-   if(!current?.ok||!scopedEvidence(p,current.evidence)||!scopedGraph(p,current.graph))return bad("REVIEW_ACCESS_OR_COVERAGE_UNKNOWN");
+   // Current source access is required for returning any historical status.
+   // Unknown access or topology changes permanently invalidate this snapshot.
+   async function invalidate(reason){
+    const existing=await store.get(key(id,"invalidated"));
+    const matches=m=>m?.schema_version==="hae.review.invalidation.v1"&&m.snapshot_digest===r.record_digest&&m.review_id===id;
+    if(existing!=null)return matches(existing);
+    const value={schema_version:"hae.review.invalidation.v1",review_id:id,snapshot_digest:r.record_digest,reason,at:clock()};
+    try{await store.create(key(id,"invalidated"),value);return true}catch{return matches(await store.get(key(id,"invalidated")))}
+   }
+   let current;
+   try{current=await loadCurrent(r.intent)}catch{current=null}
+   if(!current?.ok||!scopedEvidence(p,current.evidence)||!scopedGraph(p,current.graph)){
+    if(!await invalidate("ACCESS_OR_COVERAGE_UNKNOWN"))return bad("REVIEW_INVALIDATION_UNKNOWN");
+    return bad("REVIEW_ACCESS_OR_COVERAGE_UNKNOWN");
+   }
    const now=clock();if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
    const f=compareEvidence(r.evidence,current.evidence,now);
    const impact=analyzeImpact(p,r.graph,f);
-   if(!impact.ok)return bad(impact.code);
-   const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW";
+   if(!impact.ok){if(!await invalidate("DEPENDENCY_UNKNOWN_OR_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");return bad(impact.code)}
+   const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW"||current.freshness?.status!=="CURRENT_OBSERVED";
    const marker=await store.get(key(id,"invalidated"));
    if(marker!=null&&(marker.schema_version!=="hae.review.invalidation.v1"||marker.snapshot_digest!==r.record_digest||marker.review_id!==id))return bad("REVIEW_INVALIDATION_UNKNOWN");
-   let stale=marker!=null||impact.affected.length>0||policyChanged;
-   if(stale&&marker==null){
-    const value={schema_version:"hae.review.invalidation.v1",review_id:id,snapshot_digest:r.record_digest,reason:policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED",at:now};
-    try{await store.create(key(id,"invalidated"),value)}catch{
-     const found=await store.get(key(id,"invalidated"));
-     if(!found||found.schema_version!==value.schema_version||found.snapshot_digest!==r.record_digest||found.review_id!==id)return bad("REVIEW_INVALIDATION_UNKNOWN");
-    }
-   }
+   const stale=marker!=null||impact.affected.length>0||policyChanged;
+   if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");
    return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,persisted_invalidation:stale,authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }

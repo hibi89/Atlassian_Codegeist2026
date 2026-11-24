@@ -1,0 +1,32 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {guardedPreview} from "../security/policy.js";
+import {previewTypedIntent} from "../core/ir/preview.js";
+import {canonical,validatePlan} from "../core/ir/plan.js";
+import {createReviewService} from "../state/review-service.js";
+import {getKvs,createDevelopmentStore} from "../state/forge-review.js";
+const digest=s=>createHash("sha256").update(s).digest("hex");
+test("development save and recheck use immutable metadata and never revive stale review",async()=>{
+ const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
+ let version="2026-11-24T11:00:00Z",denied=false;
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>denied?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:{ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",summary:"RAW_SECRET_FIXTURE"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}}};
+ const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ const service=createReviewService({store,clock,digest,preview,development:()=>true});
+ assert.equal((await createReviewService({store,clock,digest,preview,development:()=>false}).save(ctx,"review change")).ok,false);
+ const saved=await service.save(ctx,"review change");assert.equal(saved.ok,true);assert.equal(saved.saved_review.run_state,"POLICY_REVIEW");const id=saved.saved_review.review_id;
+ assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);assert.equal(JSON.stringify([...map.values()]).includes("/browse/"),false);
+ assert.equal((await service.refresh(ctx,id)).status,"NO_CHANGE_OBSERVED");
+ assert.equal((await service.refresh({...ctx,accountId:"other"},id)).ok,false);
+ version="2026-11-24T11:05:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
+ version="2026-11-24T11:00:00Z";assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");
+ const fresh=await service.save(ctx,"review change");assert.equal(fresh.ok,true);denied=true;assert.equal((await service.refresh(ctx,fresh.saved_review.review_id)).ok,false);denied=false;
+ assert.equal((await service.refresh(ctx,fresh.saved_review.review_id)).status,"STALE_REVIEW_REQUIRED");
+});
+test("KVS adapter uses only bounded conditional writes, package export resolved",async()=>{
+ const actual=getKvs();assert.equal(typeof actual.get,"function");assert.equal(typeof actual.set,"function");
+ const map=new Map();const kvs={get:async k=>map.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.equal(o.ttl.value,1);if(map.has(k))throw Error("conflict");map.set(k,v)}};
+ const store=createDevelopmentStore(kvs);await store.create("test:one",{x:1});await assert.rejects(store.create("test:one",{x:2}));assert.equal((await store.get("test:one")).x,1);
+ await assert.rejects(store.create("test:large",{x:"x".repeat(61441)}));
+});
