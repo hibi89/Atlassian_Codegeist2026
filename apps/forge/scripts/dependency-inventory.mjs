@@ -2,7 +2,7 @@
 import {readFileSync,readdirSync,statSync,writeFileSync} from "node:fs";
 import {join,resolve} from "node:path";
 import {createHash} from "node:crypto";
-const lock=JSON.parse(readFileSync("package-lock.json","utf8")),inventory=[];
+const lock=JSON.parse(readFileSync("package-lock.json","utf8")),inventory=[],noticeSections=[];
 for(const [path,entry] of Object.entries(lock.packages)){
  if(!path)continue;
  const dir=resolve(path);
@@ -13,8 +13,14 @@ for(const [path,entry] of Object.entries(lock.packages)){
   if(pkg.version!==entry.version)throw Error("LOCK_VERSION_MISMATCH:"+name);
   installed=true;
   licenseFiles=readdirSync(dir).filter(n=>/^(licen[cs]e|notice|copying)([._-].*)?$/i.test(n)).filter(n=>statSync(join(dir,n)).isFile()).map(n=>({file:n,sha256:createHash("sha256").update(readFileSync(join(dir,n))).digest("hex")}));
+  for(const file of licenseFiles){
+   const bytes=readFileSync(join(dir,file.file));
+   if(bytes.length>262144)throw Error("LICENSE_FILE_LIMIT:"+name);
+   noticeSections.push("===== "+name+"@"+entry.version+" / "+file.file+" / SHA256 "+file.sha256+" =====\n"+bytes.toString("utf8"));
+  }
  }catch(e){if(e.code!=="ENOENT"||!entry.optional)throw e}
  inventory.push({name,version:entry.version,license,installed,optional:!!entry.optional,license_files:licenseFiles,license_review:installed&&licenseFiles.length?"FILE_PRESENT_NOT_LEGAL_REVIEW":installed?"NEEDS_MANUAL_REVIEW":"OPTIONAL_NOT_INSTALLED"});
 }
 const summary={lock_entries:inventory.length,installed:inventory.filter(x=>x.installed).length,manual_review:inventory.filter(x=>x.license_review==="NEEDS_MANUAL_REVIEW").length,optional_absent:inventory.filter(x=>!x.installed).length,legal_status:"NOT_REVIEWED"};
+writeFileSync("third-party-notices-review.txt","HAE TrustFlow — installed dependency license/NOTICE evidence for review only.\nMissing entries listed below; not a complete distribution notice or legal approval.\n"+inventory.filter(x=>x.license_review==="NEEDS_MANUAL_REVIEW").map(x=>x.name+"@"+x.version+" declared "+x.license).join("\n")+"\n\n"+noticeSections.join("\n\n")+"\n");
 writeFileSync("dependency-inventory.json",JSON.stringify({summary,inventory},null,2)+"\n");console.log("CG_DEPENDENCY_INVENTORY:"+JSON.stringify(summary));console.log("CG_LICENSE_MANUAL:"+JSON.stringify(inventory.filter(x=>x.license_review==="NEEDS_MANUAL_REVIEW").map(({name,version,license})=>({name,version,license}))));

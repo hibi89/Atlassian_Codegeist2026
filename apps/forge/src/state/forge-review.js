@@ -3,6 +3,7 @@ import { readCurrentEvidence } from "../evidence/forge-evidence.js";
 import { fetch as forgeFetch } from "@forge/api";
 import { createCommentService } from "../security/approval/comment-service.js";
 import { createForgeCommentTransport } from "../executor/forge-comment.js";
+import { performance } from "node:perf_hooks";
 import { randomBytes } from "node:crypto";
 import { principal } from "../evidence/bundle.js";
 import { reserveDailySlot } from "./daily-budget.js";
@@ -52,6 +53,9 @@ function syntheticScopeAllowed(context,operation,cloudId){
  return typeof cloudId==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cloudId)&&context?.installContext==="ari:cloud:jira::site/"+cloudId&&context?.extension?.issue?.key==="HTF-2";
 }
 async function call(context,input,operation,confirmation){
+ const started=performance.now();
+ // 25s platform invocation limit; reserve a conservative 10s for POST/readback and storage.
+ const canDispatch=()=>performance.now()-started<15000;
  if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
  if(!syntheticScopeAllowed(context,operation,process.env.TRUSTFLOW_DEMO_CLOUD_ID))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
  try{
@@ -62,7 +66,7 @@ async function call(context,input,operation,confirmation){
   if(operation==="preview")return previewWithPolicy(context,input);
   if(operation==="provider")return createProviderService({...services,config:providerConfig(),allowedInstall:allowedDemoInstall,fetch:forgeFetch}).run(context,input);
   if(operation.startsWith("comment:")){
-   const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport()});
+   const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport(),canDispatch});
    return await service[operation.slice(8)](context,input,confirmation);
   }
   const service=["save","refresh","history","revalidate","recoverReport"].includes(operation)?createReviewService(services):createReportService(services);

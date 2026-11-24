@@ -61,6 +61,7 @@ jobs:
           path: |
             apps/forge/package-lock.json
             apps/forge/dependency-inventory.json
+            apps/forge/third-party-notices-review.txt
             apps/forge/src/ui/dist/
           if-no-files-found: error
           retention-days: 7

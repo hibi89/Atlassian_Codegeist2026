@@ -24,7 +24,7 @@ async function readback(transport,plan,accountId,id,digest){
   return hits.length===1?{state:"OBSERVED_SUCCESS",comment_id:hits[0].id,observation_digest:digest(canonical([hits[0].id,plan.target,adfComment(plan.typed_args.comment)]))}:{state:"UNKNOWN_OUTCOME_REVIEW"};
  }catch{return {state:"UNKNOWN_OUTCOME_REVIEW"}}
 }
-export function createCommentExecutor({store,p,clock,digest,transport,accountId}){
+export function createCommentExecutor({store,p,clock,digest,transport,accountId,canDispatch=()=>true}){
  const key=(id,kind)=>"cg:comment:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  const reservationKey=plan=>"cg:comment-review:"+p.tenant+":"+p.actor+":"+plan.review_id;
  function lineage(plan,id,observation){
@@ -63,11 +63,13 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId}
   let gate;
   try{gate=await preflight()}catch{gate=null}
   if(!gate?.ok||gate.plan_hash!==id||!validateCommentPlan(p,plan,clock()).ok)return persist("BLOCKED_BEFORE_DISPATCH",{code:gate?.code??"FINAL_PREFLIGHT_DENIED"});
+  if(!canDispatch())return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_INVOCATION_TIME_BUDGET"});
   // Durable latch makes crashes conservative and prevents replay even if a
   // caller accidentally invokes dispatch twice. Never retry POST.
   try{await store.create(key(id,"dispatch"),{schema_version:"hae.comment.dispatch.v1",request_id:id,payload_digest:attempt.payload_digest,at:clock()})}
   catch{return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"DISPATCH_LATCH_UNKNOWN"})}
   if(!validateCommentPlan(p,plan,clock()).ok)return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_EXPIRED_AT_DISPATCH"});
+  if(!canDispatch())return persist("BLOCKED_BEFORE_DISPATCH",{code:"WRITE_INVOCATION_TIME_BUDGET"});
   let response;
   try{response=await transport.post(plan.target,adfComment(plan.typed_args.comment))}catch{response=null}
   const status=response?.status;

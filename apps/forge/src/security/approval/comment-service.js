@@ -7,7 +7,7 @@ import {makeCommentPlan,validateCommentPlan,writeBinding,denyWrite,DEMO_ISSUE} f
 import {createCommentExecutor} from "../../executor/comment-executor.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const aliases={"change-review":"review change","incident-coordinate":"coordinate incident","release-review":"review release"};
-export function createCommentService({store,clock,digest,preview,development,nonce,allowedInstall,transport}){
+export function createCommentService({store,clock,digest,preview,development,nonce,allowedInstall,transport,canDispatch=()=>true}){
  function actor(context){const p=development()&&allowedInstall(context)?principal(context,digest):null;return p?.target===DEMO_ISSUE?p:null}
  const key=(p,id)=>"cg:comment-request:"+p.tenant+":"+p.actor+":"+id;
  async function material(p,context,reviewId){
@@ -67,10 +67,11 @@ export function createCommentService({store,clock,digest,preview,development,non
   try{
    const plan=await load(p,id);if(!plan)return denyWrite("WRITE_REQUEST_UNAVAILABLE");
    const c=await current(p,context,plan,id);if(!c.ok)return c;
+   if(!canDispatch())return denyWrite("WRITE_INVOCATION_TIME_BUDGET");
    const broker=createApprovalBroker(store,clock),a=await broker.consume(p,id,c.binding);if(!a.ok)return a;
    // Re-read authoritative evidence and permission again at actual executor boundary.
    // A consumed token is never restored, including when final recheck blocks.
-   return await createCommentExecutor({store,p,clock,digest,transport,accountId:context.accountId}).dispatch(plan,id,async()=>{
+   return await createCommentExecutor({store,p,clock,digest,transport,accountId:context.accountId,canDispatch}).dispatch(plan,id,async()=>{
     const final=await current(p,context,plan,id);
     if(!final.ok)return final;
     if(Object.keys(c.binding).some(k=>c.binding[k]!==final.binding[k])||a.receipt.expires_at<=clock())return denyWrite("WRITE_APPROVAL_STALE");
