@@ -198,3 +198,11 @@ test("P2 malformed or conflicting reconciliation identity cannot produce an obse
  prior.observation_digest="f".repeat(64);assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"RECONCILIATION_RECORD_INVALID");prior.observation_digest=outcome.observation_digest;
  outcome.known_comment_id="999";assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"OUTCOME_RECORD_INVALID");assert.equal((await readCommentJournal(f.store,principal(f.ctx,digest),r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal(f.posts(),1);
 });
+
+test("P2 historical success requires exact attempt reservation and durable dispatch evidence",async()=>{
+ const f=fixture(),r=await f.request();await f.writes.approve(f.ctx,r.request_id,r.request_id);assert.equal((await f.writes.execute(f.ctx,r.request_id)).ok,true);
+ const p=principal(f.ctx,digest),reservationKey=[...f.map.keys()].find(k=>k.startsWith("cg:comment-review:")),dispatchKey=[...f.map.keys()].find(k=>k.endsWith(":dispatch")),dispatch=f.map.get(dispatchKey);
+ assert.equal((await readCommentJournal(f.store,p,r.review_id)).status,"HISTORICAL_OBSERVED_SUCCESS");
+ f.map.delete(dispatchKey);assert.equal((await readCommentJournal(f.store,p,r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal((await f.reviews.history(f.ctx,r.review_id)).ok,false);assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");
+ f.map.set(dispatchKey,dispatch);f.map.get(reservationKey).at+=1;assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"WRITE_ATTEMPT_RESERVATION_INVALID");assert.equal((await readCommentJournal(f.store,p,r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal(f.posts(),1);
+});
