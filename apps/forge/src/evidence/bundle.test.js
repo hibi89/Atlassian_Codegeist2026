@@ -96,3 +96,16 @@ test("P2 link lookup is bound to actual issue object identity; invalid new sourc
  const after=await collectEvidence(ctx,{...adapter,read:async k=>sample(k,k==="DEMO-2"?"2026-11-25T11:00:00Z":"2026-11-24T11:00:00Z")},digest,clock);
  const r=compareEvidence(before.evidence,after.evidence,now);assert.equal(r.status,"UNKNOWN");assert.equal(r.changed.length,0);assert.equal(r.unknown.length,1);
 });
+
+test("P2 linked-source reads are bounded to three in flight and merged in input order",async()=>{
+ const keys=["DEMO-2","DEMO-3","DEMO-4","DEMO-5","DEMO-6","DEMO-7"];let active=0,peak=0,calls=0;
+ const a={links:async()=>({ok:true,keys,complete:true}),read:async k=>{
+   if(k==="DEMO-1")return sample(k);
+   active++;calls++;peak=Math.max(peak,active);
+   try{await Promise.resolve();if(k==="DEMO-4")throw Error("fixture failure");return sample(k)}finally{active--}
+ }};
+ const r=await collectEvidence(ctx,a,digest,clock);assert.equal(r.ok,true);assert.equal(peak,3);assert.equal(calls,6);
+ assert.equal(r.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");assert.equal(r.evidence.unknown_count,1);
+ assert.deepEqual(r.evidence.sources.map(s=>s.uri),["/browse/DEMO-1",...keys.filter(k=>k!=="DEMO-4").map(k=>"/browse/"+k)]);
+ const all={...a,read:async k=>sample(k)};const f=await refreshEvidence(ctx,all,digest,clock);assert.equal(f.freshness.status,"CURRENT_OBSERVED");assert.equal(f.evidence.sources.length,7);
+});

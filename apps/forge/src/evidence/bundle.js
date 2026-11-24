@@ -70,9 +70,17 @@ async function collectEvidence(context,adapter,digest,clock){
   let unknown=root.snapshot?.reportedTags?.status==="UNKNOWN"?1:0;
   if(links?.ok&&Array.isArray(links.keys)){
     if(links.keys.length>6||new Set(links.keys).size!==links.keys.length)unknown++;
-    for(const key of links.keys.slice(0,6)){
-      if(!validKey(key)||key===p.target){unknown++;continue}
-      try{const result=await adapter.read(key);if(!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++}catch{unknown++}
+    // Independent authorized link reads are bounded to three in flight.
+    // Integrate results in original order; a failure never certifies coverage.
+    const keys=links.keys.slice(0,6);
+    for(let offset=0;offset<keys.length;offset+=3){
+      const batch=await Promise.all(keys.slice(offset,offset+3).map(async key=>{
+        if(!validKey(key)||key===p.target)return {key,failed:true};
+        try{return {key,result:await adapter.read(key)}}catch{return {key,failed:true}}
+      }));
+      for(const {key,result,failed} of batch){
+        if(failed||!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++;
+      }
     }
   }else unknown++;
   let document_status="NOT_CONFIGURED";
