@@ -1,5 +1,5 @@
-# CODEGEIST 2026 — HAE TrustFlow final architecture baseline v1.0
-**Date:** 2026-11-24 KST · **Status:** P0 detailed baseline; 3-feature naming, AI choice, public deployment and submission are separately gated · **P1/P2:** NOT_RUN
+# CODEGEIST 2026 — HAE TrustFlow final architecture baseline v2.0 — OWNER_LOCKED
+**Date:** 2026-11-24 KST · **Status:** P0 owner-locked innovation architecture; AI choice, product name, public deployment and submission remain separately gated · **P1/P2:** NOT_RUN
 
 ## 0. Purpose and final product boundary
 Build a **Forge-native, independently installable Atlassian app** for teams using Jira (Confluence evidence optional subject to access). The app turns approved natural-language intents into safe, reproducible, stepwise workflows; each action is tied to source evidence, policy/approval and an inspectable outcome. It must be able to demonstrate real functionality rather than a click-through mock-up or a repackaged Jira Automation rule.
@@ -17,7 +17,7 @@ Build a **Forge-native, independently installable Atlassian app** for teams usin
 4. Reuse validated ideas/contracts of HAE (natural-language/UI), Lightning Azent (LA: typed IR, run state, safe execution), DBVORA (metadata, integrity and lineage), SOVIA (risk and approval audit). Their source repos remain untouched, not automatically copied, and retain their independent release gates.
 5. Real Forge Jira installation and functioning workflow precede node breadth. Design quality and story/visual evidence are integral.
 6. Natural language and retrieved documents are **untrusted suggestions**, not authority to call write APIs.
-7. Primary capabilities proposed: TruthGate evidence corroboration; SovereignGuard policy execution; DataPassport end-to-end lineage. **Exact selection of three branded modules remains OWNER_PENDING.** ImpactTwin and RecoveryPilot are reserve options, not silently included in core scope.
+7. Primary capabilities LOCKED: TruthGate 2.0 evidence corroboration, SovereignGuard 2.0 evidence/approval-bound execution, ProofGraph dynamic dependency and revalidation with existing DataPassport lineage. Full ImpactTwin and RecoveryPilot are reserve options; limited dependency impact and bounded reconcile are core.
 
 ## 2. Top three customer journeys (meaningful, not trivial Jira duplicates)
 ### Journey A (P0 critical): evidence-backed change execution
@@ -48,7 +48,7 @@ User asks: "Which release items are missing proof or contradict the latest accep
 - **LA**: validated versioned DAG, deterministic and restricted operation registry, state machine, retry bounds, read-back reconciliation, execution receipts.
 - **TruthGate**: retrieval, provenance, validity conditions, cross checks, conflict/unknown classification; not an omniscient 'trust score'.
 - **SovereignGuard**: SOVIA-inspired policy check BEFORE execution, scopes, high-risk consent and runtime guard; offline SOVIA post-hoc advisory is not sufficient to claim real blocking.
-- **DataPassport**: DBVORA-inspired source→transform→action→output lineage, receipts, integrity/snapshot metadata; Forge-hosted storage is not the same as DBVORA local SQLite backup.
+- **ProofGraph**: DBVORA-inspired DataPassport source→transform→action→output lineage and receipts, plus reverse dependency index, invalidation of affected decisions/approvals, selective revalidation and audit history. Forge storage is not local SQLite backup.
 - **Forge integration**: Jira Issue Panel for contextual experience, Project Page for dashboards; own installable Forge manifest, resolver and scoped Jira/Confluence API calls.
 - **Model Provider**: deterministic template + selectable free model when verified; provider-independent plan schema; optional Rovo/Atlassian MCP later.
 
@@ -89,5 +89,19 @@ Required: `manifest.yml` + legitimate Forge modules, Jira REST read, hosted UI +
 No automatic payments or subscriptions, customer content external transmission, permission/security changes, secrets, public application deployment, original repository changes, destructive source/DB changes, Marketplace submissions, production/Devpost submissions or merge into main without owner GO. Document-only commits and a draft PR are permitted in this task.
 
 ## 9. Explicit unknowns / next decisions
-- Official app name, precise three feature brands, Rovo bonus category, actual model/provider/free-tier terms, verified legal reuse, scope of Jira write action and owner production/Devpost approval remain pending.
+- Official app name, Rovo bonus category, actual model/provider/free-tier terms, verified legal reuse, scope of Jira write action and owner production/Devpost approval remain pending. Three innovation brands are LOCKED.
 - All percentages are UNASSESSED until denominator and acceptance evidence; no new code or real Forge install by this document.
+
+## 10. Owner-approved innovation selection — controlling v2 specification
+Owner decision CG-DEC-20261124-01 (2026-11-24 KST): TruthGate 2.0, SovereignGuard 2.0 and ProofGraph are LOCKED. HAE + LA remain the two foundation modules; DataPassport lineage is retained inside ProofGraph, bounded recovery in LA, dependency-impact analysis in ProofGraph. No scope deletion; full ImpactTwin/RecoveryPilot remain stretch. This approval locks design, not paid calls, granted scopes, live writes, production, distribution, main merge or submission.
+Read [INNOVATION_SPEC.md](INNOVATION_SPEC.md) as a normative part of this final blueprint, not optional research. In earlier sections TruthGate means TruthGate 2.0, SovereignGuard means SovereignGuard 2.0 and DataPassport means the retained lineage view/service within ProofGraph. For new behavior v2 supersedes earlier wording.
+- TruthGate 2.0: source identity/permission/version/digest + claim-to-evidence links, deterministic typed comparisons (test/requirement/ownership/policy), explicit missing/unknown/stale/conflict; AI may suggest claims but cannot certify them.
+- SovereignGuard 2.0: server authority and exact immutable plan/evidence/policy/actor/target/expiry/nonce; enforce current permissions and ProofGraph freshness at the actual executor; no write after known stale approval; outcome readback and conservative ambiguous-write handling.
+- ProofGraph: immutable versioned lineage plus reverse dependency traversal, current-state invalidation, affected-only revalidation with unchanged scoped facts reusable only if still fresh/authorized; historical receipts remain immutable. A changed dependency invalidates approval even if revalidation returns same answer; human reapproval required. Unknown/incomplete graph or inaccessible source blocks affected write. No global exactly-once/atomic Jira claim.
+- Primary demo: synthetic Jira/Confluence policy version changes AFTER approval; graph shows affected path, existing approval invalid, attempt denied with no effect, revalidate and newly approve exact plan, execute once and reconcile; unaffected path remains unaffected. A includes both normal and adverse path; B incident ownership conflict and C release evidence use same engine. Event-driven change notification optional if approved and feasible; mandatory on-demand and prewrite re-read never replaced by events.
+- New requirements CG-21/22 and SWU-24/25 are independent features, not tests. 25 total P1; 15 strengthened P2. Read queue/architecture/acceptance. Deadline unchanged, ProofGraph preflight before writer. No feature removal or new paid dependency.
+## 11. Competition strategy and presentation
+Core category recommendation Apps for Software Teams (owner account/category selection still pending). Real Forge/Jira install and 3 journeys; optional Confluence on approved scope; bonus order Rovo read-only review → Teamwork Graph → MCP → Marketplace only after core and no delay, actual eligibility/terms/GO required. Do not duplicate Rovo search, Jira Automation approvals, IPC change risk or generic dependency visualization. Distinctive mechanism is linked source version → decision → approval validity → actual write guard → reconciled effect.
+Five equal 20% judging dimensions: technical real install and adverse-path evidence; design live ProofGraph and accessible UI; impact paired synthetic workflow/revalidation measurement; innovation source-change invalidation tied to action; presentation English/translated Devpost plus real public under-5min demo (4:25 target). PDF 5–8 pages optional, not a substitute for required assets. [SUBMISSION_PLAN.md](SUBMISSION_PLAN.md) defines assets/measurements.
+## 12. Execution lock
+Owner expects immediate progression, early completion welcome, no deliberate delay. 11/24 lock → 11/28 base → 12/04 evidence/policy/graph foundation → 12/10 A including invalidation & readback → 12/14 B/C and UI freeze → 12/18 P2 → 12/21 package → 12/22 submission buffer. Start next safe wave immediately upon evidence, raise deadline threats immediately, never waive approvals or verification. See ROADMAP_COST_RISKS. P1 0/25, P2 0/15, weighted UNASSESSED at this design update.

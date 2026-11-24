@@ -3,8 +3,8 @@
   "created_kst": "2026-11-24",
   "project": "hibi89/Atlassian_Codegeist2026",
   "canonical_ref": "design/codegeist-2026-canonical",
-  "notes": "Planning candidates, not implementation; all P1 0 completed and P2 NOT_RUN. S/C/I/D/U tags are dominant dimensions, complexity integers 1-3 are effort heuristic not progress weights. Reassess critical path on each ㄱ. Permission/production/customer rights always explicit owner GO.",
-  "core_swu_count": 23,
+  "notes": "Planning candidates, not implementation; all P1 0 completed and P2 NOT_RUN. S/C/I/D/U tags are dominant dimensions, complexity integers 1-3 are effort heuristic not progress weights. Reassess critical path on each ㄱ. Permission/production/customer rights always explicit owner GO. Owner-locked v2 2026-11-24: preserve IDs 01-23, add 24/25; no implementation claimed. Mandatory ProofGraph preflight before bounded writer.",
+  "core_swu_count": 25,
   "complete_swu_count": 0,
   "weighted_progress": "UNASSESSED",
   "items": [
@@ -31,7 +31,9 @@
       "acceptance": "Jira Forge project builds and exposes a real issuePanel entry, no external provider required; missing-context renders safe error.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-02",
@@ -57,7 +59,9 @@
       "acceptance": "Real reader uses Forge authenticated route, validates issue key, bounds fields, handles 401/403/404/429 and returns immutable source ref.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-03",
@@ -83,7 +87,9 @@
       "acceptance": "3 bounded intents map to draft plans; unsupported intent returns human-readable refusal without API call.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-04",
@@ -105,10 +111,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Jira fields and links have immutable source ID, version/time, hash, permission/unknown distinctions.",
+      "acceptance": "Jira fields and links have immutable source ID, version/time, hash, permission/unknown distinctions. Normalize versioned claim/source references and access state; retain stable source key for graph.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-05",
@@ -134,7 +142,9 @@
       "acceptance": "Validates DAG/schema op versions; rejects unknown op, cycles, unexpected effects, raw shell/URL and privilege widening.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-06",
@@ -155,10 +165,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Detects version mismatch and stale source from actual timestamps; ambiguous/no update_at yields UNKNOWN.",
+      "acceptance": "Detects version mismatch and stale source from actual timestamps; ambiguous/no update_at yields UNKNOWN. Actual re-read of authoritative critical source version/access; missing version is UNKNOWN.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-07",
@@ -180,10 +192,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Identifies deterministic conflicting claims and produces cited conflict or uncertain result; no fabricated confidence.",
+      "acceptance": "Identifies deterministic conflicting claims and produces cited conflict or uncertain result; no fabricated confidence. Typed requirement/test/policy/ownership checks, citations and explicit uncertainty; no LLM-only PASS.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-08",
@@ -208,7 +222,9 @@
       "acceptance": "When owner authorizes additional read scopes, retrieves permitted page/version with denial and no cross-tenant leakage.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "OWNER_GO_REQUIRED"
+      "side_effect_gate": "OWNER_GO_REQUIRED",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-09",
@@ -230,10 +246,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Server-side DENY for unauthorized op/scope, cross tenant, unapproved egress, document-instruction injection; pure plan preview allowed.",
+      "acceptance": "Server-side DENY for unauthorized op/scope, cross tenant, unapproved egress, document-instruction injection; pure plan preview allowed. Policy version and exact current actor/target capability; deny if graph preflight or dependency snapshot invalid.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-10",
@@ -256,10 +274,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Server validation of exact plan/evidence hash, actor/tenant/target/expiry, one-time authorization and revoke; forged client boolean denied.",
+      "acceptance": "Server validation of exact plan/evidence hash, actor/tenant/target/expiry, one-time authorization and revoke; forged client boolean denied. Bind dependency snapshot digest, policy version and capability lock; v1 approval cannot execute v2.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-11",
@@ -280,10 +300,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Tenant-safe run/step transitions and idempotency conflict; reloaded status and unsupported replay denied.",
+      "acceptance": "Tenant-safe run/step transitions and idempotency conflict; reloaded status and unsupported replay denied. Persist reservation/attempt before remote effect; supported storage contention fails closed; no cross-system atomic claim.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-12",
@@ -297,7 +319,9 @@
         "CG-SWU-02",
         "CG-SWU-09",
         "CG-SWU-10",
-        "CG-SWU-11"
+        "CG-SWU-11",
+        "CG-SWU-25",
+        "CG-SWU-15"
       ],
       "allowed_paths": [
         "apps/forge/src/executor/**"
@@ -308,10 +332,12 @@
       "status": "OWNER_WRITE_SCOPE_GATE",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Only after explicit GO for write scope/test, one exact approved comment to synthetic issue, with safe 4xx/429/timeout and length limits.",
+      "acceptance": "Only after explicit GO for write scope/test, one exact approved comment to synthetic issue, with safe 4xx/429/timeout and length limits. Call SWU-25 mandatory interlock at actual writer boundary before dispatch; unknown/stale/revoked yields zero write.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "OWNER_GO_REQUIRED"
+      "side_effect_gate": "OWNER_GO_REQUIRED",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-13",
@@ -335,14 +361,16 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Actual remote outcome is re-read; timeout and duplicate intent produce REVIEW rather than blind retry.",
+      "acceptance": "Actual remote outcome is re-read; timeout and duplicate intent produce REVIEW rather than blind retry. Ambiguous remote result requires review; do not blind retry or assume global exactly-once.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-14",
-      "title": "DataPassport lineage/receipt service",
+      "title": "ProofGraph DataPassport lineage/receipt service",
       "phase": "P1",
       "req_ids": [
         "CG-10",
@@ -361,10 +389,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Trace source→check→plan→approval→side effect→read-back, clear broken links, metadata only and no fake database backups.",
+      "acceptance": "Trace source→check→plan→approval→side effect→read-back, clear broken links, metadata only and no fake database backups. Immutable versioned nodes/typed edges and historical receipts; tenant-safe bounded graph query.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-15",
@@ -386,10 +416,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Policy recommendations become actual fail-closed runtime gate with audit reason and bypass negative tests.",
+      "acceptance": "Policy recommendations become actual fail-closed runtime gate with audit reason and bypass negative tests. Runtime interlock outside AI; no bypass through direct writer.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-16",
@@ -411,10 +443,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Metadata classification, hash/retention/provenance and observed capacity only; no full DB access or restore claim.",
+      "acceptance": "Metadata classification, hash/retention/provenance and observed capacity only; no full DB access or restore claim. Inspect graph metadata, retention and provenance; preserve original DataPassport capability.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-17",
@@ -428,7 +462,8 @@
       "depends_on": [
         "CG-SWU-04",
         "CG-SWU-06",
-        "CG-SWU-09"
+        "CG-SWU-09",
+        "CG-SWU-07"
       ],
       "allowed_paths": [
         "apps/forge/src/ui/**"
@@ -439,10 +474,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Real source cards, contradictions, policy reasons and UNKNOWN states, keyboard/tab/error/empty/loading states.",
+      "acceptance": "Real source cards, contradictions, policy reasons and UNKNOWN states, keyboard/tab/error/empty/loading states. Connected evidence/claim comparisons; no permission leak in source/graph UI.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-18",
@@ -458,7 +495,9 @@
         "CG-SWU-11",
         "CG-SWU-13",
         "CG-SWU-14",
-        "CG-SWU-17"
+        "CG-SWU-17",
+        "CG-SWU-24",
+        "CG-SWU-25"
       ],
       "allowed_paths": [
         "apps/forge/src/ui/**"
@@ -469,10 +508,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Jira issue page shows exact approved diff, DAG steps, actual receipt and stale/no-right feedback, not mock only.",
+      "acceptance": "Jira issue page shows exact approved diff, DAG steps, actual receipt and stale/no-right feedback, not mock only. Show affected/unaffected path, stale approval reasons, explicit revalidation/reapproval and accessible graph/table.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-19",
@@ -492,7 +533,9 @@
         "CG-SWU-12",
         "CG-SWU-13",
         "CG-SWU-15",
-        "CG-SWU-18"
+        "CG-SWU-18",
+        "CG-SWU-24",
+        "CG-SWU-25"
       ],
       "allowed_paths": [
         "apps/forge/src/workflows/**",
@@ -504,10 +547,12 @@
       "status": "OWNER_WRITE_SCOPE_GATE",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Jira issue → evidence → policy → approved bounded write → read-back → provenance UI incl denied scenario.",
+      "acceptance": "Jira issue → evidence → policy → approved bounded write → read-back → provenance UI incl denied scenario. Source/policy changed after approval -> actual deny/no side effect -> revalidate + fresh approval -> bounded write/readback; unrelated paths remain unchanged.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "OWNER_GO_REQUIRED"
+      "side_effect_gate": "OWNER_GO_REQUIRED",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-20",
@@ -532,10 +577,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Linked incident context / ownership conflict, guarded action and audit, not only simple auto assignment.",
+      "acceptance": "Linked incident context / ownership conflict, guarded action and audit, not only simple auto assignment. Use same invalidation and reconciliation contracts for incident ownership.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-21",
@@ -548,7 +595,9 @@
       "depends_on": [
         "CG-SWU-07",
         "CG-SWU-14",
-        "CG-SWU-17"
+        "CG-SWU-17",
+        "CG-SWU-24",
+        "CG-SWU-25"
       ],
       "allowed_paths": [
         "apps/forge/src/workflows/**",
@@ -560,10 +609,12 @@
       "status": "BLOCKED_DEPENDENCY",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
-      "acceptance": "Multi-issue evidence report with missing/stale and UNKNOWN vs denied, traceable snapshots.",
+      "acceptance": "Multi-issue evidence report with missing/stale and UNKNOWN vs denied, traceable snapshots. Release review shows impact closure and selective revalidation, no write by default.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-22",
@@ -577,7 +628,8 @@
         "CG-SWU-03",
         "CG-SWU-05",
         "CG-SWU-07",
-        "CG-SWU-09"
+        "CG-SWU-09",
+        "CG-SWU-23"
       ],
       "allowed_paths": [
         "apps/forge/src/ai/**"
@@ -591,7 +643,9 @@
       "acceptance": "Deterministic fallback; provider switch contract validated; synthetic opt-in only, no paid charge or raw enterprise source leak.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "OWNER_GO_REQUIRED"
+      "side_effect_gate": "OWNER_GO_REQUIRED",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     },
     {
       "id": "CG-SWU-23",
@@ -620,7 +674,81 @@
       "acceptance": "Bounded requests/log sizes and disabled paid endpoint by default, displayed owner setup for real billing console.",
       "tests": "NOT_RUN",
       "code_sha": null,
-      "side_effect_gate": "NONE_AT_PLAN_TIME"
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
+    },
+    {
+      "id": "CG-SWU-24",
+      "title": "ProofGraph reverse dependency index and scoped invalidation",
+      "phase": "P1",
+      "req_ids": [
+        "CG-10",
+        "CG-21",
+        "CG-07",
+        "CG-12"
+      ],
+      "depends_on": [
+        "CG-SWU-14",
+        "CG-SWU-07",
+        "CG-SWU-10"
+      ],
+      "allowed_paths": [
+        "apps/forge/src/lineage/**",
+        "apps/forge/src/state/**",
+        "apps/forge/src/security/approval/**"
+      ],
+      "dimension": "D",
+      "complexity": 3,
+      "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
+      "status": "BLOCKED_DEPENDENCY",
+      "attempts_before_redesign": 0,
+      "attempts_after_redesign": 0,
+      "acceptance": "Caller accepts observed authorized version/access/policy change, indexes scoped immutable graph, traverses bounded affected closure, invalidates only dependent approval/plan, keeps unchanged branch and historical receipt; cycles/incomplete/access conflict fail closed; persisted/queryable result.",
+      "tests": "NOT_RUN",
+      "code_sha": null,
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
+    },
+    {
+      "id": "CG-SWU-25",
+      "title": "Selective revalidation and mandatory prewrite interlock",
+      "phase": "P1",
+      "req_ids": [
+        "CG-22",
+        "CG-04",
+        "CG-06",
+        "CG-07",
+        "CG-08",
+        "CG-12"
+      ],
+      "depends_on": [
+        "CG-SWU-24",
+        "CG-SWU-06",
+        "CG-SWU-09",
+        "CG-SWU-10",
+        "CG-SWU-11",
+        "CG-SWU-15"
+      ],
+      "allowed_paths": [
+        "apps/forge/src/evidence/**",
+        "apps/forge/src/security/**",
+        "apps/forge/src/lineage/**",
+        "apps/forge/src/state/**"
+      ],
+      "dimension": "C",
+      "complexity": 3,
+      "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
+      "status": "BLOCKED_DEPENDENCY",
+      "attempts_before_redesign": 0,
+      "attempts_after_redesign": 0,
+      "acceptance": "Actual caller refreshes critical scoped source and policy from adapters, revalidates affected closure, checks current dependency snapshot/actor/scope/TTL, refuses stale or unknown approval even if same result, returns new draft for explicit reapproval; no remote write in this SWU; writer 12 invokes interlock. Unaffected reuse only when freshly authorized/current.",
+      "tests": "NOT_RUN",
+      "code_sha": null,
+      "side_effect_gate": "NONE_AT_PLAN_TIME",
+      "retry_stage": "INITIAL",
+      "retry_evidence": []
     }
   ],
   "stretch": [
@@ -634,7 +762,7 @@
     },
     {
       "id": "CG-STRETCH-02",
-      "title": "ImpactTwin impact map and RecoveryPilot bounded recovery",
+      "title": "Full ImpactTwin simulation and RecoveryPilot compensation beyond core dependency impact and bounded reconcile",
       "depends_on": [
         "CG-SWU-19",
         "CG-SWU-14"
@@ -648,6 +776,17 @@
         "CG-SWU-19"
       ],
       "status": "OWNER_USAGE_AND_BONUS_GATE"
+    },
+    {
+      "id": "CG-STRETCH-04",
+      "title": "Approved Jira/Confluence change event ingestion (advisory; prewrite refresh mandatory)",
+      "depends_on": [
+        "CG-SWU-24",
+        "CG-SWU-25",
+        "CG-SWU-19"
+      ],
+      "status": "OWNER_SCOPE_GATE_NO_IMPACT_ON_CORE"
     }
-  ]
+  ],
+  "retry_escalation_policy": "Initial 2 evidence-backed no-progress attempts -> ISOLATED_REDESIGN_PENDING -> different method 2 more -> SOLMAX_BATCH_PENDING; critical safety early request; no attempts reset."
 }

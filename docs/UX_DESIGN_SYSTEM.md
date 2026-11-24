@@ -9,7 +9,7 @@ Contest Design 20% and Presentation 20% reward clarity, consistency and credible
 3. **Plan Studio**: typed DAG with actions and required scopes, versioned source bundle, visible step dependencies, allowed/fail routes and readable before/after preview.
 4. **SOVIA Policy Gate**: actor, target, requested permissions, observed rights, exfil destination, policy decision and review reasons.
 5. **Execution Timeline**: exact approval, time-bounded execution, pending/running/reconciling/succeeded/failed/unknown; remote readback receipt; duplicate safety.
-6. **DataPassport**: graph source → claim → plan → approval → actual Jira action → readback; select edge for provenance and run/step/hash reference.
+6. **ProofGraph (DataPassport view retained)**: graph source → claim → plan → approval → actual Jira action → readback; select edge for provenance and run/step/hash reference; current changed/affected/unaffected paths, invalidation reasons, review queue and explicit revalidate/reapprove.
 7. **Project Dashboard**: only real measured run counts, blocked risks and evidence states; linked detail; no invented "99.8% certainty" or enterprise results.
 8. **Settings**: model/provider status (including no-AI fallback), privacy, allowed connectors, data retention; paid/external features visibly disabled until owner/user approves.
 
@@ -40,3 +40,7 @@ React Flow/xyflow is a candidate under MIT (not yet installed). Optimize bundle 
 03:20–03:55 denial/changed-source failure safely blocked, no duplicate write.
 03:55–04:25 differentiation and applicable enterprise value; short CTA.
 Avoid effects that mask actual app performance; caption English if video speech in Korean.
+
+## v2 design centerpiece — ProofGraph
+Desktop three-region control tower: navigation, central live dependency graph, right inspector of old/new revision and reason. Tabs/sections: Overview, TruthGate, ProofGraph, Policy, Execution, Reports, Settings; preserve all 8 original screens. In narrow Jira panel use step wizard and graph list/table fallback. Color and icon/text distinguish VALID, STALE, REVIEW_REQUIRED, UNKNOWN; stable layout, changed source highlighted, affected paths traced, unaffected dimmed but legible. Clicking node opens permission-checked evidence details; inspector shows safe excerpt/ref, version, policy reason and approval state. Revalidate button shows server pending/result; reapproval is a separate explicit action; execute disabled on stale/unknown, but server guard authoritative. No auto green after local graph calculation.
+Visuals from real data: graph affected vs total dependencies, source states, valid/invalidated approvals, requested/blocked/executed/reconciled effects, actual recheck count/full comparison/time. Label synthetic fixture, sample size, run ref and SHA; no arbitrary confidence percentages. React Flow/Zod candidates require license/Forge build and size check. P2 UX: keyboard traversal, screen-reader status announcements, reduced motion, contrast, mobile, 403/error/empty, invalidation race, fresh state after reload. Storyboard in SUBMISSION_PLAN supersedes earlier timings while retaining 4:25.

@@ -1,9 +1,9 @@
 # Codegeist 2026 — P1 SWU CPAA dependency DAG
 
-**Source:** `docs/SWU_QUEUE.json` (23 planned actual feature-coding candidates); Core candidate count **0/23 implemented** at design creation. Weighted rates **UNASSESSED**. Stretch options excluded from denominator until owner scope decision. Design/docs, P2 tests and Devpost work are not SWUs.
+**Source:** `docs/SWU_QUEUE.json` (25 planned actual feature-coding candidates); Core candidate count **0/25 implemented** at design creation. Weighted rates **UNASSESSED**. Stretch options excluded from denominator until owner scope decision. Design/docs, P2 tests and Devpost work are not SWUs.
 
 ## Critical path / phase gates
-`01 Forge entry → 02 Jira reader → 04 evidence → 06 freshness + 07 contradictions → 17 evidence UI → 18 approval/execution UI → 19 core vertical A`.
+`01 Forge entry → 02 Jira reader → 04 evidence → 06 freshness + 07 contradictions → 17 evidence UI → 18 approval/execution UI → 19 core vertical A`; new mandatory prewrite chain `04+11→14; 14+07+10→24; 24+06+09+10+11+15→25→12→13→18→19`.
 Simultaneously:
 - `01 → 03 intent → 05 typed IR → 09 policy → 10 approval → 12 bounded writer → 13 reconciliation → 18 → 19`.
 - `05 → 11 run state → 14 lineage → 18`.
@@ -20,8 +20,9 @@ Simultaneously:
 | W2 | 04, 09, 11 | Evidence, security boundary and durable state |
 | W3 | 06, 07, 10, 14 | Cross checks, approval, lineage; no actual external writes |
 | W4 | 15, 17, 23 | Guard and connected UI/cost stops |
-| W5 | 12, 13, 18, 19 | Approved bounded Jira action, reconciliation, actual change journey A |
-| W6 | 08, 16, 20, 21, 22 | Confluence/metadata/secondary journeys/AI; blocked parts do not stall independent READY |
+| W5 | 24, 25 | Reverse dependency invalidation, selective revalidation/prewrite interlock; no external write |
+| W6 | 12, 13, 18, 19 | Approved bounded Jira action, reconciliation, actual change journey A |
+| W7 | 08, 16, 20, 21, 22 | Confluence/metadata/secondary journeys/AI; can start any independent READY earlier; 22 requires 23 |
 
 These waves are guidance, not a blind fixed batch. On each `ㄱ` calculate CPAA from latest HEAD, dependency DAG, downstream unblock count and real owner gates, then implement 1–6 actual vertical SWUs (typical 3–6), source→caller→callee→failure path→minimal local checks→safe commit. Reassess next READY in same turn if feasible. Never increment SWU count for only docs, mocks or tests.
 
@@ -39,3 +40,6 @@ Per SWU initial 2 genuine no-progress code attempts → ISOLATED_REDESIGN_PENDIN
 
 ## Initial status snapshot
 As of 2026-11-24 KST, SWU-01 READY_CODE, others dependency-blocked or owner-gated; actual new-repo Forge implementation **NOT_RUN**; branch documentation commits do not count. Future P1 implementation SHA/feature/test evidence recorded in STATUS.
+
+## v2 queue rules
+CG-DEC-20261124-01 adds 24 and 25, preserves 01–23. 17 requires 07; 12 requires 15+25; 18/19/21 require 24+25; 22 requires 23. JSON is exact dependency authority; DAG validated acyclic during design publication. No owner permission inferred from code readiness. W0 executes 01 before dependent 03/02; advance independent 08/16/22 when actual prerequisites and approval available. Optional event ingestion is stretch, prewrite reread is mandatory. Start all safe READY earlier than milestone if feasible.

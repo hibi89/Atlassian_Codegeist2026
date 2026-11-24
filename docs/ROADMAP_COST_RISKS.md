@@ -2,15 +2,15 @@
 
 ## Hard deadline
 Official Devpost deadline: **2026-12-22 at 12:00 Pacific Standard Time = 2026-12-23 at 05:00 Korea Standard Time**. Prefer complete and submitted ahead of deadline; no late submission is promised.
-Date-local assumptions: planning date 2026-11-24, code work priority begins 2026-11-25. Calendar estimates are targets, not elapsed-time commitments or verification claims.
+Date-local assumptions: planning date 2026-11-24, code work begins immediately on owner execution instruction, without waiting for 2026-11-25. Calendar estimates are targets, not elapsed-time commitments or verification claims.
 
 | Dates (KST) | Critical outcome | Exit evidence |
 |---|---|---|
 | 11/24 | P0 canonical design, repo/branch/SWU, competition gate | canonical draft PR, owner choices list |
 | 11/25–11/28 | P1 Forge installable skeleton + real Jira issue read and template intent | exact source SHA, local lint/smoke, development install if approved/possible |
-| 11/29–12/04 | Evidence/provenance + typed IR + policy/approval preview | two failure paths, source ref and preview UI |
-| 12/05–12/10 | Bounded approved Jira action + readback + receipt/lineage | owner-approved test account scopes, actual Jira result |
-| 12/11–12/14 | Multi-source cross-check, user experience and journeys B/C | source/contradiction feedback, connected UI |
+| 11/29–12/04 | Evidence/provenance + typed IR + policy/approval preview + ProofGraph lineage/index foundation | actual typed claims, versioned graph, source ref and preview UI; 24/25 as soon as READY |
+| 12/05–12/10 | ProofGraph invalidation/revalidation (24/25 before 12), bounded approved Jira action + readback + receipt/lineage | changed source blocks old approval, fresh approval, actual synthetic Jira result; owner-approved scopes |
+| 12/11–12/14 | Multi-source cross-check, journeys B/C, complete UI and graph/measurement hooks | actual connected workflows and UI, feature freeze by end 12/14 |
 | 12/15–12/18 | P2 security, installation, regression, independent review & fixes | exact SHA PASS/FAIL and blockers |
 | 12/19–12/21 | English Devpost write-up, real screenshots, <5min demo video | owner-reviewed ready-to-submit assets |
 | 12/22 | submission buffer and owner GO, no new risky scope | actual Devpost submission URL/date only after verified |
@@ -41,4 +41,7 @@ Cost controls: monthly execution/storage quotas checked in provider account; lim
 Any new permission/scope, fee, live customer dataset, secret, production/distribution, main merge, Marketplace/Devpost submission → explicit owner GO. Independent safe coding continues; don't label unauthorized path READY.
 
 ## Stretch prioritization
-Only after real end-to-end A and core P2 are feasible: extra nodes (each complete capability), optional Rovo/Atlassian MCP bonus (actual official Forge module integration mandatory), ImpactTwin, RecoveryPilot and local provider bridge. Stretch not in core 23 SWU count.
+Only after real end-to-end A and core P2 are feasible: extra nodes (each complete capability), optional Rovo/Atlassian MCP bonus (actual official Forge module integration mandatory), ImpactTwin, RecoveryPilot and local provider bridge. Stretch not in core 25 SWU count.
+
+## Schedule control — owner locked
+Milestones are latest internal targets not start barriers. Early finish advances next safe wave immediately; no deliberate delay. Work first on 01 then 03/02; early request D-05/06 installation/scopes and D-09 rights, D-03 AI fallback. W3/W4 graph substrate and policy in parallel only when separate allowed paths/worker tooling exists; mandatory 24/25 before writer. At each session record schedule delta (milestone reached vs target, no fabricated estimate), exact completed candidates and remaining critical blockers. If any target threatened: immediately reprioritize safe READY, isolate actual failures, request necessary specialist/owner decision early, defer optional bonus only; no silent scope cut, no unsafe gate bypass. Do not wait for full CI per P1 wave except mandatory immediate safety. Prepare synthetic fixtures/diagram/storyboard while coding without counting them as SWU; real captures after actual P2. Target package 12/19–21, owner-reviewed submission 12/22 KST, hard 12/23 05:00. Preserve 12/22 buffer; actual elapsed performance UNMEASURED.

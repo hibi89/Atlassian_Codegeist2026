@@ -38,3 +38,10 @@ Qualified entries are evaluated on Technology, Design, Potential Impact, Innovat
 ## Bonus / scope boundaries
 Bonus variants include use of Forge Rovo/agent-related modules, Atlassian MCP, Teamwork Graph integration and Marketplace criteria. Exact module/eligibility details must be reconfirmed from official current rules before pursuing; no unverified bonus claims.
 Marketplace listing/approval or production external distribution may be separately risky and requires owner GO. Forge runtime pricing and LLM API billing must be checked, not inferred from free hackathon entry.
+
+## Owner-locked v2 submission additions
+- [ ] TruthGate 2.0, SovereignGuard 2.0, ProofGraph (DataPassport lineage retained) appear consistently in actual app, English text, screenshots, video and optional PDF.
+- [ ] Demonstrate source or policy change after approval, affected-only revalidation, stale approval denied with zero observed write, fresh approval and readback.
+- [ ] Actual measured fixtures, timing/counts/limitations; no invented confidence, no customer data.
+- [ ] Bonus order: read-only Rovo Best Agents → Teamwork Graph → MCP → Marketplace if actual eligibility, scopes, cost and GO; never block main delivery.
+- [ ] [SUBMISSION_PLAN.md](SUBMISSION_PLAN.md) asset checklist, proof and schedule; keep 12/22 internal deadline; earlier readiness welcome. Recheck current official rules before submission; no submission GO yet.

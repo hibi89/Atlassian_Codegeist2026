@@ -1,6 +1,6 @@
 # HAE TrustFlow for Atlassian — Codegeist 2026
 
-**Status:** P0 canonical architecture candidate / P1 NOT_RUN / P2 NOT_RUN / release & Devpost SUBMISSION HOLD.
+**Status:** P0 owner-locked v2 architecture baseline / P1 NOT_RUN / P2 NOT_RUN / release & Devpost SUBMISSION HOLD.
 **Repository:** https://github.com/hibi89/Atlassian_Codegeist2026
 **Deadline:** 2026-12-22 12:00 PST = 2026-12-23 05:00 KST.
 **Mission:** A Forge-native, genuinely runnable Jira automation app where natural-language plans are grounded in authorized evidence, gated by policies/human approval, and followed by transparent data lineage and execution receipts.
@@ -26,7 +26,7 @@
 - `verify/p2-*`: create only for later independent acceptance/rework.
 
 ## Current feature selection
-**HAE + LA** are the core orchestration principles. Recommended, **not yet owner-locked** value modules: **TruthGate** (multi-source evidence), **SovereignGuard** (SOVIA-inspired policy), **DataPassport** (DBVORA-inspired lineage). Alternatives: ImpactTwin, RecoveryPilot. One connected journey first; three meaningful customer scenarios as the product demonstration target.
+**HAE + LA** are the foundation. Owner-LOCKED value modules: **TruthGate 2.0** (dynamic multi-source evidence), **SovereignGuard 2.0** (evidence/approval-bound execution), **ProofGraph** (DataPassport lineage + selective impact/revalidation). Bounded recovery remains in LA; full ImpactTwin/RecoveryPilot remain stretch. One connected journey first; three meaningful customer scenarios as the product demonstration target.
 
 ## Explicit NOT_DONE
 No new-repo Forge implementation, actual installation, independent review, real Jira/Confluence integration, customer data, production deployment, paid model invocation or Devpost submission has occurred just by creating these documents. Previous HAE synthetic prototype is an external reference only.
@@ -36,3 +36,6 @@ Public repo: never upload secrets, .env, customer documents, real Jira datasets,
 
 Rules: https://codegeist2026.devpost.com/rules
 Forge pricing: https://developer.atlassian.com/platform/forge/forge-platform-pricing/
+
+## Start work
+25 P1 SWUs (0 implemented); 15 P2 gates (0 PASS). Exact scope and design: [FINAL_BLUEPRINT](docs/FINAL_BLUEPRINT.md), [INNOVATION_SPEC](docs/INNOVATION_SPEC.md), [SUBMISSION_PLAN](docs/SUBMISSION_PLAN.md). First wave 01→03/02. Dates are latest targets: finish earlier when safe; never wait for a calendar slot. No automatic main merge.

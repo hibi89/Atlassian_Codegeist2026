@@ -11,7 +11,8 @@ NOT_RUN = did not execute; BLOCKED = required authority/environment missing; PAR
 | P1-C | CG-03/04/14 | real permissioned Jira/Confluence read, dated evidence, conflict/unknown | NOT_RUN |
 | P1-D | CG-06/07/12 | runtime deny and actor/hash-bound approval, core unsafe negative cases | NOT_RUN |
 | P1-E | CG-08/09 | explicit approved Jira write on synthetic issue, readback & dedupe | OWNER_GO / NOT_RUN |
-| P1-F | CG-10/18 | step receipts and provenance lineage with distinct source/change references | NOT_RUN |
+| P1-F | CG-10/18 | step receipts and ProofGraph DataPassport lineage with distinct source/change references | NOT_RUN |
+| P1-K | CG-21/22 | actual invalidation closure + selective revalidation + mandatory prewrite interlock with stale denial and fresh approval | NOT_RUN |
 | P1-G | CG-11 | functioning UI from real BE states, no decorative-only graphs | NOT_RUN |
 | P1-H | CG-15/16 | incident and release journeys with concrete nonduplicative value | NOT_RUN |
 | P1-I | CG-13/17 | no-cost fallback, optional model adapter with disabled paid paths | NOT_RUN |
@@ -50,3 +51,16 @@ Real P2 gates cannot be satisfied by a prior HAE synthetic CI run, screenshot of
 These are official equal-weight criteria; never mislabel internally invented 100-point sub-scores as competition results.
 
 Official rules: https://codegeist2026.devpost.com/rules
+
+## v2 mandatory acceptance extensions (same 15 P2 gates; all NOT_RUN)
+| Gate | Added case and pass condition |
+|---|---|
+| P2-04/05 | Typed conflicting claims, duplicate/derived sources, no access, stale and same-result-new-version distinct; source/policy change after approval causes review; no invented certainty |
+| P2-06/09 | Forge runtime identity, forged graph/revision/approval, revoked scope, bypass direct writer, cross-tenant graph traversal; unauthorized effects 0 in defined fixtures, no bypass; critical unknown fails closed |
+| P2-07/08 | Changed approval rejected before actual dispatch, fresh human approval, exact observed Jira readback; duplicate/concurrent reservation, crash before/after call, ambiguous timeout, no blind replay, immutable historical receipt; test 2 attempts against same synthetic target |
+| P2-08/12 | Dependency diamond, unrelated branch, cycle/orphan/cap, policy/access change, stale index, duplicate/out-of-order hints if event feature; affected set equals independent fixture oracle; selective recheck vs full recheck same safety decision; compare count/time, no fabricated gain |
+| P2-10 | No external AI necessary; quota/egress opt-in/redaction verified; denied without key |
+| P2-11 | Accessible live graph & list, affected/unaffected states, reason, revalidate/reapprove; no green before readback |
+| P2-13/14 | Independent technical and design reviewers actually run; judge fresh site install; normal + stale-source denial + new approval/readback demo, video/English/installation link |
+| P2-15 | Versioned rights/NOTICE, cost console/approval; optional bonus separately proved |
+Suggested fixtures minimum: 20 mixed change scenarios (include unrelated, same-result version change, access revoke, policy update, multiple affected nodes and broken graph), 10 unauthorized/replay/timeout cases plus 3 complete customer journeys. Counts are planned test scope, not current PASS. Independent oracle from explicitly authored fixture expected affected nodes/decisions, not the engine itself. Record actual confusion counts and sample size. Full P2 remains separate from P1; no independent audit until real execution.

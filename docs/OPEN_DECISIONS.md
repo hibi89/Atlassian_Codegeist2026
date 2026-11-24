@@ -12,7 +12,7 @@
 ## Pending explicit owner decisions
 | ID | Question | Safe default |
 |---|---|---|
-| D-01 | Confirm feature three names TruthGate + SovereignGuard + DataPassport vs ImpactTwin/RecoveryPilot | Recommendation remains provisional; common evidence/policy/lineage infrastructure may be designed |
+| D-01 | **RESOLVED 2026-11-24 — CG-DEC-20261124-01** | TruthGate 2.0 + SovereignGuard 2.0 + ProofGraph LOCKED; DataPassport retained within ProofGraph; bounded recovery in LA; full ImpactTwin/RecoveryPilot stretch |
 | D-02 | Product name and visual brand | Working title HAE TrustFlow; no legal/marketplace name claim |
 | D-03 | Demo AI provider/model and free terms | No-model deterministic path; do not hardcode Gemini 3.8 or other unverified model |
 | D-04 | Official Devpost category and bonus strategy | Software Teams candidate; bonus stretch |
@@ -31,3 +31,7 @@ A-04 Graphify / REA tools are developer-side optional; all-n8n-node equivalent e
 A-05 React Flow/Zod/OpenLineage/XState candidate use determined by small real fixtures and Forge feasibility, not GitHub stars.
 A-06 Human-reviewed source differences + policy deny, not model confidence percentages, determine safe action.
 A-07 Branch §design/codegeist-2026-canonical§ is design baseline until owner merges; §main§ untouched after bootstrap.
+
+## Decision record CG-DEC-20261124-01
+Owner accepted research recommendation and requested final design and schedule update before implementation. Owner decision CG-DEC-20261124-01 (2026-11-24 KST): TruthGate 2.0, SovereignGuard 2.0 and ProofGraph are LOCKED. HAE + LA remain the two foundation modules; DataPassport lineage is retained inside ProofGraph, bounded recovery in LA, dependency-impact analysis in ProofGraph. No scope deletion; full ImpactTwin/RecoveryPilot remain stretch. This approval locks design, not paid calls, granted scopes, live writes, production, distribution, main merge or submission.
+D-02–D-10 remain as written. Recommended bonus order Best Agents read-only Rovo, Teamwork Graph, MCP, Marketplace only after core and actual eligibility/free terms/owner GO. No new paid service or production approval. Internal milestone dates are latest targets, no intentional wait; early safe progress welcome. User GO to start code is next; this decision authorizes design publication to design and feature branches only.
