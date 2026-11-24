@@ -1,0 +1,352 @@
+{
+  "schema_version": "hae.codegen.p2.ledger.v1",
+  "project": "HAE TrustFlow",
+  "date_kst": "2026-11-24",
+  "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+  "p1_candidates": 25,
+  "p1_total": 25,
+  "p2_total": 15,
+  "p2_pass": 1,
+  "p2_partial": 10,
+  "p2_not_run": 4,
+  "weighted_implementation": "UNASSESSED",
+  "weighted_verification": "UNASSESSED",
+  "records": [
+    {
+      "gate_id": "P2-01",
+      "req_ids": [
+        "CG-01",
+        "CG-19"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-01",
+      "observed": "Locked npm install, native syntax and Custom UI build PASS. Exact Forge CLI lint with real configuration NOT_RUN.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Forge CLI lint on owner PC",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-02",
+      "req_ids": [
+        "CG-01",
+        "CG-19",
+        "CG-20"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-02",
+      "observed": "Existing development v2.1.0 not changed; fresh judge installation not performed.",
+      "status": "NOT_RUN",
+      "artifact_ref": null,
+      "risk": "Owner approved test-site setup",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-03",
+      "req_ids": [
+        "CG-03",
+        "CG-14"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-03",
+      "observed": "Native authorized Jira/Confluence transport fixtures, denial and bounds passed. Actual new Forge API/scopes/optional product install NOT_RUN.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Real synthetic Jira/Confluence permissions and API",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-04",
+      "req_ids": [
+        "CG-02",
+        "CG-04",
+        "CG-05",
+        "CG-17"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-04",
+      "observed": "Native exact source rejects malformed values, malformed JSON, unknown/hostile ops, invalid scopes/target, duplicate IDs, cycles, stale/future timestamps and unsafe intents; typed claim conflict, no-certification and unknown cases passed.",
+      "status": "PASS",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "No remaining local intent/IR acceptance; live journey gates separate",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-05",
+      "req_ids": [
+        "CG-03",
+        "CG-04",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-05",
+      "observed": "Native stale/conflict/missing/denied and unknown/duplicate/future source cases; selective equal-decision and same-result-new-version invalidation. Actual Forge visibility not verified.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Live source version/access change and UI",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-06",
+      "req_ids": [
+        "CG-06",
+        "CG-07",
+        "CG-12",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-06",
+      "observed": "Native actor/tenant/target, invalid graph/index, corrupted marker, forged/legacy/expired approval and direct writer without consumed approval blocked. Not independent or live security audit.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Forge trusted identity, live permission, independent security review",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-07",
+      "req_ids": [
+        "CG-07",
+        "CG-08",
+        "CG-09",
+        "CG-22"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-07",
+      "observed": "Synthetic transport duplicate/timeout/changed-source denial/reapproval/readback and strict ADF mismatch unknown, no replay. No real mutation executed.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Approved synthetic comment write/read-back and live retry controls",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-08",
+      "req_ids": [
+        "CG-09",
+        "CG-10",
+        "CG-18",
+        "CG-21"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-08",
+      "observed": "Native conditional in-memory storage, immutable receipts, history, invalidation marker integrity, reverse-index fixtures and corrupted receipt denial. Actual KVS atomic/TTL not verified.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Real KVS storage/expiry/conditional semantics",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-09",
+      "req_ids": [
+        "CG-06",
+        "CG-12",
+        "CG-22"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-09",
+      "observed": "Native final reread and policy deny, direct writer missing/unconsumed approval blocked, stale/revoked/foreign and malformed inputs. Live writer security not verified.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Actual Forge prewrite deny, runtime permissions",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-10",
+      "req_ids": [
+        "CG-13",
+        "CG-17"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-10",
+      "observed": "Native deterministic no-key fallback and synthetic-only body, consent/quota and malformed provider output tests; actual free-project billing and egress not verified.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Owner console and optional real free synthetic provider",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-11",
+      "req_ids": [
+        "CG-11"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-11",
+      "observed": "UI build PASS, stale previous review/history/approval display cleared; actual Chrome/Edge keyboard, focus, responsiveness and live accessible UI NOT_RUN.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Browser and independent design audit",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-12",
+      "req_ids": [
+        "CG-04",
+        "CG-19",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-12",
+      "observed": "61/61 native tests, 60 paired selective/full synthetic observations with identical decisions/checks/graph. Timing: unchanged 27.712/47.177 ms, changed 18.892/32.059 ms, denied 10.737/9.100 ms, total per 20 pairs; no speed benefit established. Not real network benchmark.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Repeatable real Forge timing and complete P2 scenario coverage",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-13",
+      "req_ids": [
+        "CG-11",
+        "CG-12",
+        "CG-19"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-13",
+      "observed": "Same-author local checks only. Codex/Astra independent model review NOT_RUN.",
+      "status": "NOT_RUN",
+      "artifact_ref": null,
+      "risk": "Separate authorized reviewers",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-14",
+      "req_ids": [
+        "CG-01",
+        "CG-20"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-14",
+      "observed": "Fresh install/demo/video/submission acceptance not performed.",
+      "status": "NOT_RUN",
+      "artifact_ref": null,
+      "risk": "Judge-style E2E and final assets",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-15",
+      "req_ids": [
+        "CG-12",
+        "CG-13",
+        "CG-20"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45404929007",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-15",
+      "observed": "Installed dependency inventory: 164 lock entries, 139 installed, 25 optional absent, 10 installed packages need manual license-file review. Actual legal rights, usage/billing and distribution approval NOT_RUN.",
+      "status": "PARTIAL",
+      "artifact_ref": "Actions 45404929007 job 138482919200",
+      "risk": "Review license/NOTICE terms and owner consoles; production/submission HOLD",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    }
+  ],
+  "benchmark": {
+    "scope": "native synthetic adapter, 20 pairs per scenario, total ms (full vs selective), not production latency",
+    "rows": [
+      {
+        "scenario": "unchanged",
+        "pairs": 20,
+        "full_ms": 27.712,
+        "selective_ms": 47.177,
+        "reused": 8
+      },
+      {
+        "scenario": "changed",
+        "pairs": 20,
+        "full_ms": 18.892,
+        "selective_ms": 32.059,
+        "reused": 4
+      },
+      {
+        "scenario": "denied",
+        "pairs": 20,
+        "full_ms": 10.737,
+        "selective_ms": 9.1,
+        "reused": 0
+      }
+    ],
+    "decision_equal_pairs": 60,
+    "conclusion": "NO_MEASURED_SPEED_GAIN; preserve safety and evaluate live before optimization"
+  },
+  "dependency_inventory": {
+    "lock_entries": 164,
+    "installed": 139,
+    "manual_review": 10,
+    "optional_absent": 25,
+    "legal_status": "NOT_REVIEWED"
+  }
+}
