@@ -1,7 +1,7 @@
 // Display state only; never grants authority.
 export function overviewState({context,issue,preview,savedStatus,commentState,reportState,unresolvedId,busy}){
  const count=v=>Number.isSafeInteger(v)&&v>=0?v:null;
- const observed=preview?.ok?preview.evidence:issue?.ok?issue.evidence:null;
+ const observed=preview!=null?(preview.ok?preview.evidence:null):issue?.ok?issue.evidence:null;
  const stale=savedStatus?.persisted_invalidation===true||savedStatus?.status==="STALE_REVIEW_REQUIRED";
  const policy=preview?.ok?preview.policy?.decision:null;
  let outcome={label:"No outcome established",tone:"neutral"};

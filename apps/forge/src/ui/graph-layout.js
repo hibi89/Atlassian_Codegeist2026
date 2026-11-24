@@ -13,3 +13,16 @@ export function layoutGraph(nodes,edges){
  for(const [d,group] of lanes){group.sort((a,b)=>a.id.localeCompare(b.id));maxRows=Math.max(maxRows,group.length);group.forEach((n,i)=>{Object.defineProperty(positions,n.id,{value:{x:20+d*172,y:24+i*72},enumerable:true})})}
  return {positions,width:Math.max(220,Math.max(...depth.values())*172+172),height:Math.max(116,maxRows*72+20)};
 }
+
+// Presentation only: direct neighbors, never a computed authorization or impact closure.
+export function inspectNeighbors(nodes,edges,id){
+ const known=new Map(nodes.map(n=>[n.id,n]));
+ if(!known.has(id))return {incoming:[],outgoing:[]};
+ const incoming=[],outgoing=[];
+ for(const e of edges){
+  if(!known.has(e.from_dependency)||!known.has(e.to_dependent))continue;
+  if(e.to_dependent===id)incoming.push({id:e.from_dependency,label:known.get(e.from_dependency).label,relation:e.relation});
+  if(e.from_dependency===id)outgoing.push({id:e.to_dependent,label:known.get(e.to_dependent).label,relation:e.relation});
+ }
+ return {incoming,outgoing};
+}
