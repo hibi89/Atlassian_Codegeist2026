@@ -40,6 +40,9 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId}
   }
   try{
    // One immutable attempt per review, even if a second request is prepared.
+   const prefix="cg:approval:"+p.tenant+":"+p.actor+":"+id+":";
+   const approval=await store.get(prefix+"record"),terminal=await store.get(prefix+"terminal");
+   if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==id||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||approval.plan_hash!==id||approval.request_digest!==id||approval.evidence_bundle_hash!==plan.evidence_bundle_hash||approval.dependency_digest!==plan.dependency_digest||approval.policy_version!==plan.policy_version||approval.capability_lock!==plan.capability_lock||!Number.isSafeInteger(approval.expires_at)||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==id||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at)return denyWrite("EXECUTOR_APPROVAL_RECEIPT_DENIED");
    await store.create(reservationKey(plan),attempt);
    await store.create(key(id,"attempt"),attempt);
   }catch{return denyWrite("WRITE_RESERVATION_CONFLICT_OR_UNKNOWN")}
@@ -69,6 +72,7 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId}
   try{
    const a=await store.get(key(id,"attempt")),d=await store.get(key(id,"dispatch")),old=await store.get(key(id,"outcome"));
    if(a?.schema_version!=="hae.comment.attempt.v1"||a.tenant!==p.tenant||a.actor!==p.actor||a.target!==p.target||a.request_id!==id||a.review_id!==plan.review_id||a.payload_digest!==digest(canonical(adfComment(plan.typed_args.comment))))return denyWrite("WRITE_ATTEMPT_UNAVAILABLE");
+   if(old!=null&&(old.schema_version!=="hae.comment.receipt.v1"||old.request_id!==id||old.tenant!==p.tenant||old.actor!==p.actor||old.target!==p.target||old.payload_digest!==a.payload_digest||old.review_id!==plan.review_id))return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"OUTCOME_RECORD_INVALID"});
    if(old?.state==="BLOCKED_BEFORE_DISPATCH"||old?.state==="DEFINITE_REJECTION")return result(id,old.state,{code:old.code,http_status:old.http_status});
    if(d?.schema_version!=="hae.comment.dispatch.v1"||d.request_id!==id||d.payload_digest!==a.payload_digest)return result(id,"UNKNOWN_OUTCOME_REVIEW",{code:"DISPATCH_NOT_ESTABLISHED"});
    const observed=await readback(transport,plan,accountId,old?.comment_id);

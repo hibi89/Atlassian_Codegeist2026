@@ -8,9 +8,9 @@ export const denyWrite=code=>({ok:false,code,authorization:"NONE",execution:"DIS
 export function demoComment(target,evidence,nonce){
  return "HAE TrustFlow synthetic demo review for "+target+". Observed evidence snapshot SHA-256: "+evidence+". This is a human-approved review annotation, not a certification or release approval. TrustFlow reference: "+nonce;
 }
-export function makeCommentPlan(p,record,nonce,now){
+export function makeCommentPlan(p,record,nonce,now,freshUntil){
  if(!p||p.target!==DEMO_ISSUE||!hex(nonce)||!hex(record?.id)||!hex(record.evidence?.bundle_hash)||!hex(record.graph?.graph_revision)||!["change-review","incident-coordinate"].includes(record.intent))return null;
- const expires=Math.min(now+120000,Date.parse(record.plan.expires_at));
+ const expires=Math.min(now+120000,Date.parse(record.plan.expires_at),freshUntil);
  if(!Number.isSafeInteger(now)||!Number.isSafeInteger(expires)||expires<=now)return null;
  return {schema_version:"hae.forge.comment-plan.v1",review_id:record.id,tenant:p.tenant,actor:p.actor,target:p.target,intent:record.intent,capability_lock:WRITE_CAPABILITY,policy_version:WRITE_POLICY,created_at:now,expires_at:expires,nonce,evidence_bundle_hash:record.evidence.bundle_hash,dependency_digest:record.graph.graph_revision,operation:"jira.issue.comment.create",scope:"write:jira-work",typed_args:{issue_key:p.target,comment:demoComment(p.target,record.evidence.bundle_hash,nonce)}};
 }
