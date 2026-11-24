@@ -35,9 +35,13 @@ export function getSafetySettings(context){
  return {ok:true,synthetic_storage_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2",environment:isDevelopment()?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
 }
 function requiresSyntheticScope(operation){return operation!=="read"&&operation!=="preview"}
+function syntheticScopeAllowed(context,operation,cloudId){
+ if(!requiresSyntheticScope(operation))return true;
+ return typeof cloudId==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cloudId)&&context?.installContext==="ari:cloud:jira::site/"+cloudId&&context?.extension?.issue?.key==="HTF-2";
+}
 async function call(context,input,operation,confirmation){
  if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
- if(requiresSyntheticScope(operation)&&(!allowedDemoInstall(context)||context.extension?.issue?.key!=="HTF-2"))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
+ if(!syntheticScopeAllowed(context,operation,process.env.TRUSTFLOW_DEMO_CLOUD_ID))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
  try{
   const kvs=getKvs();
   const admission=await reserveDailySlot(kvs,Date.now());if(!admission.ok)return admission;
@@ -69,4 +73,4 @@ export const readSavedGraph=(context,id)=>call(context,id,"history");
 export const budgetedRead=(context)=>call(context,null,"read");
 export const budgetedPreview=(context,input)=>call(context,input,"preview");
 export const runSyntheticProvider=(context,input)=>call(context,input,"provider");
-export {getKvs,createDevelopmentStore};
+export {getKvs,createDevelopmentStore,syntheticScopeAllowed};

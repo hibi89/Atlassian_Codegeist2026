@@ -5,7 +5,7 @@ import {guardedPreview} from "../security/policy.js";
 import {previewTypedIntent} from "../core/ir/preview.js";
 import {canonical,validatePlan} from "../core/ir/plan.js";
 import {createReviewService} from "../state/review-service.js";
-import {getKvs,createDevelopmentStore} from "../state/forge-review.js";
+import {getKvs,createDevelopmentStore,syntheticScopeAllowed} from "../state/forge-review.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
 test("development save and recheck use immutable metadata and never revive stale review",async()=>{
  const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
@@ -73,4 +73,25 @@ test("selective revalidation reuses unchanged authorized groups only, recomputes
  assert.ok(changed.affected_count>0);assert.ok(changed.unaffected_count>0);
  const replacement=await service.revalidate(ctx,id);assert.equal(replacement.ok,true);assert.notEqual(replacement.saved_review.review_id,id);assert.equal(replacement.authorization,"NONE");assert.equal(replacement.revalidation.reused,2);assert.equal(replacement.revalidation.recomputed,2);assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");assert.equal((await service.refresh(ctx,replacement.saved_review.review_id)).status,"NO_CHANGE_OBSERVED");
  const historical=await service.history(ctx,id);assert.equal(historical.ok,true);assert.equal(historical.status,"HISTORICAL_STALE");assert.ok(historical.nodes.some(n=>n.state==="STALE_AT_INVALIDATION"));denied=true;assert.equal((await service.history(ctx,id)).ok,false);assert.equal((await service.refresh(ctx,id)).ok,false);
+});
+
+test("P2 resolver synthetic scope gate permits only configured demo storage and provider",()=>{
+ const cloud="12345678-1234-1234-1234-123456789abc",ctx={installContext:"ari:cloud:jira::site/"+cloud,extension:{issue:{key:"HTF-2"}}};
+ for(const op of ["save","refresh","history","revalidate","prepare","approve","generate","revoke","comment:prepare","comment:execute","comment:reconcile","provider"]){
+  assert.equal(syntheticScopeAllowed(ctx,op,cloud),true);
+  assert.equal(syntheticScopeAllowed(ctx,op,undefined),false);
+  assert.equal(syntheticScopeAllowed({...ctx,extension:{issue:{key:"HTF-3"}}},op,cloud),false);
+  assert.equal(syntheticScopeAllowed({...ctx,installContext:"ari:cloud:jira::site/other"},op,cloud),false);
+ }
+ assert.equal(syntheticScopeAllowed(ctx,"read",undefined),true);assert.equal(syntheticScopeAllowed(ctx,"preview",undefined),true);
+});
+test("P2 full daily budget and lost acknowledgement never admit an extra action",async()=>{
+ const m=new Map(),kvs={get:async k=>m.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");if(m.has(k))throw Error("conflict");m.set(k,v)}};
+ for(let i=0;i<24;i++)assert.equal((await reserveDailySlot(kvs,1000)).ok,true);
+ assert.equal((await reserveDailySlot(kvs,1000)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.equal(m.size,24);
+ const other=new Map(),lost={get:async k=>other.get(k),set:async(k,v)=>{other.set(k,v);throw Error("lost acknowledgement")}};
+ assert.equal((await reserveDailySlot(lost,1000)).ok,false);assert.equal(other.size,1);
+ const race=new Map(),concurrent={get:async k=>race.get(k),set:async(k,v)=>{if(race.has(k))throw Error("conflict");race.set(k,v)}};
+ assert.equal((await Promise.all(Array.from({length:30},()=>reserveDailySlot(concurrent,1000)))).filter(r=>r.ok).length,1);
+ assert.equal(race.size,1);
 });

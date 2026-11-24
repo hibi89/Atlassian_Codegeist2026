@@ -104,3 +104,22 @@ test("P2 direct writer cannot bypass persisted approval; malformed receipt and u
  const outcome=[...g.map.values()].find(x=>x?.schema_version==="hae.comment.receipt.v1");outcome.observation_digest="corrupt";
  assert.equal((await readCommentJournal(g.store,principal(g.ctx,digest),q.review_id)).status,"JOURNAL_UNKNOWN");
 });
+
+test("P2 durable dispatch latch acknowledgement lost: no POST and no replay",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;
+ f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":dispatch"))throw Error("synthetic acknowledgement lost")};
+ const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),0);
+ f.store.create=create;assert.equal((await f.writes.execute(f.ctx,id)).ok,false);assert.equal((await f.writes.reconcile(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),0);
+});
+test("P2 effect observed but receipt acknowledgement lost: read-only reconciliation recovers without POST retry",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;
+ f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":outcome"))throw Error("synthetic acknowledgement lost")};
+ const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ f.store.create=create;assert.equal((await f.writes.execute(f.ctx,id)).ok,false);const recovered=await f.writes.reconcile(f.ctx,id);assert.equal(recovered.status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
+});
+test("P2 effect observed but receipt write rejected: read-only reconciliation reconstructs observation",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;
+ f.store.create=async(k,v)=>{if(k.endsWith(":outcome"))throw Error("synthetic storage unavailable");await create(k,v)};
+ const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ f.store.create=create;assert.equal((await f.writes.reconcile(f.ctx,id)).status,"OBSERVED_SUCCESS");assert.equal((await f.writes.execute(f.ctx,id)).ok,false);assert.equal(f.posts(),1);
+});
