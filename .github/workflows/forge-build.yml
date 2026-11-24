@@ -3,6 +3,10 @@ on:
   push:
     branches: ['feature/forge-p1']
     paths: ['apps/forge/**', '.github/workflows/forge-build.yml']
+  pull_request:
+    branches: ['develop']
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -11,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/forge-p1')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -21,6 +26,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Node 22
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
@@ -51,7 +57,7 @@ jobs:
       - name: Lockfile and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: forge-build-${{ github.sha }}
+          name: forge-build-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             apps/forge/package-lock.json
             apps/forge/src/ui/dist/
