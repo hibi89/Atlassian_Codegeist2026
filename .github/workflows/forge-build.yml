@@ -1,0 +1,59 @@
+name: Forge development build
+on:
+  push:
+    branches: ['feature/forge-p1']
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: forge-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/forge
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Record source and tools
+        run: |
+          git rev-parse HEAD
+          node --version
+          npm --version
+      - name: Dependency lock and install
+        run: |
+          if [ ! -f package-lock.json ]; then
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund --fetch-retries=1
+          fi
+          npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=1
+      - name: Source syntax
+        run: find src -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -r -n1 node --check
+      - name: Native Node smoke
+        run: npm run test:smoke
+      - name: Custom UI build
+        run: npm run build
+      - name: Check build outputs
+        run: |
+          test -s src/ui/dist/index.html
+          test -s src/ui/dist/app.js
+          test -s src/ui/dist/app.css
+          sha256sum package-lock.json src/ui/dist/index.html src/ui/dist/app.js src/ui/dist/app.css
+      - name: Lockfile and build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: forge-build-${{ github.sha }}
+          path: |
+            apps/forge/package-lock.json
+            apps/forge/src/ui/dist/
+          if-no-files-found: error
+          retention-days: 7
