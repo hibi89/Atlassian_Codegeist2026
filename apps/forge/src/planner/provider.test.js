@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {createProviderService,GEMINI_URL} from "./provider.js";
+import {createProviderService,createGeminiProvider,GEMINI_URL} from "./provider.js";
 import {previewTypedIntent} from "../core/ir/preview.js";
 const now=Date.parse("2026-11-24T12:00:00Z"),clock=()=>now,digest=s=>createHash("sha256").update(s).digest("hex");
 const context={accountId:"PRIVATE_ACTOR_FIXTURE",installContext:"PRIVATE_TENANT_FIXTURE",extension:{issue:{key:"HTF-2"}}};
@@ -26,4 +26,16 @@ test("unknown billing, malicious model output and failure fall back without retr
  const disabled=setup({enabled:false});assert.equal((await disabled.service.run(context,{provider:"gemini",fixture:"change",consent:true})).provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(disabled.calls(),0);
  const evil=setup({output:'{"operation":"delete"}'});assert.equal((await evil.service.run(context,{provider:"gemini",fixture:"change",consent:true})).provider.reason,"PROVIDER_OUTPUT_REJECTED");assert.equal(evil.calls(),1);
  const failed=setup({fail:true});assert.equal((await failed.service.run(context,{provider:"gemini",fixture:"change",consent:true})).provider.reason,"PROVIDER_FAILED_NO_RETRY");assert.equal(failed.calls(),1);
+});
+
+test("P2 lower-level external classifier refuses arbitrary text and non-string fixture",async()=>{
+ let calls=0;const classify=createGeminiProvider({apiKey:"fixture-only",fetch:async()=>{calls++;throw Error("must not send")}});
+ for(const x of [{text:"private issue text"},"private issue text",["change"],null])await assert.rejects(classify(x),/PROVIDER_FIXTURE_DENIED/);
+ assert.equal(calls,0);
+ const a=setup();assert.equal((await a.service.run(context,{provider:"gemini",fixture:["change"],consent:true})).ok,false);assert.equal(a.calls(),0);
+});
+test("P2 free qualification expires during admission, no external call",async()=>{
+ let t=now,calls=0;
+ const service=createProviderService({store:{create:async()=>{t+=1001}},clock:()=>t,digest,preview:(ctx,input)=>previewTypedIntent(ctx,input,t,()=>"fixture-plan"),config:{enabled:true,billingDisabled:true,verifiedUntil:new Date(now+1000).toISOString(),apiKey:"synthetic-key-fixture"},development:()=>true,allowedInstall:()=>true,fetch:async()=>{calls++;throw Error("must not send")}});
+ const r=await service.run(context,{provider:"gemini",fixture:"change",consent:true});assert.equal(r.ok,true);assert.equal(r.provider.mode,"DETERMINISTIC_TEMPLATE");assert.equal(r.provider.external_attempted,false);assert.equal(calls,0);
 });

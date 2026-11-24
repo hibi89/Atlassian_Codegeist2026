@@ -10,7 +10,9 @@ export function freeProjectReady(config,now){
  return config?.enabled===true&&config?.billingDisabled===true&&typeof config.apiKey==="string"&&config.apiKey.length>10&&config.apiKey.length<=256&&Number.isFinite(now)&&Number.isFinite(until)&&until>now&&until-now<=86400000;
 }
 export function createGeminiProvider({fetch,apiKey}){
- return async function classify(fixture){
+ return async function classify(fixtureId){
+  if(typeof fixtureId!=="string"||!Object.hasOwn(fixtures,fixtureId))throw Error("PROVIDER_FIXTURE_DENIED");
+  const fixture=fixtures[fixtureId];
   const prompt="Classify this fictional request into exactly one intent: change-review, incident-coordinate, release-review. Reply with the intent ID only. Fictional request: "+fixture.text;
   if(Buffer.byteLength(prompt,"utf8")>providerLimits.max_prompt_bytes)throw Error("PROVIDER_PROMPT_LIMIT");
   const response=await fetch(GEMINI_URL,{method:"POST",redirect:"error",signal:AbortSignal.timeout(8000),headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:providerLimits.max_output_tokens}})});
@@ -25,7 +27,7 @@ export function createGeminiProvider({fetch,apiKey}){
 export function createProviderService({store,clock,digest,preview,config,development,allowedInstall,fetch}){
  async function run(context,input){
   if(!development()||!allowedInstall(context)||context.extension?.issue?.key!=="HTF-2")return fail("PROVIDER_DEMO_CONTEXT_DENIED");
-  if(!input||!Object.hasOwn(fixtures,input.fixture)||!["template","gemini"].includes(input.provider)||Object.keys(input).some(k=>!["fixture","provider","consent"].includes(k)))return fail("PROVIDER_INPUT_INVALID");
+  if(!input||Object.getPrototypeOf(input)!==Object.prototype||typeof input.fixture!=="string"||!Object.hasOwn(fixtures,input.fixture)||!["template","gemini"].includes(input.provider)||Object.keys(input).some(k=>!["fixture","provider","consent"].includes(k)))return fail("PROVIDER_INPUT_INVALID");
   const fixture=fixtures[input.fixture];
   let mode="DETERMINISTIC_TEMPLATE",reason="NO_EXTERNAL_REQUEST",attempted=false;
   if(input.provider==="gemini"){
@@ -34,8 +36,9 @@ export function createProviderService({store,clock,digest,preview,config,develop
     try{
      const day=new Date(clock()).toISOString().slice(0,10);
      await store.create("cg:provider-attempt:"+day,{schema_version:"hae.provider.attempt.v1",provider:GEMINI_MODEL,fixture:input.fixture,at:clock()});
+     if(!freeProjectReady(config,clock())||!development()||!allowedInstall(context))throw Error("PROVIDER_QUALIFICATION_CHANGED");
      attempted=true;
-     const result=await createGeminiProvider({fetch,apiKey:config.apiKey})(fixture);
+     const result=await createGeminiProvider({fetch,apiKey:config.apiKey})(input.fixture);
      // Model output can select only the already intended fixture, never IR or scopes.
      if(result!==fixture.intent)reason="PROVIDER_OUTPUT_REJECTED";
      else{mode="GEMINI_SYNTHETIC_CLASSIFIER";reason="VALIDATED_INTENT_ONLY"}

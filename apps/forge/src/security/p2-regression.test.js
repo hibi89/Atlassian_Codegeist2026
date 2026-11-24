@@ -56,3 +56,10 @@ test("P2 paired source benchmark: selective and full decision agree across fixed
  }
  console.log("CG_P2_PAIRED_BENCHMARK:"+JSON.stringify(rows));
 });
+
+test("P2 over-limit or duplicate linked keys cannot claim complete coverage",async()=>{
+ for(const keys of [Array.from({length:7},(_,i)=>"DEMO-"+(i+2)),["DEMO-2","DEMO-2"]]){
+  const r=await collectEvidence(ctx,{...adapter,links:async()=>({ok:true,keys,complete:true}),read:async k=>{const x=fixture();return {...x,snapshot:{...x.snapshot,key:k,objectId:k.slice(5)},source:{...x.source,objectId:k.slice(5),uri:"/browse/"+k,contentHash:h(k)}}}},h,clock);
+  assert.equal(r.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");
+ }
+});

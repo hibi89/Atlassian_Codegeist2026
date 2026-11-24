@@ -14,7 +14,7 @@ function allowedTransition(from,to){
 }
 
 function scopedEvent(e,p,runId,seq){
-  return !!e&&e.schema_version==="hae.run.event.v1"&&e.tenant===p.tenant&&e.actor===p.actor&&e.target===p.target&&e.run_id===runId&&e.seq===seq&&typeof e.plan_hash==="string"&&/^[a-f0-9]{64}$/.test(e.plan_hash)&&typeof e.state==="string";
+  return !!e&&e.schema_version==="hae.run.event.v1"&&e.tenant===p.tenant&&e.actor===p.actor&&e.target===p.target&&e.run_id===runId&&e.seq===seq&&typeof e.plan_hash==="string"&&/^[a-f0-9]{64}$/.test(e.plan_hash)&&typeof e.state==="string"&&typeof e.at==="string"&&Number.isFinite(Date.parse(e.at));
 }
 
 function createRunLedger(store,p,clock){
@@ -30,7 +30,11 @@ function createRunLedger(store,p,clock){
           if(seq<64&&await store.get(ledgerKey(p,runId,seq+1))!=null)return bad("RUN_JOURNAL_INVALID");
           return {ok:true,events,state:events[events.length-1].state,next_seq:seq};
         }
-        if(!scopedEvent(e,p,runId,seq)||seq===0&&e.state!=="DRAFT"||seq>0&&(!allowedTransition(events[seq-1].state,e.state)||events[0].plan_hash!==e.plan_hash))return bad("RUN_JOURNAL_INVALID");
+        if(!scopedEvent(e,p,runId,seq)||seq===0&&e.state!=="DRAFT"||seq>0&&(!allowedTransition(events[seq-1].state,e.state)||events[0].plan_hash!==e.plan_hash||Date.parse(e.at)<Date.parse(events[seq-1].at)))return bad("RUN_JOURNAL_INVALID");
+        if(Date.parse(e.at)>clock())return bad("RUN_JOURNAL_CLOCK_INVALID");
+        if(["READY","RUNNING","RECONCILING","SUCCEEDED"].includes(e.state)&&(e.execution_kind!=="READ_ONLY_REPORT"||typeof e.report_request_id!=="string"||!/^[a-f0-9]{64}$/.test(e.report_request_id)))return bad("RUN_JOURNAL_AUTHORITY_INVALID");
+        if(seq>0&&events[seq-1].execution_kind==="READ_ONLY_REPORT"&&(e.execution_kind!==events[seq-1].execution_kind||e.report_request_id!==events[seq-1].report_request_id))return bad("RUN_JOURNAL_AUTHORITY_INVALID");
+        if(["RECONCILING","SUCCEEDED"].includes(e.state)&&(!/^[a-f0-9]{64}$/.test(e.receipt)||e.state==="SUCCEEDED"&&e.receipt!==events[seq-1].receipt))return bad("RUN_JOURNAL_RECEIPT_INVALID");
         events.push(e);
       }
       return bad("RUN_JOURNAL_LIMIT");

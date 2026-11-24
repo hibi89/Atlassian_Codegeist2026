@@ -17,4 +17,4 @@ for(const [path,entry] of Object.entries(lock.packages)){
  inventory.push({name,version:entry.version,license,installed,optional:!!entry.optional,license_files:licenseFiles,license_review:installed&&licenseFiles.length?"FILE_PRESENT_NOT_LEGAL_REVIEW":installed?"NEEDS_MANUAL_REVIEW":"OPTIONAL_NOT_INSTALLED"});
 }
 const summary={lock_entries:inventory.length,installed:inventory.filter(x=>x.installed).length,manual_review:inventory.filter(x=>x.license_review==="NEEDS_MANUAL_REVIEW").length,optional_absent:inventory.filter(x=>!x.installed).length,legal_status:"NOT_REVIEWED"};
-writeFileSync("dependency-inventory.json",JSON.stringify({summary,inventory},null,2)+"\n");console.log("CG_DEPENDENCY_INVENTORY:"+JSON.stringify(summary));
+writeFileSync("dependency-inventory.json",JSON.stringify({summary,inventory},null,2)+"\n");console.log("CG_DEPENDENCY_INVENTORY:"+JSON.stringify(summary));console.log("CG_LICENSE_MANUAL:"+JSON.stringify(inventory.filter(x=>x.license_review==="NEEDS_MANUAL_REVIEW").map(({name,version,license})=>({name,version,license}))));

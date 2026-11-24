@@ -56,3 +56,12 @@ test("step reservations are exclusive and missing receipt means unknown outcome"
  assert.equal((await steps.reserve("r1","s1",b)).ok,false);
  assert.equal((await createStepLedger(store,runLedger,{...p,target:"DEMO-2"},()=>1000).read("r1","s1")).ok,false);
 });
+
+test("P2 journal rejects future timestamps, reverse clock and forged execution transitions",async()=>{
+ const m=new Map(),store={get:async k=>m.get(k),create:async(k,v)=>{if(m.has(k))throw Error("conflict");m.set(k,JSON.parse(JSON.stringify(v)))}},p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"},now=2000,ledger=createRunLedger(store,p,()=>now);
+ await ledger.create("r","c".repeat(64));await ledger.transition("r",1,"EVIDENCE_PENDING");await ledger.transition("r",2,"POLICY_REVIEW");await ledger.transition("r",3,"AWAITING_APPROVAL");
+ const last=[...m.values()].at(-1),prefix=[...m.keys()].at(-1).slice(0,-1);
+ m.set(prefix+"4",{...last,seq:4,state:"READY"});assert.equal((await ledger.read("r")).code,"RUN_JOURNAL_AUTHORITY_INVALID");
+ m.delete(prefix+"4");last.at=new Date(now-1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
+ last.at=new Date(now+1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
+});

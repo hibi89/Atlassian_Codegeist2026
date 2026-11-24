@@ -69,6 +69,7 @@ async function collectEvidence(context,adapter,digest,clock){
   try{links=await adapter.links(p.target)}catch{links={ok:false,code:"LINKS_UNKNOWN"}}
   let unknown=root.snapshot?.reportedTags?.status==="UNKNOWN"?1:0;
   if(links?.ok&&Array.isArray(links.keys)){
+    if(links.keys.length>6||new Set(links.keys).size!==links.keys.length)unknown++;
     for(const key of links.keys.slice(0,6)){
       if(!validKey(key)||key===p.target){unknown++;continue}
       try{const result=await adapter.read(key);if(!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++}catch{unknown++}
@@ -98,7 +99,7 @@ function compareEvidence(before,after,now){
   const changed=[],unchanged=[],unknown=[];
   for(const prior of before.sources){
     const fresh=current.get(prior.source_ref);
-    if(!fresh||fresh.status!=="VERSION_OBSERVED"||!fresh.version||!validDate(fresh.freshness_deadline)||Date.parse(fresh.freshness_deadline)<=now||!validDate(prior.version)||!validDate(fresh.version)||Date.parse(fresh.version)>now){unknown.push(prior.source_ref);continue}
+    if(!fresh||prior.status!=="VERSION_OBSERVED"||fresh.status!=="VERSION_OBSERVED"||!fresh.version||!validDate(fresh.freshness_deadline)||Date.parse(fresh.freshness_deadline)<=now||!validDate(prior.version)||!validDate(fresh.version)||Date.parse(fresh.version)>now){unknown.push(prior.source_ref);continue}
     if(prior.revision_key!==fresh.revision_key||prior.version!==fresh.version||prior.content_digest!==fresh.content_digest)changed.push(prior.source_ref);
     else unchanged.push(prior.source_ref);
     current.delete(prior.source_ref);

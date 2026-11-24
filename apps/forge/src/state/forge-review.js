@@ -32,10 +32,12 @@ function allowedDemoInstall(context){
 function providerConfig(){return {enabled:process.env.TRUSTFLOW_GEMINI_ENABLED==="true",billingDisabled:process.env.TRUSTFLOW_GEMINI_BILLING_DISABLED==="true",verifiedUntil:process.env.TRUSTFLOW_GEMINI_FREE_VERIFIED_UNTIL,apiKey:process.env.TRUSTFLOW_GEMINI_API_KEY}}
 export function getSafetySettings(context){
  if(!principal(context,digest))return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
- return {ok:true,environment:isDevelopment()?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
+ return {ok:true,synthetic_storage_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2",environment:isDevelopment()?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
 }
+function requiresSyntheticScope(operation){return operation!=="read"&&operation!=="preview"}
 async function call(context,input,operation,confirmation){
  if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
+ if(requiresSyntheticScope(operation)&&(!allowedDemoInstall(context)||context.extension?.issue?.key!=="HTF-2"))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
  try{
   const kvs=getKvs();
   const admission=await reserveDailySlot(kvs,Date.now());if(!admission.ok)return admission;
