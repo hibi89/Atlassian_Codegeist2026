@@ -18,11 +18,23 @@ function getKvs(module=kvsModule){
  throw Error("FORGE_KVS_EXPORT_INVALID");
 }
 function isDevelopment(){try{return String(getAppContext().environmentType).toUpperCase()==="DEVELOPMENT"}catch{return false}}
-function createDevelopmentStore(kvs){
+function createDevelopmentStore(kvs,clock=Date.now){
  let reads=0,writes=0;
+ const validKey=key=>typeof key==="string"&&key.length<=500&&/^[a-zA-Z0-9:._#-]+$/.test(key);
  return {
-  async get(key){if(++reads>64)throw Error("REVIEW_READ_BUDGET");return kvs.get(key)},
-  async create(key,value){if(++writes>12||Buffer.byteLength(JSON.stringify(value),"utf8")>61440)throw Error("REVIEW_WRITE_BUDGET");return kvs.set(key,value,{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:1}})}
+  async get(key){
+   if(!validKey(key)||++reads>64)throw Error("REVIEW_READ_BUDGET_OR_KEY");
+   // Forge may return expired values until asynchronous deletion completes.
+   // A present-but-expired or malformed record is UNKNOWN, not an empty slot.
+   const result=await kvs.get(key,{metadataFields:["EXPIRE_TIME"]});
+   if(result===undefined||result===null)return undefined;
+   if(result.key!==key||!Object.hasOwn(result,"value")||typeof result.expireTime!=="string"||!Number.isFinite(Date.parse(result.expireTime))||!Number.isSafeInteger(clock())||Date.parse(result.expireTime)<=clock())throw Error("REVIEW_STORAGE_EXPIRY_UNKNOWN");
+   return result.value;
+  },
+  async create(key,value){
+   if(!validKey(key)||++writes>12||Buffer.byteLength(JSON.stringify(value),"utf8")>61440)throw Error("REVIEW_WRITE_BUDGET_OR_KEY");
+   return kvs.set(key,value,{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:1}});
+  }
  };
 }
 function allowedDemoInstall(context){
@@ -53,7 +65,7 @@ async function call(context,input,operation,confirmation){
    const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport()});
    return await service[operation.slice(8)](context,input,confirmation);
   }
-  const service=["save","refresh","history","revalidate"].includes(operation)?createReviewService(services):createReportService(services);
+  const service=["save","refresh","history","revalidate","recoverReport"].includes(operation)?createReviewService(services):createReportService(services);
   return await service[operation](context,input,confirmation);
  }catch{return {ok:false,code:"REVIEW_STORAGE_UNKNOWN",authorization:"NONE",execution:"DISABLED"}}
 }
@@ -69,6 +81,7 @@ export const executeDemoComment=(context,id)=>call(context,id,"comment:execute")
 export const revokeDemoComment=(context,id)=>call(context,id,"comment:revoke");
 export const reconcileDemoComment=(context,id)=>call(context,id,"comment:reconcile");
 export const revalidateSavedReview=(context,id)=>call(context,id,"revalidate");
+export const recoverSavedReport=(context,id)=>call(context,id,"recoverReport");
 export const readSavedGraph=(context,id)=>call(context,id,"history");
 export const budgetedRead=(context)=>call(context,null,"read");
 export const budgetedPreview=(context,input)=>call(context,input,"preview");

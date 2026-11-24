@@ -26,7 +26,7 @@ test("development save and recheck use immutable metadata and never revive stale
 });
 test("KVS adapter uses only bounded conditional writes, package export resolved",async()=>{
  const actual=getKvs();assert.equal(typeof actual.get,"function");assert.equal(typeof actual.set,"function");
- const map=new Map();const kvs={get:async k=>map.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.equal(o.ttl.value,1);if(map.has(k))throw Error("conflict");map.set(k,v)}};
+ const map=new Map();const kvs={get:async(k,o)=>{assert.deepEqual(o.metadataFields,["EXPIRE_TIME"]);return map.has(k)?{key:k,value:map.get(k),expireTime:new Date(Date.now()+86400000).toISOString()}:undefined},set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.equal(o.ttl.value,1);if(map.has(k))throw Error("conflict");map.set(k,v)}};
  const store=createDevelopmentStore(kvs);await store.create("test:one",{x:1});await assert.rejects(store.create("test:one",{x:2}));assert.equal((await store.get("test:one")).x,1);
  await assert.rejects(store.create("test:large",{x:"x".repeat(61441)}));
 });
@@ -94,4 +94,16 @@ test("P2 full daily budget and lost acknowledgement never admit an extra action"
  const race=new Map(),concurrent={get:async k=>race.get(k),set:async(k,v)=>{if(race.has(k))throw Error("conflict");race.set(k,v)}};
  assert.equal((await Promise.all(Array.from({length:30},()=>reserveDailySlot(concurrent,1000)))).filter(r=>r.ok).length,1);
  assert.equal(race.size,1);
+});
+
+test("P2 real KVS adapter contract: expired returned data is denied, not treated as absent",async()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z");let result,reads=0,writes=0;
+ const kvs={get:async(k,o)=>{reads++;assert.deepEqual(o.metadataFields,["EXPIRE_TIME"]);return result},set:async()=>{writes++}};
+ const store=createDevelopmentStore(kvs,()=>now);
+ assert.equal(await store.get("cg:test"),undefined);
+ for(const bad of [{key:"cg:test",value:{x:1},expireTime:new Date(now).toISOString()},{key:"cg:test",value:{x:1}}, {key:"wrong",value:{x:1},expireTime:new Date(now+1000).toISOString()},{key:"cg:test",expireTime:new Date(now+1000).toISOString()}]){
+  result=bad;await assert.rejects(store.get("cg:test"),/EXPIRY_UNKNOWN/);
+ }
+ result={key:"cg:test",value:{x:1},expireTime:new Date(now+1000).toISOString()};assert.deepEqual(await store.get("cg:test"),{x:1});
+ await assert.rejects(store.get("../bad"));await assert.rejects(store.create("x".repeat(501),{x:1}));assert.equal(writes,0);assert.equal(reads,6);
 });

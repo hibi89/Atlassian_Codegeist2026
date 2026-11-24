@@ -57,6 +57,24 @@ function createReviewService({store,clock,digest,preview,development}){
   // Never copy approval, request ID, execution state or old receipt to new review.
   return {...result,revalidated_from:id,revalidation:old.current.claim_review?.revalidation,authorization:"NONE",execution:"DISABLED"};
  }
- return {save,refresh,history,revalidate};
+ async function recoverReport(context,id){
+  const p=principal(context,digest);
+  if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
+  try{
+   // Recovery never regenerates report text, consumes approval or calls a writer.
+   const h=await createReviewStore(store,p,clock,digest).history(id,(intent,record)=>preview(context,aliases[intent],record));
+   if(!h.ok)return h;
+   const ledger=createRunLedger(store,p,clock),run=await ledger.read(id),last=run.events?.at(-1);
+   if(!run.ok||run.events[0].plan_hash!==id||!["RUNNING","RECONCILING","SUCCEEDED"].includes(run.state)||last?.execution_kind!=="READ_ONLY_REPORT"||!/^[a-f0-9]{64}$/.test(last.report_request_id))return deny("REPORT_RECOVERY_NOT_ESTABLISHED");
+   const requestId=last.report_request_id,step=h.record.plan.steps.at(-1);
+   if(step?.op_id!=="report.evidence.generate")return deny("REPORT_RECOVERY_NOT_ESTABLISHED");
+   const receipt=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+requestId+":receipt");
+   if(!receipt||typeof receipt.report_digest!=="string"||!/^[a-f0-9]{64}$/.test(receipt.report_digest))return deny("REPORT_RECEIPT_UNKNOWN");
+   const result=await ledger.finishReadOnlyReport(id,requestId,step.step_id,receipt.report_digest);
+   if(!result.ok)return result;
+   return {ok:true,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",review_id:id,run_state:"SUCCEEDED",report_digest:receipt.report_digest,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
+  }catch{return deny("REPORT_RECOVERY_STORAGE_UNKNOWN")}
+ }
+ return {save,refresh,history,revalidate,recoverReport};
 }
 export {createReviewService};
