@@ -181,3 +181,20 @@ test("P2 approval expiration while persisting dispatch latch blocks POST",async(
  f.store.create=async(k,v)=>{await create(k,v);if(k.endsWith(":dispatch"))f.advance(101)};
  const r=await f.writes.execute(f.ctx,id);assert.equal(r.status,"BLOCKED_BEFORE_DISPATCH");assert.equal(r.code,"WRITE_EXPIRED_AT_DISPATCH");assert.equal(f.posts(),0);
 });
+
+
+test("P2 prior reconciliation fixes remote identity even when recent window no longer contains the comment",async()=>{
+ const f=fixture(),id=await f.approved(),create=f.store.create;f.setMode("timeout");
+ f.store.create=async(k,v)=>{if(k.endsWith(":outcome"))throw Error("receipt unavailable");await create(k,v)};
+ assert.equal((await f.writes.execute(f.ctx,id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ f.store.create=create;const first=await f.writes.reconcile(f.ctx,id);assert.equal(first.status,"OBSERVED_SUCCESS");assert.equal(first.comment_id,"1");
+ assert.equal([...f.map.keys()].some(k=>k.endsWith(":remote-id")),false);
+ f.setMode("hidden");const second=await f.writes.reconcile(f.ctx,id);assert.equal(second.status,"OBSERVED_SUCCESS");assert.equal(second.comment_id,"1");assert.equal(f.posts(),1);
+});
+test("P2 malformed or conflicting reconciliation identity cannot produce an observed success",async()=>{
+ const f=fixture(),r=await f.request();await f.writes.approve(f.ctx,r.request_id,r.request_id);
+ f.setMode("timeout");assert.equal((await f.writes.execute(f.ctx,r.request_id)).ok,true);assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).ok,true);
+ const prior=[...f.map.values()].find(x=>x.schema_version==="hae.comment.reconciliation.v1"),outcome=[...f.map.values()].find(x=>x.schema_version==="hae.comment.receipt.v1");
+ prior.observation_digest="f".repeat(64);assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"RECONCILIATION_RECORD_INVALID");prior.observation_digest=outcome.observation_digest;
+ outcome.known_comment_id="999";assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).code,"OUTCOME_RECORD_INVALID");assert.equal((await readCommentJournal(f.store,principal(f.ctx,digest),r.review_id)).status,"JOURNAL_UNKNOWN");assert.equal(f.posts(),1);
+});
