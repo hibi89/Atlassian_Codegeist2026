@@ -18,6 +18,12 @@ function inspectMetadata(r){
  const counts={};for(const n of r.graph.nodes)counts[n.kind]=(counts[n.kind]??0)+1;
  return {classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(r),"utf8"),record_digest:r.record_digest,graph_revision:r.graph.graph_revision,source_count:r.evidence.sources.length,node_count:r.graph.nodes.length,edge_count:r.graph.edges.length,node_kinds:counts,expires_at:r.expires_at,storage_scope:"SINGLE_REVIEW_SNAPSHOT",raw_originals:"NOT_STORED"};
 }
+function validProjection(g,projection){
+ if(projection===null)return true;
+ if(!projection||projection.status!=="STALE_REVIEW_REQUIRED"||!["affected","unaffected","preserved_receipts"].every(k=>Array.isArray(projection[k])))return false;
+ const all=[...projection.affected,...projection.unaffected,...projection.preserved_receipts],nodes=new Map(g.nodes.map(n=>[n.id,n.kind]));
+ return all.length===nodes.size&&new Set(all).size===all.length&&all.every(id=>nodes.has(id))&&projection.preserved_receipts.every(id=>nodes.get(id)==="RECEIPT")&&[...projection.affected,...projection.unaffected].every(id=>nodes.get(id)!=="RECEIPT");
+}
 function createReviewStore(store,p,clock,digest){
  const key=(id,kind)=>"cg:review:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  function validRecord(r,id){
@@ -46,13 +52,18 @@ function createReviewStore(store,p,clock,digest){
   try{
    const r=await store.get(key(id,"snapshot"));
    if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
+   function validMarker(m){
+    if(!m||m.schema_version!=="hae.review.invalidation.v2"||m.snapshot_digest!==r.record_digest||m.review_id!==id||!Number.isSafeInteger(m.at)||m.at<r.created_at||m.at>clock()||!validProjection(r.graph,m.projection))return false;
+    const {marker_digest,...body}=m;return hex(marker_digest)&&digest(canonical(body))===marker_digest;
+   }
    // Current source access is required for returning any historical status.
    // Unknown access or topology changes permanently invalidate this snapshot.
    async function invalidate(reason,projection=null){
     const existing=await store.get(key(id,"invalidated"));
-    const matches=m=>m?.schema_version==="hae.review.invalidation.v1"&&m.snapshot_digest===r.record_digest&&m.review_id===id;
+    const matches=validMarker;
     if(existing!=null)return matches(existing);
-    const value={schema_version:"hae.review.invalidation.v1",review_id:id,snapshot_digest:r.record_digest,reason,projection,at:clock()};
+    const body={schema_version:"hae.review.invalidation.v2",review_id:id,snapshot_digest:r.record_digest,reason,projection,at:clock()};
+    const value={...body,marker_digest:digest(canonical(body))};
     try{await store.create(key(id,"invalidated"),value);return true}catch{return matches(await store.get(key(id,"invalidated")))}
    }
    let current;
@@ -68,7 +79,7 @@ function createReviewStore(store,p,clock,digest){
    const rebound=buildObservedGraph(p,{plan:{...r.plan,plan_hash:id}},current.evidence,current.claim_review,current.policy,digest,canonical);
    const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW"||current.freshness?.status!=="CURRENT_OBSERVED"||!rebound.ok||rebound.graph_revision!==r.graph.graph_revision;
    const marker=await store.get(key(id,"invalidated"));
-   if(marker!=null&&(marker.schema_version!=="hae.review.invalidation.v1"||marker.snapshot_digest!==r.record_digest||marker.review_id!==id))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   if(marker!=null&&!validMarker(marker))return bad("REVIEW_INVALIDATION_UNKNOWN");
    const stale=marker!=null||impact.affected.length>0||policyChanged;
    const affected=new Set(impact.affected);
    // A policy or graph-level revision affects the plan/policy even when source
@@ -79,7 +90,7 @@ function createReviewStore(store,p,clock,digest){
    // Read the immutable marker after a possible competing insert. A reverted
    // source must not make the old affected set or stale state disappear.
    const persisted=stale?await store.get(key(id,"invalidated")):null;
-   if(stale&&(!persisted||persisted.snapshot_digest!==r.record_digest))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   if(stale&&!validMarker(persisted))return bad("REVIEW_INVALIDATION_UNKNOWN");
    const priorProjection=persisted?.projection;
    const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
    if(internal==="history")return {ok:true,record:r,current,projection:priorProjection??null,stale};

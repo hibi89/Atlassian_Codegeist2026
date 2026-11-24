@@ -21,6 +21,8 @@ function analyzeImpact(p,graph,freshness,index){
     out.get(e.from_dependency).push(e.to_dependent);indegree.set(e.to_dependent,indegree.get(e.to_dependent)+1);
   }
   const queue=[...nodes.keys()].filter(id=>indegree.get(id)===0);
+  if(queue.some(id=>nodes.get(id).kind!=="SOURCE"))return hold("GRAPH_ORPHAN_NODE");
+  if([...sources.values()].some(id=>indegree.get(id)!==0))return hold("GRAPH_SOURCE_HAS_PARENT");
   for(let i=0;i<queue.length;i++){for(const id of out.get(queue[i])){indegree.set(id,indegree.get(id)-1);if(indegree.get(id)===0)queue.push(id)}}
   if(queue.length!==nodes.size)return hold("GRAPH_CYCLE");
   // Require every observed source to be classified exactly once. Newly added or

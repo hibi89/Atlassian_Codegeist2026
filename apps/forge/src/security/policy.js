@@ -31,6 +31,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const reuse=savedRecord?selectiveChecks(p,savedRecord,observed.evidence,services.digest,services.clock()):undefined;
   const claim_review=reviewClaims(observed.evidence,reuse);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
+  if(policy.decision==="ALLOW_PREVIEW"&&claim_review.reason==="CLAIMS_UNKNOWN")policy={...policy,decision:"REVIEW",reason:"CLAIMS_UNKNOWN"};
   if(policy.decision==="ALLOW_PREVIEW"&&claim_review.status==="CONFLICT_FOUND")policy={...policy,decision:"REVIEW",reason:"CLAIM_CONFLICT"};
   // Compare against the first observed dependency graph, never a client-provided graph.
   const prior=observed.previous_evidence;
@@ -40,6 +41,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const impact_summary=impact.ok?{status:impact.status,affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,stale_approval_count:impact.stale_approvals.length,authorization:"NONE"}:{status:"HOLD",code:impact.code,authorization:"NONE"};
   if(!impact.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:impact.code};
   const visibleGraph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
+  if(!visibleGraph.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:"GRAPH_UNKNOWN"};
   return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness:observed.freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
 }
 

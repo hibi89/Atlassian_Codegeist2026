@@ -67,11 +67,11 @@ async function collectEvidence(context,adapter,digest,clock){
   if(!add(root,p.target))return {ok:false,code:"EVIDENCE_INVALID"};
   let links;
   try{links=await adapter.links(p.target)}catch{links={ok:false,code:"LINKS_UNKNOWN"}}
-  let unknown=0;
+  let unknown=root.snapshot?.reportedTags?.status==="UNKNOWN"?1:0;
   if(links?.ok&&Array.isArray(links.keys)){
     for(const key of links.keys.slice(0,6)){
       if(!validKey(key)||key===p.target){unknown++;continue}
-      try{if(!add(await adapter.read(key),key))unknown++}catch{unknown++}
+      try{const result=await adapter.read(key);if(!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++}catch{unknown++}
     }
   }else unknown++;
   let document_status="NOT_CONFIGURED";
@@ -92,11 +92,13 @@ async function collectEvidence(context,adapter,digest,clock){
 
 function compareEvidence(before,after,now){
   if(!before||!after||before.installation_ref!==after.installation_ref||before.actor_ref!==after.actor_ref||before.target!==after.target||!Array.isArray(before.sources)||!Array.isArray(after.sources)||!Number.isFinite(now))return {status:"UNKNOWN",reason:"SCOPE_OR_BUNDLE_UNKNOWN",changed:[],unchanged:[]};
+  const validSources=e=>e.sources.length>0&&e.sources.length<=8&&new Set(e.sources.map(s=>s?.source_ref)).size===e.sources.length&&e.sources.every(s=>s?.installation_ref===e.installation_ref&&[s.source_ref,s.revision_key,s.content_digest].every(v=>typeof v==="string"&&/^[a-f0-9]{64}$/.test(v)));
+  if(!validSources(before)||!validSources(after))return {status:"UNKNOWN",reason:"INVALID_OR_DUPLICATE_SOURCE",changed:[],unchanged:[],unknown:[],authorization:"NONE"};
   const current=new Map(after.sources.map(s=>[s.source_ref,s]));
   const changed=[],unchanged=[],unknown=[];
   for(const prior of before.sources){
     const fresh=current.get(prior.source_ref);
-    if(!fresh||fresh.status!=="VERSION_OBSERVED"||!fresh.version||!validDate(fresh.freshness_deadline)||Date.parse(fresh.freshness_deadline)<=now||!prior.version){unknown.push(prior.source_ref);continue}
+    if(!fresh||fresh.status!=="VERSION_OBSERVED"||!fresh.version||!validDate(fresh.freshness_deadline)||Date.parse(fresh.freshness_deadline)<=now||!validDate(prior.version)||!validDate(fresh.version)||Date.parse(fresh.version)>now){unknown.push(prior.source_ref);continue}
     if(prior.revision_key!==fresh.revision_key||prior.version!==fresh.version||prior.content_digest!==fresh.content_digest)changed.push(prior.source_ref);
     else unchanged.push(prior.source_ref);
     current.delete(prior.source_ref);

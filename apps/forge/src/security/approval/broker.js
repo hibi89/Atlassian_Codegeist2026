@@ -27,7 +27,7 @@ function createApprovalBroker(store,clock){
     try{
       const r=await store.get(key(p,id,"record"));
       if(!same(r,p,b)||r.approval_id!==id||r.decision!=="APPROVED"||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at>now||r.expires_at<=r.created_at||r.expires_at-r.created_at>300000)return bad("APPROVAL_STALE_OR_MISSING");
-      if(r.expires_at<=now)return bad("APPROVAL_EXPIRED");
+      if(r.expires_at<=now||r.expires_at>b.expires_at)return bad("APPROVAL_EXPIRED");
       if(await store.get(key(p,id,"terminal"))!=null)return bad("APPROVAL_TERMINATED");
       return {ok:true,receipt:r};
     }catch{return bad("APPROVAL_STORAGE_UNKNOWN")}
