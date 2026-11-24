@@ -1,3 +1,7 @@
+import { randomBytes } from "node:crypto";
+import { principal } from "../evidence/bundle.js";
+import { reserveDailySlot } from "./daily-budget.js";
+import { createReportService } from "../security/approval/report-service.js";
 import { getAppContext } from "@forge/api";
 import kvsModule from "@forge/kvs";
 import { digest } from "../evidence/forge-evidence.js";
@@ -16,13 +20,20 @@ function createDevelopmentStore(kvs){
   async create(key,value){if(++writes>8||Buffer.byteLength(JSON.stringify(value),"utf8")>61440)throw Error("REVIEW_WRITE_BUDGET");return kvs.set(key,value,{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:1}})}
  };
 }
-async function call(context,input,operation){
- if(!isDevelopment())return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
+async function call(context,input,operation,confirmation){
+ if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
  try{
-  const service=createReviewService({store:createDevelopmentStore(getKvs()),clock:Date.now,digest,preview:previewWithPolicy,development:isDevelopment});
-  return await service[operation](context,input);
+  const kvs=getKvs();
+  const admission=await reserveDailySlot(kvs,Date.now());if(!admission.ok)return admission;
+  const services={store:createDevelopmentStore(kvs),clock:Date.now,digest,preview:previewWithPolicy,development:isDevelopment,nonce:()=>randomBytes(32).toString("hex")};
+  const service=["save","refresh"].includes(operation)?createReviewService(services):createReportService(services);
+  return await service[operation](context,input,confirmation);
  }catch{return {ok:false,code:"REVIEW_STORAGE_UNKNOWN",authorization:"NONE",execution:"DISABLED"}}
 }
 export const saveCurrentReview=(context,intent)=>call(context,intent,"save");
 export const refreshSavedReview=(context,id)=>call(context,id,"refresh");
+export const prepareReadOnlyReport=(context,id)=>call(context,id,"prepare");
+export const approveReadOnlyReport=(context,id,confirmation)=>call(context,id,"approve",confirmation);
+export const generateReadOnlyReport=(context,id)=>call(context,id,"generate");
+export const revokeReadOnlyReport=(context,id)=>call(context,id,"revoke");
 export {getKvs,createDevelopmentStore};

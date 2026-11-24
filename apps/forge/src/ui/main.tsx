@@ -7,6 +7,7 @@ type Issue = { key: string; summary: string; status: string; issueType: string; 
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
 type Evidence = { coverage:string; unknown_count:number; sources:{source_ref:string;uri:string;version:string|null;status:string;status_reason?:string;retrieved_at?:string;freshness_deadline?:string}[] };
 type Graph = {ok:boolean;code?:string;status?:string;coverage?:string;graph_revision?:string;nodes?:{id:string;kind:string;ref:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[]};
+type ReportResult={ok:boolean;request_id?:string;status?:string;code?:string;effect?:string;expires_at?:number;operations?:{operation:string;effect:string}[];report?:{status:string;sources:{uri:string;version:string;status:string}[];checks:{predicate:string;values:string[];status:string}[];missing:string[]};report_digest?:string};
 type SavedReview = {ok:boolean;review_id?:string;expires_at?:number;run_state?:string;status?:string;code?:string;affected_count?:number;unaffected_count?:number;persisted_invalidation?:boolean};
 type Result = { saved_review?:SavedReview;graph?:Graph; impact_summary?:{status:string;code?:string;affected_count?:number;unaffected_count?:number;stale_approval_count?:number}; claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string;reason?:string;source_refs?:string[]}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[];unchanged?:string[];unknown?:string[]}; policy?:{decision:string;reason:string;execution:string;authorization?:string;policy_version?:string;graph_status?:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
@@ -61,6 +62,8 @@ function App(){
   const [busy,setBusy]=useState(false);
   const [reviewId,setReviewId]=useState("");
   const [savedStatus,setSavedStatus]=useState<SavedReview|null>(null);
+  const [reportState,setReportState]=useState<ReportResult|null>(null);
+  const [reportRequest,setReportRequest]=useState<ReportResult|null>(null);
   const serial=useRef(0);
   useEffect(()=>{let alive=true;invoke<Result>("getPanelContext").then(v=>{if(alive)setContext(v)}).catch(()=>{if(alive)setContext({ok:false,code:"BACKEND_UNAVAILABLE"})});return()=>{alive=false}},[]);
   async function loadIssue(){
@@ -76,7 +79,7 @@ function App(){
     finally{if(token===serial.current)setBusy(false)}
   }
   async function saveReview(){
-    const token=++serial.current;setBusy(true);setSavedStatus(null);setPreview(null);
+    const token=++serial.current;setBusy(true);setSavedStatus(null);setReportState(null);setReportRequest(null);setPreview(null);
     try{const result=await invoke<Result>("saveCurrentReview",{intent});if(token===serial.current){setPreview(result);if(result.saved_review){setReviewId(result.saved_review.review_id??"");setSavedStatus(result.saved_review)}}}
     catch{if(token===serial.current)setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(token===serial.current)setBusy(false)}
@@ -85,6 +88,15 @@ function App(){
     const token=++serial.current;setBusy(true);setSavedStatus(null);
     try{const result=await invoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(token===serial.current)setSavedStatus(result)}
     catch{if(token===serial.current)setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
+    finally{if(token===serial.current)setBusy(false)}
+  }
+  async function reportAction(operation:"prepareReadOnlyReport"|"approveReadOnlyReport"|"generateReadOnlyReport"|"revokeReadOnlyReport"){
+    const token=++serial.current;setBusy(true);
+    try{
+      const requestId=reportRequest?.request_id;
+      const result=await invoke<ReportResult>(operation,operation==="prepareReadOnlyReport"?{review_id:reviewId}:{request_id:requestId,expected_digest:requestId});
+      if(token===serial.current){setReportState(result);if(operation==="prepareReadOnlyReport")setReportRequest(result.ok?result:null);}
+    }catch{if(token===serial.current)setReportState({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(token===serial.current)setBusy(false)}
   }
   return <main className="shell"><header><div className="eyebrow">HAE / LA • TRUSTFLOW</div><h1>Decision assurance</h1><p>Know why. Approve what. Revalidate what changes.</p></header>
@@ -96,7 +108,12 @@ function App(){
         <form onSubmit={createPreview}><label htmlFor="intent">Supported natural-language intent</label><input id="intent" maxLength={300} value={intent} disabled={busy} onChange={e=>{setIntent(e.target.value);setPreview(null)}}/><button disabled={busy||!intent.trim()} type="submit">Preview review</button></form>
         {preview&&!preview.ok&&<p role="alert">{msg(preview.code)}</p>}
         {preview?.ok&&preview.draft&&<article aria-live="polite"><div className="eyebrow">DRAFT · EVIDENCE PENDING</div><h3>{preview.draft.title}</h3><ol>{preview.draft.steps.map(step=><li key={step}>{step}</li>)}</ol>{preview.plan&&<><h4>Validated draft operations</h4><ol>{preview.plan.steps.map(s=><li key={s.step_id}><code>{s.op_id}</code> · {s.side_effect}{s.predecessor_ids.length?` · after ${s.predecessor_ids.join(", ")}`:""}</li>)}</ol><p className="muted">Draft digest: <code>{preview.plan.plan_hash}</code></p></>}<EvidencePanel result={preview}/><ProofGraphPanel result={preview}/><p>Authorization: none. No execution is available.</p></article>}
-        <section aria-label="Saved development review"><h3>Saved review · development only</h3><p>Save a fresh review with source hashes and lineage metadata for 24 hours. No Jira issue is modified. Use synthetic demo issues only.</p><button type="button" disabled={busy||!intent.trim()} onClick={saveReview}>Save fresh review</button><label htmlFor="saved-id">Saved review ID</label><input id="saved-id" maxLength={64} value={reviewId} onChange={e=>{setReviewId(e.target.value);setSavedStatus(null)}} disabled={busy}/><button type="button" disabled={busy||!/^[a-f0-9]{64}$/.test(reviewId)} onClick={recheckReview}>Recheck saved review</button>{savedStatus&&<div role="status">{savedStatus.ok?<><p>{savedStatus.status??"REVIEW_SAVED"} · {savedStatus.run_state??"State unknown"}</p>{savedStatus.expires_at&&<p>Expires {new Date(savedStatus.expires_at).toLocaleString()}</p>}{savedStatus.affected_count!==undefined&&<p>Affected nodes: {savedStatus.affected_count} · Unaffected nodes: {savedStatus.unaffected_count}</p>}{savedStatus.persisted_invalidation&&<p>Saved review invalidated. Create a new review. No approval or execution granted.</p>}</>:<p>{savedStatus.code??"REVIEW_UNAVAILABLE"} · Review unavailable; no Jira write attempted.</p>}</div>}</section>
+        <section aria-label="Saved development review"><h3>Saved review · development only</h3><p>Save a fresh review with source hashes and lineage metadata for 24 hours. No Jira issue is modified. Use synthetic demo issues only.</p><button type="button" disabled={busy||!intent.trim()} onClick={saveReview}>Save fresh review</button><label htmlFor="saved-id">Saved review ID</label><input id="saved-id" maxLength={64} value={reviewId} onChange={e=>{setReviewId(e.target.value);setSavedStatus(null);setReportState(null);setReportRequest(null)}} disabled={busy}/><button type="button" disabled={busy||!/^[a-f0-9]{64}$/.test(reviewId)} onClick={recheckReview}>Recheck saved review</button>{savedStatus&&<div role="status">{savedStatus.ok?<><p>{savedStatus.status??"REVIEW_SAVED"} · {savedStatus.run_state??"State unknown"}</p>{savedStatus.expires_at&&<p>Expires {new Date(savedStatus.expires_at).toLocaleString()}</p>}{savedStatus.affected_count!==undefined&&<p>Affected nodes: {savedStatus.affected_count} · Unaffected nodes: {savedStatus.unaffected_count}</p>}{savedStatus.persisted_invalidation&&<p>Saved review invalidated. Create a new review. No approval or execution granted.</p>}</>:<p>{savedStatus.code??"REVIEW_UNAVAILABLE"} · Review unavailable; no Jira write attempted.</p>}</div>}</section>
+        <section aria-label="Read-only report approval"><h3>Approve a read-only evidence report</h3><p>Only report generation is approved. No Jira mutation, no external AI. The exact saved plan, evidence and policy are rechecked at each stage. Development storage requests are capped at 24 per installation per UTC day.</p>
+          <button type="button" disabled={busy||!/^[a-f0-9]{64}$/.test(reviewId)} onClick={()=>reportAction("prepareReadOnlyReport")}>Prepare read-only report</button>
+          {reportRequest?.ok&&<><p>Exact request digest: <code>{reportRequest.request_id}</code></p><ol>{reportRequest.operations?.map((s,i)=><li key={i}>{s.operation} · {s.effect}</li>)}</ol><button type="button" disabled={busy||reportState?.status!=="AWAITING_READ_ONLY_APPROVAL"} onClick={()=>reportAction("approveReadOnlyReport")}>Approve this report only</button><button type="button" disabled={busy||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("generateReadOnlyReport")}>Generate approved report</button><button type="button" disabled={busy||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("revokeReadOnlyReport")}>Revoke approval</button></>}
+          {reportState&&<div role="status"><p>{reportState.status??reportState.code??"REPORT_UNAVAILABLE"}</p>{reportState.report&&<><p>{reportState.report.status}</p><ul>{reportState.report.sources.map(s=><li key={s.uri}>{s.uri} · {s.version} · {s.status}</li>)}</ul><ul>{reportState.report.checks.map((c,i)=><li key={i}>{c.predicate}: {c.values.join(" / ")} · {c.status}</li>)}</ul><p>Missing reported fields: {reportState.report.missing.join(", ")||"None reported"}</p><p>Report digest: <code>{reportState.report_digest}</code></p></>}</div>}
+        </section>
       </section></>}
     {busy&&<p role="status">Request in progress…</p>}
   </main>

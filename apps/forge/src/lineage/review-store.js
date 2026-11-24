@@ -1,5 +1,6 @@
 import { canonical, validatePlan } from "../core/ir/plan.js";
 import { compareEvidence } from "../evidence/bundle.js";
+import { buildObservedGraph } from "./observed-graph.js";
 import { analyzeImpact } from "./impact.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const bad=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
@@ -16,7 +17,7 @@ function createReviewStore(store,p,clock,digest){
  const key=(id,kind)=>"cg:review:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  function validRecord(r,id){
   const now=clock();
-  if(!r||r.schema_version!=="hae.review.snapshot.v1"||r.id!==id||r.tenant!==p.tenant||r.actor!==p.actor||r.target!==p.target||!intents.has(r.intent)||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at>now||r.expires_at<=now||r.expires_at-r.created_at!==ttlMs||!scopedGraph(p,r.graph)||!scopedEvidence(p,r.evidence))return false;
+  if(!r||r.schema_version!=="hae.review.snapshot.v2"||r.id!==id||r.tenant!==p.tenant||r.actor!==p.actor||r.target!==p.target||!intents.has(r.intent)||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at>now||r.expires_at<=now||r.expires_at-r.created_at!==ttlMs||!scopedGraph(p,r.graph)||!scopedEvidence(p,r.evidence)||!r.plan||r.plan.issue_key!==p.target||r.plan.intent!==r.intent||digest(canonical(r.plan))!==id)return false;
   const {record_digest,...body}=r;return hex(record_digest)&&digest(canonical(body))===record_digest;
  }
  async function save(preview){
@@ -26,7 +27,7 @@ function createReviewStore(store,p,clock,digest){
    const {plan_hash:id,...plan}=preview.plan;
    if(!validatePlan(plan,now).ok||digest(canonical(plan))!==id)return bad("REVIEW_PLAN_INVALID");
    const coverage=analyzeImpact(p,preview.graph,preview.freshness);if(!coverage.ok||coverage.affected.length)return bad("REVIEW_GRAPH_INVALID");
-   const body={schema_version:"hae.review.snapshot.v1",id,tenant:p.tenant,actor:p.actor,target:p.target,intent:preview.plan.intent,created_at:now,expires_at:now+ttlMs,graph:graphMetadata(preview.graph),evidence:evidenceMetadata(preview.evidence),policy_version:preview.policy.policy_version};
+   const body={schema_version:"hae.review.snapshot.v2",id,tenant:p.tenant,actor:p.actor,target:p.target,intent:preview.plan.intent,plan,created_at:now,expires_at:now+ttlMs,graph:graphMetadata(preview.graph),evidence:evidenceMetadata(preview.evidence),policy_version:preview.policy.policy_version};
    const record={...body,record_digest:digest(canonical(body))};
    if(!validRecord(record,id)||Buffer.byteLength(JSON.stringify(record),"utf8")>61440)return bad("REVIEW_STORAGE_LIMIT");
    // Explicit save only; immutable snapshot. No raw Jira descriptions or claim values.
@@ -34,7 +35,7 @@ function createReviewStore(store,p,clock,digest){
    return {ok:true,review_id:id,expires_at:body.expires_at,authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_SAVE_CONFLICT_OR_UNKNOWN")}
  }
- async function refresh(id,loadCurrent){
+ async function inspectCurrent(id,loadCurrent,internal){
   if(!scope(p)||!hex(id))return bad("REVIEW_UNAVAILABLE");
   try{
    const r=await store.get(key(id,"snapshot"));
@@ -58,14 +59,16 @@ function createReviewStore(store,p,clock,digest){
    const f=compareEvidence(r.evidence,current.evidence,now);
    const impact=analyzeImpact(p,r.graph,f);
    if(!impact.ok){if(!await invalidate("DEPENDENCY_UNKNOWN_OR_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");return bad(impact.code)}
-   const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW"||current.freshness?.status!=="CURRENT_OBSERVED";
+   const rebound=buildObservedGraph(p,{plan:{...r.plan,plan_hash:id}},current.evidence,current.claim_review,current.policy,digest,canonical);
+   const policyChanged=current.policy?.policy_version!==r.policy_version||current.policy?.decision!=="ALLOW_PREVIEW"||current.freshness?.status!=="CURRENT_OBSERVED"||!rebound.ok||rebound.graph_revision!==r.graph.graph_revision;
    const marker=await store.get(key(id,"invalidated"));
    if(marker!=null&&(marker.schema_version!=="hae.review.invalidation.v1"||marker.snapshot_digest!==r.record_digest||marker.review_id!==id))return bad("REVIEW_INVALIDATION_UNKNOWN");
    const stale=marker!=null||impact.affected.length>0||policyChanged;
    if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   if(internal){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
    return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,persisted_invalidation:stale,authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
- return {save,refresh};
+ return {save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true)};
 }
 export {createReviewStore};

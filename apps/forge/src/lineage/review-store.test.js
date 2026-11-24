@@ -30,3 +30,31 @@ test("KVS adapter uses only bounded conditional writes, package export resolved"
  const store=createDevelopmentStore(kvs);await store.create("test:one",{x:1});await assert.rejects(store.create("test:one",{x:2}));assert.equal((await store.get("test:one")).x,1);
  await assert.rejects(store.create("test:large",{x:"x".repeat(61441)}));
 });
+
+import {createReportService} from "../security/approval/report-service.js";
+import {reserveDailySlot} from "../state/daily-budget.js";
+test("read-only approval is exact, consumed once and refuses changed evidence or revocation",async()=>{
+ const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
+ let version="2026-11-24T11:00:00Z",counter=0;
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",summary:"RAW_SECRET_FIXTURE"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}})};
+ const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++counter))};
+ const reviews=createReviewService(deps),reports=createReportService(deps);
+ const create=async()=>{const saved=await reviews.save(ctx,"review release");assert.equal(saved.ok,true);const q=await reports.prepare(ctx,saved.saved_review.review_id);assert.equal(q.ok,true);return q.request_id};
+ const id=await create();
+ assert.equal((await reports.generate(ctx,id)).ok,false);
+ assert.equal((await reports.approve(ctx,id,true)).ok,false);
+ assert.equal((await reports.approve({...ctx,accountId:"other"},id,id)).ok,false);
+ assert.equal((await reports.approve(ctx,id,id)).ok,true);
+ const pair=await Promise.all([reports.generate(ctx,id),reports.generate(ctx,id)]);assert.equal(pair.filter(x=>x.ok).length,1);
+ const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");
+ assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);
+ const stale=await create();assert.equal((await reports.approve(ctx,stale,stale)).ok,true);version="2026-11-24T11:05:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);
+ const revoked=await create();assert.equal((await reports.approve(ctx,revoked,revoked)).ok,true);assert.equal((await reports.revoke(ctx,revoked)).ok,true);assert.equal((await reports.generate(ctx,revoked)).ok,false);
+});
+test("development daily budget admits at most the configured number, fails closed on storage errors",async()=>{
+ const m=new Map(),kvs={get:async k=>m.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");if(m.has(k))throw Error("conflict");m.set(k,v)}};
+ assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.equal((await reserveDailySlot(kvs,86401000,2)).ok,true);
+ assert.equal((await reserveDailySlot({get:async()=>{throw Error("network")}},1000)).ok,false);
+});
