@@ -39,7 +39,7 @@ function buildObservedGraph(p,draft,evidence,review,policy,digest,canonical){
     for(const id of checkIds)edge(id,plan,"PLAN_CHECK");
     const decision=node("POLICY",draft.plan.plan_hash,policy.policy_version,[policy.decision,policy.reason,policy.authorization]);edge(plan,decision,"POLICY_PLAN");
     const graph_revision=digest(canonical([nodes.map(n=>[n.id,n.digest]).sort((a,b)=>a[0].localeCompare(b[0])),edges.map(e=>[e.from_dependency,e.to_dependent,e.relation]).sort((a,b)=>canonical(a).localeCompare(canonical(b)))]));
-    return {ok:true,schema_version:"hae.proofgraph.v1",graph_revision,nodes,edges,status:"OBSERVED_PREVIEW_ONLY",coverage:evidence.coverage,authorization:"NONE",execution:"DISABLED"};
+    return {ok:true,schema_version:"hae.proofgraph.v1",installation_ref:p.tenant,actor_ref:p.actor,target:p.target,graph_revision,nodes,edges,status:"OBSERVED_PREVIEW_ONLY",coverage:evidence.coverage,authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("GRAPH_INCOMPLETE_OR_LIMIT")}
 }
 export { buildObservedGraph };
