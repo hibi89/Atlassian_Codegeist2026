@@ -3,9 +3,9 @@
   "created_kst": "2026-11-24",
   "project": "hibi89/Atlassian_Codegeist2026",
   "canonical_ref": "design/codegeist-2026-canonical",
-  "notes": "Planning candidates, not implementation; all P1 0 completed and P2 NOT_RUN. S/C/I/D/U tags are dominant dimensions, complexity integers 1-3 are effort heuristic not progress weights. Reassess critical path on each ㄱ. Permission/production/customer rights always explicit owner GO. Owner-locked v2 2026-11-24: preserve IDs 01-23, add 24/25; no implementation claimed. Mandatory ProofGraph preflight before bounded writer. Day 1: code-only candidates 02/03/05; 01 partial build-blocked; no P2 verified. Next 04/09/11. Latest tested feature code SHA 0e88296084db28608c060ce8cdbaecded47ea18c.",
+  "notes": "Planning candidates, not implementation; all P1 0 completed and P2 NOT_RUN. S/C/I/D/U tags are dominant dimensions, complexity integers 1-3 are effort heuristic not progress weights. Reassess critical path on each ㄱ. Permission/production/customer rights always explicit owner GO. Owner-locked v2 2026-11-24: preserve IDs 01-23, add 24/25; no implementation claimed. Mandatory ProofGraph preflight before bounded writer. Day 1: code-only candidates 02/03/05; 01 partial build-blocked; no P2 verified. Next 04/09/11. Latest tested feature code SHA 0e88296084db28608c060ce8cdbaecded47ea18c. Day 1 wave 2: eac161dfeefb76dedbc84d6a899b773540361ec7; 04/06/07/09 candidates; 11 partial (KVS and execution integration pending), 01 partial (build blocked). Exact remote V8 module smoke 11/11 PASS; live/Node/Forge build NOT_RUN. Next 10/17 and independent safe work.",
   "core_swu_count": 25,
-  "complete_swu_count": 3,
+  "complete_swu_count": 7,
   "weighted_progress": "UNASSESSED",
   "items": [
     {
@@ -113,16 +113,17 @@
       "dimension": "D",
       "complexity": 2,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "READY_CODE",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Jira fields and links have immutable source ID, version/time, hash, permission/unknown distinctions. Normalize versioned claim/source references and access state; retain stable source key for graph.",
-      "tests": "NOT_RUN",
-      "code_sha": null,
+      "tests": "PASS_V8_EXACT_REMOTE_MODULE_AND_SYNTHETIC_HARNESS_11_OF_11; NODE_RUNNER_FORGE_BUILD_LIVE_JIRA_KVS_NOT_RUN",
+      "code_sha": "eac161dfeefb76dedbc84d6a899b773540361ec7",
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
       "retry_evidence": [],
-      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects."
+      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects.",
+      "evidence_scope": "Resolver→asUser bounded current/linked Jira issue GET→tenant-scoped source/revision/digest and typed claims; max six distinct visible linked keys; denied source identity excluded. Incomplete coverage explicit. No full customer data persistence."
     },
     {
       "id": "CG-SWU-05",
@@ -170,15 +171,16 @@
       "dimension": "S",
       "complexity": 2,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "BLOCKED_DEPENDENCY",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Detects version mismatch and stale source from actual timestamps; ambiguous/no update_at yields UNKNOWN. Actual re-read of authoritative critical source version/access; missing version is UNKNOWN.",
-      "tests": "NOT_RUN",
-      "code_sha": null,
+      "tests": "PASS_V8_EXACT_REMOTE_MODULE_AND_SYNTHETIC_HARNESS_11_OF_11; NODE_RUNNER_FORGE_BUILD_LIVE_JIRA_KVS_NOT_RUN",
+      "code_sha": "eac161dfeefb76dedbc84d6a899b773540361ec7",
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
-      "retry_evidence": []
+      "retry_evidence": [],
+      "evidence_scope": "Two authoritative adapter reads in same preview request; version/content/membership differences and freshness expiry/permission unknown yield STALE_VERSION/UNKNOWN; no claim of future freshness or atomic snapshot; persisted approval prewrite recheck is 25."
     },
     {
       "id": "CG-SWU-07",
@@ -197,15 +199,16 @@
       "dimension": "S",
       "complexity": 3,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "BLOCKED_DEPENDENCY",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Identifies deterministic conflicting claims and produces cited conflict or uncertain result; no fabricated confidence. Typed requirement/test/policy/ownership checks, citations and explicit uncertainty; no LLM-only PASS.",
-      "tests": "NOT_RUN",
-      "code_sha": null,
+      "tests": "PASS_V8_EXACT_REMOTE_MODULE_AND_SYNTHETIC_HARNESS_11_OF_11; NODE_RUNNER_FORGE_BUILD_LIVE_JIRA_KVS_NOT_RUN",
+      "code_sha": "eac161dfeefb76dedbc84d6a899b773540361ec7",
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
-      "retry_evidence": []
+      "retry_evidence": [],
+      "evidence_scope": "Structured reported requirement/test/policy/owner tags compared by subject/predicate, contradictory values with cited source/claim refs; no free-text instructions trusted; labels remain UNVERIFIED_CLAIM, never independent test proof; conflict forces REVIEW."
     },
     {
       "id": "CG-SWU-08",
@@ -251,16 +254,17 @@
       "dimension": "C",
       "complexity": 3,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "READY_CODE",
+      "status": "IMPLEMENTED_UNVERIFIED",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Server-side DENY for unauthorized op/scope, cross tenant, unapproved egress, document-instruction injection; pure plan preview allowed. Policy version and exact current actor/target capability; deny if graph preflight or dependency snapshot invalid.",
-      "tests": "NOT_RUN",
-      "code_sha": null,
+      "tests": "PASS_V8_EXACT_REMOTE_MODULE_AND_SYNTHETIC_HARNESS_11_OF_11; NODE_RUNNER_FORGE_BUILD_LIVE_JIRA_KVS_NOT_RUN",
+      "code_sha": "eac161dfeefb76dedbc84d6a899b773540361ec7",
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
       "retry_evidence": [],
-      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects."
+      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects.",
+      "evidence_scope": "Actual resolver→server policy→preview decision; checks typed plan/digest, current actor/tenant/target, fixed read-only scopes, evidence scope/coverage/freshness, conflicting reported claims; no external egress or writes. ALLOW_PREVIEW is authorization NONE. Runtime write authority/approval/graph interlock remain 10/15/25; no production authorization claimed."
     },
     {
       "id": "CG-SWU-10",
@@ -280,7 +284,7 @@
       "dimension": "C",
       "complexity": 3,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "BLOCKED_DEPENDENCY",
+      "status": "READY_CODE",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Server validation of exact plan/evidence hash, actor/tenant/target/expiry, one-time authorization and revoke; forged client boolean denied. Bind dependency snapshot digest, policy version and capability lock; v1 approval cannot execute v2.",
@@ -288,7 +292,8 @@
       "code_sha": null,
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
-      "retry_evidence": []
+      "retry_evidence": [],
+      "dependency_validation_note": "Source work may proceed from implemented preview/evidence prerequisites; approval runtime or storage activation requires separate gates."
     },
     {
       "id": "CG-SWU-11",
@@ -306,16 +311,17 @@
       "dimension": "D",
       "complexity": 3,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "READY_CODE",
+      "status": "IMPLEMENTATION_PARTIAL_STORAGE_AND_EXECUTOR_BLOCKED",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Tenant-safe run/step transitions and idempotency conflict; reloaded status and unsupported replay denied. Persist reservation/attempt before remote effect; supported storage contention fails closed; no cross-system atomic claim.",
-      "tests": "NOT_RUN",
-      "code_sha": null,
+      "tests": "PASS_V8_SYNTHETIC_KVS_JOURNAL_CASE; LIVE_KVS_NOT_RUN",
+      "code_sha": "eac161dfeefb76dedbc84d6a899b773540361ec7",
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
       "retry_evidence": [],
-      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects."
+      "dependency_validation_note": "Pure/source code may proceed; full Forge runtime and actual granted scope remain pending; do not perform external side effects.",
+      "evidence_scope": "Append-only tenant+actor scoped run journal and conditional FAIL_IF_EXISTS adapter; same sequence contention/reload/invalid replay denied; draft/review transitions only. Actual @forge/kvs package, storage:app scope, resolver/run use, per-step reservation/nonce and immutable reconciled receipts still pending. No manifest permission change."
     },
     {
       "id": "CG-SWU-12",
@@ -481,7 +487,7 @@
       "dimension": "U",
       "complexity": 3,
       "owner": "WEB_GPT6_SOL_HIGH_UNTIL_OWNER_MODEL_GO",
-      "status": "BLOCKED_DEPENDENCY",
+      "status": "READY_CODE",
       "attempts_before_redesign": 0,
       "attempts_after_redesign": 0,
       "acceptance": "Real source cards, contradictions, policy reasons and UNKNOWN states, keyboard/tab/error/empty/loading states. Connected evidence/claim comparisons; no permission leak in source/graph UI.",
@@ -489,7 +495,8 @@
       "code_sha": null,
       "side_effect_gate": "NONE_AT_PLAN_TIME",
       "retry_stage": "INITIAL",
-      "retry_evidence": []
+      "retry_evidence": [],
+      "dependency_validation_note": "Source work may proceed from implemented preview/evidence prerequisites; approval runtime or storage activation requires separate gates."
     },
     {
       "id": "CG-SWU-18",
