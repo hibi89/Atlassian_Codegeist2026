@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "node src/ui/build.mjs",
-    "test:smoke": "node --test src/smoke.test.js"
+    "test:smoke": "node --test src/smoke.test.js src/core/ir/plan.test.js"
   },
   "dependencies": {
     "@forge/api": "8.4.0",

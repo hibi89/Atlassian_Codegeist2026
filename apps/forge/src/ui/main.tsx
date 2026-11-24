@@ -4,7 +4,8 @@ import { invoke } from "@forge/bridge";
 import "./styles.css";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
-type Result = { ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
+type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
+type Result = { plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
   AUTH_REQUIRED:"Sign in to Jira to continue.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
   SOURCE_ACCESS_UNKNOWN:"Current user access could not be verified.", SOURCE_NOT_VISIBLE_OR_MISSING:"Issue is missing or not visible to you.",
@@ -41,7 +42,7 @@ function App(){
       <section><h2>Start a review</h2><div className="choices">{["Review this change","Coordinate incident","Review release"].map(t=><button type="button" key={t} onClick={()=>{setIntent(t);setPreview(null)}} disabled={busy}>{t}</button>)}</div>
         <form onSubmit={createPreview}><label htmlFor="intent">Supported natural-language intent</label><input id="intent" maxLength={300} value={intent} disabled={busy} onChange={e=>{setIntent(e.target.value);setPreview(null)}}/><button disabled={busy||!intent.trim()} type="submit">Preview review</button></form>
         {preview&&!preview.ok&&<p role="alert">{msg(preview.code)}</p>}
-        {preview?.ok&&preview.draft&&<article aria-live="polite"><div className="eyebrow">DRAFT · EVIDENCE PENDING</div><h3>{preview.draft.title}</h3><ol>{preview.draft.steps.map(step=><li key={step}>{step}</li>)}</ol><p>Authorization: none. No execution is available.</p></article>}
+        {preview?.ok&&preview.draft&&<article aria-live="polite"><div className="eyebrow">DRAFT · EVIDENCE PENDING</div><h3>{preview.draft.title}</h3><ol>{preview.draft.steps.map(step=><li key={step}>{step}</li>)}</ol>{preview.plan&&<><h4>Validated draft operations</h4><ol>{preview.plan.steps.map(s=><li key={s.step_id}><code>{s.op_id}</code> · {s.side_effect}{s.predecessor_ids.length?` · after ${s.predecessor_ids.join(", ")}`:""}</li>)}</ol><p className="muted">Draft digest: <code>{preview.plan.plan_hash}</code></p></>}<p>Authorization: none. No execution is available.</p></article>}
       </section></>}
     {busy&&<p role="status">Request in progress…</p>}
   </main>
