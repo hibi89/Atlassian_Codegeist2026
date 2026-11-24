@@ -6,7 +6,7 @@ export const digest = text => createHash("sha256").update(text,"utf8").digest("h
 export function scopedAdapter(context){
   return {
     // Keys are derived from server context or a visible Jira link, never client payload.
-    read: key => readIssue({...context,extension:{issue:{key}}}, k=>api.asUser().requestJira(route`/rest/api/3/issue/${k}?fields=summary,status,issuetype,updated`,{method:"GET",headers:{Accept:"application/json"}}),()=>new Date().toISOString(),digest),
+    read: key => readIssue({...context,extension:{issue:{key}}}, k=>api.asUser().requestJira(route`/rest/api/3/issue/${k}?fields=summary,status,issuetype,updated,labels`,{method:"GET",headers:{Accept:"application/json"}}),()=>new Date().toISOString(),digest),
     links: async key=>{
       try{
         const res=await api.asUser().requestJira(route`/rest/api/3/issue/${key}?fields=issuelinks`,{method:"GET",headers:{Accept:"application/json"}});

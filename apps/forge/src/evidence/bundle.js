@@ -32,6 +32,14 @@ function normalizedEvidence(result,p,digest,now){
   const revision=digest(JSON.stringify([stable,version,s.contentHash]));
   const record={schema_version:"hae.evidence.v2",source_ref:stable,installation_ref:p.tenant,source_kind:"JIRA_ISSUE",object_id:s.objectId,uri:s.uri,version,revision_key:revision,content_digest:s.contentHash,retrieved_at:s.retrievedAt,permission_check_at:s.retrievedAt,freshness_deadline:new Date(Date.parse(s.retrievedAt)+120000).toISOString(),claim_ids:[digest(revision+":status"),digest(revision+":issue_type")],comparison_rule_version:"cg-claims-v1",independent_source_group:null,status:version?"VERSION_OBSERVED":"UNVERIFIED_VERSION",status_reason:version?"AUTHORIZED_READ":"SOURCE_VERSION_UNKNOWN"};
   const claims=[{claim_id:record.claim_ids[0],source_ref:stable,revision_key:revision,subject:stable,predicate:"jira.status",value:x.status,status:"SOURCE_OBSERVED"},{claim_id:record.claim_ids[1],source_ref:stable,revision_key:revision,subject:stable,predicate:"jira.issue_type",value:x.issueType,status:"SOURCE_OBSERVED"}];
+    // Jira labels are observed reports, never independent test or policy proof.
+  if(x.reportedTags?.status==="OBSERVED"&&Array.isArray(x.reportedTags.values)){
+    for(const tag of x.reportedTags.values){
+      const claim_id=digest(JSON.stringify([revision,tag.subject,tag.predicate,tag.value]));
+      record.claim_ids.push(claim_id);
+      claims.push({claim_id,source_ref:stable,revision_key:revision,...tag,status:"UNVERIFIED_CLAIM"});
+    }
+  }
   return {record,claims};
 }
 

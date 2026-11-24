@@ -1,3 +1,4 @@
+import { reviewClaims } from "../evidence/typed-claims.js";
 import { principal, refreshEvidence } from "../evidence/bundle.js";
 function evaluatePolicy(p,planResult,evidence,freshness,now,checkPlan,digest){
   const deny=reason=>({decision:"DENY",reason,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"});
@@ -22,8 +23,10 @@ async function guardedPreview(context,input,services){
   if(!draft.ok)return draft;
   const observed=await refreshEvidence(context,services.adapter,services.digest,services.clock);
   if(!observed.ok)return {...draft,policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
-  const policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
-  return {...draft,evidence:observed.evidence,freshness:observed.freshness,policy};
+  const claim_review=reviewClaims(observed.evidence);
+  let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
+  if(policy.decision==="ALLOW_PREVIEW"&&claim_review.status==="CONFLICT_FOUND")policy={...policy,decision:"REVIEW",reason:"CLAIM_CONFLICT"};
+  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy};
 }
 
 export { evaluatePolicy, guardedPreview };
