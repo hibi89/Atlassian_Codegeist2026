@@ -10,8 +10,9 @@ export async function readCommentJournal(store,p,reviewId){
   const key=kind=>"cg:comment:"+p.tenant+":"+p.actor+":"+a.request_id+":"+kind;
   const outcome=await store.get(key("outcome")),reconciled=await store.get(key("reconciled"));
   if(outcome!=null&&(!scoped(outcome)||outcome.schema_version!=="hae.comment.receipt.v1"||outcome.review_id!==reviewId||!["OBSERVED_SUCCESS","DEFINITE_REJECTION","BLOCKED_BEFORE_DISPATCH","UNKNOWN_OUTCOME_REVIEW"].includes(outcome.state)))return {status:"JOURNAL_UNKNOWN"};
+  if(outcome?.state==="OBSERVED_SUCCESS"&&(!hex(outcome.observation_digest)||typeof outcome.comment_id!=="string"||!/^[1-9][0-9]{0,30}$/.test(outcome.comment_id)))return {status:"JOURNAL_UNKNOWN"};
   if(reconciled!=null&&(!scoped(reconciled)||reconciled.schema_version!=="hae.comment.reconciliation.v1"||!hex(reconciled.observation_digest)||!/^[1-9][0-9]{0,30}$/.test(reconciled.comment_id)))return {status:"JOURNAL_UNKNOWN"};
-  if(reconciled&&(outcome?.state==="BLOCKED_BEFORE_DISPATCH"||outcome?.state==="DEFINITE_REJECTION"))return {status:"JOURNAL_UNKNOWN"};
+  if(reconciled&&(outcome?.state==="BLOCKED_BEFORE_DISPATCH"||outcome?.state==="DEFINITE_REJECTION"||outcome?.state==="OBSERVED_SUCCESS"&&(outcome.comment_id!==reconciled.comment_id||outcome.observation_digest!==reconciled.observation_digest)))return {status:"JOURNAL_UNKNOWN"};
   // Historical observation only, not a guarantee that the comment still exists.
   return {status:reconciled?"HISTORICAL_OBSERVED_SUCCESS":outcome?.state==="OBSERVED_SUCCESS"?"HISTORICAL_OBSERVED_SUCCESS":outcome?.state??"UNKNOWN_OUTCOME_REVIEW",request_id:a.request_id};
  }catch{return {status:"JOURNAL_UNKNOWN"}}

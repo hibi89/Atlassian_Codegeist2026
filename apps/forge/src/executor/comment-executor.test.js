@@ -8,6 +8,7 @@ import {canonical,validatePlan} from "../core/ir/plan.js";
 import {createReviewService} from "../state/review-service.js";
 import {readCommentJournal} from "../state/comment-journal.js";
 import {principal} from "../evidence/bundle.js";
+import {createCommentExecutor} from "./comment-executor.js";
 import {createCommentService} from "../security/approval/comment-service.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
 function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"],linkedLabels=null){
@@ -18,7 +19,7 @@ function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v
  const adapter={links:async()=>({ok:true,keys:linkedLabels===null?[]:["HTF-3"],complete:true}),read:async k=>{if(++reads===changeAt)version="2026-11-24T11:05:00Z";const root=k==="HTF-2",v=root?version:"2026-11-24T11:00:00Z",tags=root?labels:linkedLabels,objectId=root?"2":"3";return {ok:true,snapshot:{objectId,key:k,status:"Open",issueType:"Task",reportedTags:typedTags(tags)},source:{provider:"jira",objectId,uri:"/browse/"+k,version:v,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+v+JSON.stringify(tags))}}}};
  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
  let comments=[];
- const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
+ const transport={permissions:async()=>({browse:true,add}),post:async(key,body)=>{posts++;if(mode==="reject")return {status:403};if(mode==="lost")throw Error("timeout");comments.push({id:String(posts),author:{accountId:ctx.accountId},body});if(mode==="marked"){comments[comments.length-1].body.content[0].content[0].marks=[{type:"strong"}]};if(mode==="timeout")throw Error("timeout after effect");return {status:201,id:String(posts)}},get:async(key,id)=>({status:200,comment:comments.find(c=>c.id===id)}),recent:async()=>({status:200,comments:mode==="hidden"?[]:comments})};
  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++counter)),allowedInstall:()=>allowed,transport};
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
@@ -88,4 +89,18 @@ test("incident linked ownership conflict is cited and denies save/action",async(
  const prepared=await g.request("coordinate incident");assert.equal(prepared.ok,true);
  assert.equal((await g.writes.approve(g.ctx,prepared.request_id,prepared.request_id)).ok,true);
  assert.equal((await g.writes.execute(g.ctx,prepared.request_id)).status,"OBSERVED_SUCCESS");assert.equal(g.posts(),1);
+});
+
+test("P2 direct writer cannot bypass persisted approval; malformed receipt and unexpected body stay unknown",async()=>{
+ const f=fixture(),r=await f.request(),plan=[...f.map.values()].find(x=>x?.schema_version==="hae.forge.comment-plan.v1");
+ const p=principal(f.ctx,digest);let directPosts=0;
+ const ex=createCommentExecutor({store:f.store,p,clock:()=>Date.parse("2026-11-24T12:00:00Z"),digest,accountId:f.ctx.accountId,transport:{post:async()=>{directPosts++;return {status:201}}}});
+ assert.equal((await ex.dispatch(plan,r.request_id,async()=>({ok:true,plan_hash:r.request_id}))).ok,false);assert.equal(directPosts,0);
+ assert.equal((await f.writes.approve(f.ctx,r.request_id,r.request_id)).ok,true);
+ assert.equal((await ex.dispatch(plan,r.request_id,async()=>({ok:true,plan_hash:r.request_id}))).ok,false);assert.equal(directPosts,0);
+ f.setMode("marked");assert.equal((await f.writes.execute(f.ctx,r.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ const g=fixture(),q=await g.request();await g.writes.approve(g.ctx,q.request_id,q.request_id);assert.equal((await g.writes.execute(g.ctx,q.request_id)).ok,true);
+ const outcome=[...g.map.values()].find(x=>x?.schema_version==="hae.comment.receipt.v1");outcome.observation_digest="corrupt";
+ assert.equal((await readCommentJournal(g.store,principal(g.ctx,digest),q.review_id)).status,"JOURNAL_UNKNOWN");
 });

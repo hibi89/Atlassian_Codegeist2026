@@ -6,6 +6,8 @@ export function adfComment(text){return {version:1,type:"doc",content:[{type:"pa
 function observedComment(c,plan,accountId){
  if(!c||!validId(c.id)||typeof accountId!=="string"||c.author?.accountId!==accountId)return false;
  const b=c.body;
+ // Require exact canonical ADF rather than accepting extra marks or attributes.
+ try{if(canonical(b)!==canonical(adfComment(plan.typed_args.comment)))return false}catch{return false}
  return b?.version===1&&b.type==="doc"&&Array.isArray(b.content)&&b.content.length===1&&b.content[0]?.type==="paragraph"&&Array.isArray(b.content[0].content)&&b.content[0].content.length===1&&b.content[0].content[0]?.type==="text"&&b.content[0].content[0].text===plan.typed_args.comment;
 }
 async function readback(transport,plan,accountId,id,digest){
@@ -48,7 +50,7 @@ export function createCommentExecutor({store,p,clock,digest,transport,accountId}
    // One immutable attempt per review, even if a second request is prepared.
    const prefix="cg:approval:"+p.tenant+":"+p.actor+":"+id+":";
    const approval=await store.get(prefix+"record"),terminal=await store.get(prefix+"terminal");
-   if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==id||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||approval.plan_hash!==id||approval.request_digest!==id||approval.evidence_bundle_hash!==plan.evidence_bundle_hash||approval.dependency_digest!==plan.dependency_digest||approval.policy_version!==plan.policy_version||approval.capability_lock!==plan.capability_lock||!Number.isSafeInteger(approval.expires_at)||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==id||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at)return denyWrite("EXECUTOR_APPROVAL_RECEIPT_DENIED");
+   if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==id||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||approval.plan_hash!==id||approval.request_digest!==id||approval.evidence_bundle_hash!==plan.evidence_bundle_hash||approval.dependency_digest!==plan.dependency_digest||approval.policy_version!==plan.policy_version||approval.capability_lock!==plan.capability_lock||!Number.isSafeInteger(approval.created_at)||approval.created_at>clock()||!Number.isSafeInteger(approval.expires_at)||approval.expires_at>plan.expires_at||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==id||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at||terminal.at>clock())return denyWrite("EXECUTOR_APPROVAL_RECEIPT_DENIED");
    await store.create(reservationKey(plan),attempt);
    await store.create(key(id,"attempt"),attempt);
   }catch{return denyWrite("WRITE_RESERVATION_CONFLICT_OR_UNKNOWN")}
