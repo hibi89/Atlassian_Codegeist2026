@@ -1,3 +1,5 @@
+import { buildObservedGraph } from "../lineage/observed-graph.js";
+import { canonical } from "../core/ir/plan.js";
 import { reviewClaims } from "../evidence/typed-claims.js";
 import { principal, refreshEvidence } from "../evidence/bundle.js";
 function evaluatePolicy(p,planResult,evidence,freshness,now,checkPlan,digest){
@@ -26,7 +28,9 @@ async function guardedPreview(context,input,services){
   const claim_review=reviewClaims(observed.evidence);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
   if(policy.decision==="ALLOW_PREVIEW"&&claim_review.status==="CONFLICT_FOUND")policy={...policy,decision:"REVIEW",reason:"CLAIM_CONFLICT"};
-  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy};
+  const graph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
+  // This graph is a scoped observation, never a persisted dependency projection or authority.
+  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy,graph};
 }
 
 export { evaluatePolicy, guardedPreview };
