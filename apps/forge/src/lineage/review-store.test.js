@@ -107,3 +107,33 @@ test("P2 real KVS adapter contract: expired returned data is denied, not treated
  result={key:"cg:test",value:{x:1},expireTime:new Date(now+1000).toISOString()};assert.deepEqual(await store.get("cg:test"),{x:1});
  await assert.rejects(store.get("../bad"));await assert.rejects(store.create("x".repeat(501),{x:1}));assert.equal(writes,0);assert.equal(reads,6);
 });
+
+for(const fault of ["lost-report-receipt-ack","before-success","missing-report-receipt"]){
+ test("P2 report completion recovery: "+fault,async()=>{
+  const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+  let inject=false,denied=false,nonce=0;
+  const store={get:async k=>map.get(k),create:async(k,v)=>{
+   if(map.has(k))throw Error("conflict");
+   if(inject&&(fault==="before-success"&&v.state==="SUCCEEDED"||fault==="missing-report-receipt"&&v.schema_version==="hae.report.receipt.v2"))throw Error("synthetic write rejected");
+   map.set(k,JSON.parse(JSON.stringify(v)));
+   if(inject&&fault==="lost-report-receipt-ack"&&v.schema_version==="hae.report.receipt.v2")throw Error("synthetic acknowledgement lost");
+  }};
+  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>denied?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:{ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",summary:"RAW_SECRET_FIXTURE"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}}};
+  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++nonce))};
+  const reviews=createReviewService(deps),reports=createReportService(deps);
+  const saved=await reviews.save(ctx,"review release");assert.equal(saved.ok,true);const reviewId=saved.saved_review.review_id;
+  const prepared=await reports.prepare(ctx,reviewId);assert.equal(prepared.ok,true);const id=prepared.request_id;
+  assert.equal((await reports.approve(ctx,id,id)).ok,true);inject=true;assert.equal((await reports.generate(ctx,id)).ok,false);inject=false;
+  assert.equal((await reports.generate(ctx,id)).ok,false);
+  assert.equal((await reviews.recoverReport({...ctx,accountId:"other"},reviewId)).ok,false);
+  const r=await reviews.recoverReport(ctx,reviewId);
+  if(fault==="missing-report-receipt"){assert.equal(r.ok,false);assert.equal((await reviews.refresh(ctx,reviewId)).run_state,"REPORT_OUTCOME_REVIEW_REQUIRED");return;}
+  assert.equal(r.ok,true);assert.equal(r.run_state,"SUCCEEDED");assert.equal(r.execution,"NO_JIRA_MUTATION");assert.equal(r.report,undefined);
+  assert.equal((await reviews.recoverReport(ctx,reviewId)).report_digest,r.report_digest);
+  assert.equal((await reviews.history(ctx,reviewId)).ok,true);assert.equal((await reports.generate(ctx,id)).ok,false);
+  const reservation=[...map.values()].find(v=>v.schema_version==="hae.step.reservation.v1");reservation.payload_digest="0".repeat(64);
+  assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
+  denied=true;assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
+ });
+}
