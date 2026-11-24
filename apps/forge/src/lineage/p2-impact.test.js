@@ -36,3 +36,14 @@ test("P2 missing access, new dependency, duplicate classification and forged ind
  for(const f of [freshness([],["A"]),freshness(["X"]),{...freshness(["A"]),unchanged:[h("refA"),h("refB")]},{...freshness(["A"]),unchanged:[]}])assert.equal(analyzeImpact(p,g,f,index).ok,false);
  index.adjacency[0][1]=[];assert.equal(analyzeImpact(p,g,freshness(["A"]),index).code,"GRAPH_INDEX_INVALID");
 });
+
+test("P2 600-node graph with separate branches preserves exact unrelated paths and receipt history",()=>{
+ const g=base();g.nodes=[];g.edges=[];
+ const kind=["SOURCE","CLAIM","CHECK","PLAN","POLICY","APPROVAL","STEP","RECEIPT"];
+ for(let branch=0;branch<2;branch++){
+  for(let n=0;n<300;n++){const k=n===0?"SOURCE":n===299?"RECEIPT":kind[1+(n-1)%6];g.nodes.push({id:h(branch+":"+n),ref:h("ref"+branch+":"+n),kind:k,installation_ref:p.tenant,digest:h("digest"+branch+":"+n)});if(n)g.edges.push({from_dependency:h(branch+":"+(n-1)),to_dependent:h(branch+":"+n),relation:"TEST_DEPENDENCY"})}
+ }
+ const fr={status:"STALE_VERSION",changed:[h("ref0:0")],unchanged:[h("ref1:0")],unknown:[]},index=buildReverseIndex(g),a=analyzeImpact(p,g,fr,index);
+ assert.equal(a.ok,true);assert.deepEqual(a.affected,Array.from({length:299},(_,n)=>h("0:"+n)).sort());assert.deepEqual(a.unaffected,Array.from({length:299},(_,n)=>h("1:"+n)).sort());assert.deepEqual(a.preserved_receipts,[h("0:299"),h("1:299")].sort());
+ assert.equal(analyzeImpact(p,{...g,nodes:[...g.nodes,g.nodes[0]]},fr).ok,false);
+});
