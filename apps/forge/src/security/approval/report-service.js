@@ -69,7 +69,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    const stepLedger=createStepLedger(store,runLedger,p,clock);
    const reserved=await stepLedger.reserve(r.review_id,step.step_id,{plan_hash:r.review_id,approval_id:id,payload_digest:payloadDigest});
    if(!reserved.ok)return reserved;
-   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks:m.current.claim_review.checks.map(c=>({predicate:c.predicate,values:c.values,status:c.status,reason:c.reason})),missing:m.current.claim_review.missing_predicates??[],policy:policyVersion,generated_at:clock()};
+   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks:m.current.claim_review.checks.map(c=>({predicate:c.predicate,values:c.values,status:c.status,reason:c.reason})),missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:clock()};
    const reportDigest=digest(canonical(report));
    const recorded=await stepLedger.record(r.review_id,step.step_id,{state:"OBSERVED_SUCCESS",observation_digest:reportDigest,payload_digest:payloadDigest});if(!recorded.ok)return recorded;
    // Persist lineage metadata, never report text. Link the saved policy and

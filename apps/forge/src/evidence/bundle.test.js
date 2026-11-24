@@ -62,3 +62,15 @@ test("Confluence configured read integrates versioned evidence without raw page 
  assert.equal((await readPage("../bad",transport,clock,digest)).ok,false);
  const other=await collectEvidence({...ctx,installContext:"ari:cloud:jira::site/test-b"},{...mixed,page:()=>null},digest,clock);assert.equal(other.evidence.document_status,"NOT_CONFIGURED");
 });
+
+import {typedTags} from "./typed-claims.js";
+test("release assessment distinguishes missing, stale, contradictory and unknown evidence, with source citations",async()=>{
+ let labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"],linked=["tf-req-DEMO-2"],denied=false;
+ const a={...adapter,read:async k=>denied&&k==="DEMO-2"?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:{...sample(k),snapshot:{...sample(k).snapshot,reportedTags:typedTags(k==="DEMO-1"?labels:linked)},source:{...sample(k).source,contentHash:digest(k+JSON.stringify(k==="DEMO-1"?labels:linked))}}};
+ const services={adapter:a,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))};
+ const run=()=>guardedPreview(ctx,"review release",services);
+ let r=await run();assert.equal(r.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal(r.release_assessment.requirements.find(x=>x.requirement==="DEMO-2").state,"MISSING_REPORTED_TEST");
+ linked=["tf-test-DEMO-1-fail"];r=await run();assert.equal(r.release_assessment.status,"CONFLICT_REVIEW");assert.equal(r.release_assessment.conflicts[0].sources.length,2);
+ denied=true;r=await run();assert.equal(r.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(r.policy.decision,"REVIEW");
+ denied=false;linked=["tf-req-DEMO-2","tf-test-DEMO-2-pass"];r=await run();assert.equal(r.release_assessment.status,"HUMAN_RELEASE_REVIEW_REQUIRED");assert.equal(r.release_assessment.authorization,"NONE");
+});

@@ -1,3 +1,4 @@
+import { assessRelease } from "../evidence/release-assessment.js";
 import { selectiveChecks } from "../lineage/selective-checks.js";
 import { analyzeImpact } from "../lineage/impact.js";
 import { buildObservedGraph } from "../lineage/observed-graph.js";
@@ -39,7 +40,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const impact_summary=impact.ok?{status:impact.status,affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,stale_approval_count:impact.stale_approvals.length,authorization:"NONE"}:{status:"HOLD",code:impact.code,authorization:"NONE"};
   if(!impact.ok&&policy.decision==="ALLOW_PREVIEW")policy={...policy,decision:"REVIEW",reason:impact.code};
   const visibleGraph=buildObservedGraph(p,draft,observed.evidence,claim_review,policy,services.digest,canonical);
-  return {...draft,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
+  return {...draft,release_assessment:draft.plan.intent==="release-review"?assessRelease(observed.evidence,claim_review,observed.freshness):undefined,evidence:observed.evidence,freshness:observed.freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
 }
 
 export { evaluatePolicy, guardedPreview };
