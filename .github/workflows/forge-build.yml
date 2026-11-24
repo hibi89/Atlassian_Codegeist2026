@@ -36,28 +36,8 @@ jobs:
           git rev-parse HEAD
           node --version
           npm --version
-      - name: Dependency lock and install
-        run: |
-          if [ ! -f package-lock.json ]; then
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund --fetch-retries=1
-          fi
-          npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=1
-      - name: Export public dependency lock for one-time source pinning
-        run: |
-          python3 - <<'PY'
-          import base64, hashlib, json
-          from pathlib import Path
-          data = Path("package-lock.json").read_bytes()
-          lock = json.loads(data)
-          for name, p in lock["packages"].items():
-              if name and (not p.get("integrity") or not p.get("resolved", "").startswith("https://registry.npmjs.org/")):
-                  raise SystemExit("Unexpected package origin or missing integrity")
-          print("CG_LOCK_SHA256:" + hashlib.sha256(data).hexdigest())
-          b64 = base64.b64encode(data).decode("ascii")
-          for i in range(0, len(b64), 240):
-              print("CG_LOCK_DATA:" + str(i // 240) + ":" + b64[i:i+240])
-          print("CG_LOCK_END:" + str((len(b64)+239)//240))
-          PY
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=1
       - name: Source syntax
         run: find src -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -r -n1 node --check
       - name: Native Node smoke
