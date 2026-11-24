@@ -13,6 +13,10 @@ function evidenceMetadata(e){
  return {installation_ref:e.installation_ref,actor_ref:e.actor_ref,target:e.target,coverage:e.coverage,bundle_hash:e.bundle_hash,sources:e.sources.map(s=>({installation_ref:s.installation_ref,source_ref:s.source_ref,revision_key:s.revision_key,content_digest:s.content_digest,version:s.version,status:s.status,freshness_deadline:s.freshness_deadline}))};
 }
 function graphMetadata(g){return {ok:true,schema_version:g.schema_version,installation_ref:g.installation_ref,actor_ref:g.actor_ref,target:g.target,coverage:g.coverage,graph_revision:g.graph_revision,nodes:g.nodes.map(n=>({id:n.id,installation_ref:n.installation_ref,kind:n.kind,ref:n.ref,version:n.version,digest:n.digest})),edges:g.edges.map(e=>({from_dependency:e.from_dependency,to_dependent:e.to_dependent,relation:e.relation}))}}
+function inspectMetadata(r){
+ const counts={};for(const n of r.graph.nodes)counts[n.kind]=(counts[n.kind]??0)+1;
+ return {classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(r),"utf8"),record_digest:r.record_digest,graph_revision:r.graph.graph_revision,source_count:r.evidence.sources.length,node_count:r.graph.nodes.length,edge_count:r.graph.edges.length,node_kinds:counts,expires_at:r.expires_at,storage_scope:"SINGLE_REVIEW_SNAPSHOT",raw_originals:"NOT_STORED"};
+}
 function createReviewStore(store,p,clock,digest){
  const key=(id,kind)=>"cg:review:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  function validRecord(r,id){
@@ -32,7 +36,7 @@ function createReviewStore(store,p,clock,digest){
    if(!validRecord(record,id)||Buffer.byteLength(JSON.stringify(record),"utf8")>61440)return bad("REVIEW_STORAGE_LIMIT");
    // Explicit save only; immutable snapshot. No raw Jira descriptions or claim values.
    await store.create(key(id,"snapshot"),record);
-   return {ok:true,review_id:id,expires_at:body.expires_at,authorization:"NONE",execution:"DISABLED"};
+   return {ok:true,review_id:id,expires_at:body.expires_at,metadata:inspectMetadata(record),authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_SAVE_CONFLICT_OR_UNKNOWN")}
  }
  async function inspectCurrent(id,loadCurrent,internal){
@@ -66,7 +70,7 @@ function createReviewStore(store,p,clock,digest){
    const stale=marker!=null||impact.affected.length>0||policyChanged;
    if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED"))return bad("REVIEW_INVALIDATION_UNKNOWN");
    if(internal){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
-   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,persisted_invalidation:stale,authorization:"NONE",execution:"DISABLED"};
+   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",affected_count:impact.affected.length,unaffected_count:impact.unaffected.length,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
  return {save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true)};

@@ -15,7 +15,7 @@ test("development save and recheck use immutable metadata and never revive stale
  const preview=(c,i)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
  const service=createReviewService({store,clock,digest,preview,development:()=>true});
  assert.equal((await createReviewService({store,clock,digest,preview,development:()=>false}).save(ctx,"review change")).ok,false);
- const saved=await service.save(ctx,"review change");assert.equal(saved.ok,true);assert.equal(saved.saved_review.run_state,"POLICY_REVIEW");const id=saved.saved_review.review_id;
+ const saved=await service.save(ctx,"review change");assert.equal(saved.ok,true);assert.equal(saved.saved_review.run_state,"POLICY_REVIEW");assert.equal(saved.saved_review.metadata.raw_originals,"NOT_STORED");assert.ok(saved.saved_review.metadata.record_bytes>0);const id=saved.saved_review.review_id;
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);assert.equal(JSON.stringify([...map.values()]).includes("/browse/"),false);
  assert.equal((await service.refresh(ctx,id)).status,"NO_CHANGE_OBSERVED");
  assert.equal((await service.refresh({...ctx,accountId:"other"},id)).ok,false);
@@ -48,7 +48,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
  assert.equal((await reports.approve({...ctx,accountId:"other"},id,id)).ok,false);
  assert.equal((await reports.approve(ctx,id,id)).ok,true);
  const pair=await Promise.all([reports.generate(ctx,id),reports.generate(ctx,id)]);assert.equal(pair.filter(x=>x.ok).length,1);
- const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");
+ const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);
  const stale=await create();assert.equal((await reports.approve(ctx,stale,stale)).ok,true);version="2026-11-24T11:05:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reports.generate(ctx,stale)).ok,false);
  const revoked=await create();assert.equal((await reports.approve(ctx,revoked,revoked)).ok,true);assert.equal((await reports.revoke(ctx,revoked)).ok,true);assert.equal((await reports.generate(ctx,revoked)).ok,false);

@@ -27,8 +27,8 @@ function createReviewService({store,clock,digest,preview,development}){
   const review=await createReviewStore(store,p,clock,digest).refresh(id,async intent=>preview(context,aliases[intent]));
   if(!review.ok)return review;
   const run=await createRunLedger(store,p,clock).read(id);
-  if(!run.ok||run.events[0].plan_hash!==id||run.state!=="POLICY_REVIEW")return deny("REVIEW_JOURNAL_PARTIAL");
-  return {...review,run_state:run.state};
+  if(!run.ok||run.events[0].plan_hash!==id||!["POLICY_REVIEW","AWAITING_APPROVAL","READY","RUNNING","RECONCILING","SUCCEEDED"].includes(run.state))return deny("REVIEW_JOURNAL_PARTIAL");
+  return {...review,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
  return {save,refresh};
 }

@@ -16,8 +16,8 @@ function isDevelopment(){try{return String(getAppContext().environmentType).toUp
 function createDevelopmentStore(kvs){
  let reads=0,writes=0;
  return {
-  async get(key){if(++reads>32)throw Error("REVIEW_READ_BUDGET");return kvs.get(key)},
-  async create(key,value){if(++writes>8||Buffer.byteLength(JSON.stringify(value),"utf8")>61440)throw Error("REVIEW_WRITE_BUDGET");return kvs.set(key,value,{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:1}})}
+  async get(key){if(++reads>64)throw Error("REVIEW_READ_BUDGET");return kvs.get(key)},
+  async create(key,value){if(++writes>12||Buffer.byteLength(JSON.stringify(value),"utf8")>61440)throw Error("REVIEW_WRITE_BUDGET");return kvs.set(key,value,{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:1}})}
  };
 }
 async function call(context,input,operation,confirmation){
