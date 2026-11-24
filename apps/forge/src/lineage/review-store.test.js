@@ -71,5 +71,6 @@ test("selective revalidation reuses unchanged authorized groups only, recomputes
  version="2026-11-24T11:05:00Z";
  const changed=await service.refresh(ctx,id);assert.equal(changed.status,"STALE_REVIEW_REQUIRED");assert.equal(changed.revalidation.reused,2);assert.equal(changed.revalidation.recomputed,2);
  assert.ok(changed.affected_count>0);assert.ok(changed.unaffected_count>0);
+ const replacement=await service.revalidate(ctx,id);assert.equal(replacement.ok,true);assert.notEqual(replacement.saved_review.review_id,id);assert.equal(replacement.authorization,"NONE");assert.equal(replacement.revalidation.reused,2);assert.equal(replacement.revalidation.recomputed,2);assert.equal((await service.refresh(ctx,id)).status,"STALE_REVIEW_REQUIRED");assert.equal((await service.refresh(ctx,replacement.saved_review.review_id)).status,"NO_CHANGE_OBSERVED");
  const historical=await service.history(ctx,id);assert.equal(historical.ok,true);assert.equal(historical.status,"HISTORICAL_STALE");assert.ok(historical.nodes.some(n=>n.state==="STALE_AT_INVALIDATION"));denied=true;assert.equal((await service.history(ctx,id)).ok,false);assert.equal((await service.refresh(ctx,id)).ok,false);
 });

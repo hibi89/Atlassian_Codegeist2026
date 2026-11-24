@@ -3,7 +3,7 @@ import { resolveResolver } from "./forge-interop.js";
 import { issueHint } from "./security-context.js";
 import { previewWithPolicy } from "./security/forge-policy.js";
 import { readCurrentEvidence } from "./evidence/forge-evidence.js";
-import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph } from "./state/forge-review.js";
+import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph, revalidateSavedReview } from "./state/forge-review.js";
 const Resolver = resolveResolver(ResolverModule);
 const resolver = new Resolver();
 // Extension issue key is a hint, never a grant. Jira asUser enforces access.
@@ -23,4 +23,5 @@ resolver.define("executeDemoComment",({context,payload})=>executeDemoComment(con
 resolver.define("revokeDemoComment",({context,payload})=>revokeDemoComment(context,payload?.request_id));
 resolver.define("reconcileDemoComment",({context,payload})=>reconcileDemoComment(context,payload?.request_id));
 resolver.define("readSavedGraph",({context,payload})=>readSavedGraph(context,payload?.review_id));
+resolver.define("revalidateSavedReview",({context,payload})=>revalidateSavedReview(context,payload?.review_id));
 export const handler = resolver.getDefinitions();

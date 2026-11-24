@@ -1,3 +1,4 @@
+import { buildReverseIndex, validReverseIndex } from "./reverse-index.js";
 import { canonical, validatePlan } from "../core/ir/plan.js";
 import { compareEvidence } from "../evidence/bundle.js";
 import { buildObservedGraph } from "./observed-graph.js";
@@ -21,7 +22,7 @@ function createReviewStore(store,p,clock,digest){
  const key=(id,kind)=>"cg:review:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  function validRecord(r,id){
   const now=clock();
-  if(!r||r.schema_version!=="hae.review.snapshot.v2"||r.id!==id||r.tenant!==p.tenant||r.actor!==p.actor||r.target!==p.target||!intents.has(r.intent)||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at>now||r.expires_at<=now||r.expires_at-r.created_at!==ttlMs||!scopedGraph(p,r.graph)||!scopedEvidence(p,r.evidence)||!r.plan||r.plan.issue_key!==p.target||r.plan.intent!==r.intent||digest(canonical(r.plan))!==id)return false;
+  if(!r||r.schema_version!=="hae.review.snapshot.v3"||r.id!==id||r.tenant!==p.tenant||r.actor!==p.actor||r.target!==p.target||!intents.has(r.intent)||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at>now||r.expires_at<=now||r.expires_at-r.created_at!==ttlMs||!scopedGraph(p,r.graph)||!validReverseIndex(r.graph,r.reverse_index)||!scopedEvidence(p,r.evidence)||!r.plan||r.plan.issue_key!==p.target||r.plan.intent!==r.intent||digest(canonical(r.plan))!==id)return false;
   const {record_digest,...body}=r;return hex(record_digest)&&digest(canonical(body))===record_digest;
  }
  async function save(preview){
@@ -31,7 +32,8 @@ function createReviewStore(store,p,clock,digest){
    const {plan_hash:id,...plan}=preview.plan;
    if(!validatePlan(plan,now).ok||digest(canonical(plan))!==id)return bad("REVIEW_PLAN_INVALID");
    const coverage=analyzeImpact(p,preview.graph,preview.freshness);if(!coverage.ok||coverage.affected.length)return bad("REVIEW_GRAPH_INVALID");
-   const body={schema_version:"hae.review.snapshot.v2",id,tenant:p.tenant,actor:p.actor,target:p.target,intent:preview.plan.intent,plan,created_at:now,expires_at:now+ttlMs,graph:graphMetadata(preview.graph),evidence:evidenceMetadata(preview.evidence),policy_version:preview.policy.policy_version};
+   const reverse_index=buildReverseIndex(preview.graph);if(!reverse_index)return bad("REVIEW_INDEX_INVALID");
+   const body={schema_version:"hae.review.snapshot.v3",id,tenant:p.tenant,actor:p.actor,target:p.target,intent:preview.plan.intent,plan,created_at:now,expires_at:now+ttlMs,graph:graphMetadata(preview.graph),reverse_index,evidence:evidenceMetadata(preview.evidence),policy_version:preview.policy.policy_version};
    const record={...body,record_digest:digest(canonical(body))};
    if(!validRecord(record,id)||Buffer.byteLength(JSON.stringify(record),"utf8")>61440)return bad("REVIEW_STORAGE_LIMIT");
    // Explicit save only; immutable snapshot. No raw Jira descriptions or claim values.

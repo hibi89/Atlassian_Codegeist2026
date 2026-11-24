@@ -11,6 +11,9 @@ function createReviewService({store,clock,digest,preview,development}){
   const p=principal(context,digest);
   if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
   const result=await preview(context,intent);
+  return persistReview(p,result);
+ }
+ async function persistReview(p,result){
   const saved=await createReviewStore(store,p,clock,digest).save(result);
   if(!saved.ok)return saved;
   const ledger=createRunLedger(store,p,clock);
@@ -42,6 +45,18 @@ function createReviewService({store,clock,digest,preview,development}){
   if(!run.ok||run.events[0].plan_hash!==id)return deny("HISTORY_JOURNAL_UNKNOWN");
   return historicalGraph({store,p,...h,run,digest,clock});
  }
- return {save,refresh,history};
+ async function revalidate(context,id){
+  const p=principal(context,digest);
+  if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
+  const old=await createReviewStore(store,p,clock,digest).history(id,(intent,record)=>preview(context,aliases[intent],record));
+  if(!old.ok)return old;
+  if(!old.stale)return deny("REVIEW_CURRENT_NO_REPLACEMENT_REQUIRED");
+  if(!old.current?.ok||old.current.plan?.plan_hash===id||old.current.policy?.decision!=="ALLOW_PREVIEW")return deny("REVALIDATION_CURRENT_DRAFT_DENIED");
+  const result=await persistReview(p,old.current);
+  if(!result.ok)return result;
+  // Never copy approval, request ID, execution state or old receipt to new review.
+  return {...result,revalidated_from:id,revalidation:old.current.claim_review?.revalidation,authorization:"NONE",execution:"DISABLED"};
+ }
+ return {save,refresh,history,revalidate};
 }
 export {createReviewService};

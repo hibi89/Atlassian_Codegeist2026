@@ -22,7 +22,7 @@ function fixture(){
  const reviews=createReviewService(deps),writes=createCommentService(deps);
  async function request(intent="review change"){const saved=await reviews.save(ctx,intent);assert.equal(saved.ok,true);return writes.prepare(ctx,saved.saved_review.review_id)}
  async function approved(){const r=await request();assert.equal(r.ok,true);assert.equal((await writes.approve(ctx,r.request_id,r.request_id)).ok,true);return r.request_id}
- return {ctx,map,store,writes,request,approved,posts:()=>posts,change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
+ return {ctx,map,store,reviews,writes,request,approved,posts:()=>posts,change:()=>{version="2026-11-24T11:05:00Z"},restore:()=>{version="2026-11-24T11:00:00Z"},deny:()=>{add=false},allow:()=>{add=true},unconfigure:()=>{allowed=false},expire:()=>{now+=121000},setMode:m=>{mode=m},changeOnFinal:()=>{changeAt=reads+3}};
 }
 test("actual comment service only dispatches exact approved synthetic annotation once",async()=>{
  const f=fixture(),r=await f.request();assert.equal(r.ok,true);assert.match(r.comment,/not a certification/);
@@ -33,7 +33,7 @@ test("actual comment service only dispatches exact approved synthetic annotation
  const pair=await Promise.all([f.writes.execute(f.ctx,r.request_id),f.writes.execute(f.ctx,r.request_id)]);
  assert.equal(pair.filter(x=>x.ok).length,1);assert.equal(f.posts(),1);assert.equal(pair.find(x=>x.ok).comment_id,"1");assert.equal(pair.find(x=>x.ok).lineage.nodes.length,5);assert.equal(pair.find(x=>x.ok).lineage.edges.length,5);assert.match(pair.find(x=>x.ok).observation_digest,/^[a-f0-9]{64}$/);
  assert.equal((await f.writes.reconcile(f.ctx,r.request_id)).status,"OBSERVED_SUCCESS");assert.equal(f.posts(),1);
- const journal=await readCommentJournal(f.store,principal(f.ctx,digest),r.review_id);assert.equal(journal.status,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(journal.request_id,r.request_id);
+ const journal=await readCommentJournal(f.store,principal(f.ctx,digest),r.review_id);assert.equal(journal.status,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(journal.request_id,r.request_id);const history=await f.reviews.history(f.ctx,r.review_id);assert.equal(history.ok,true);assert.ok(history.nodes.some(n=>n.kind==="RECEIPT"));assert.equal((await f.reviews.history({...f.ctx,accountId:"other"},r.review_id)).ok,false);
 });
 test("stale, reverted, revoked, expired, wrong target and denied permission never POST",async()=>{
  const f=fixture(),id=await f.approved();f.change();assert.equal((await f.writes.execute(f.ctx,id)).ok,false);f.restore();assert.equal((await f.writes.execute(f.ctx,id)).ok,false);assert.equal(f.posts(),0);
