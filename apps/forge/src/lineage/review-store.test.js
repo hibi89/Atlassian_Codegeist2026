@@ -139,3 +139,15 @@ for(const fault of ["lost-report-receipt-ack","before-success","missing-report-r
   denied=true;assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
  });
 }
+
+
+test("P2 read-only report cannot generate after approval expiry during durable step reservation",async()=>{
+ const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};let now=Date.parse("2026-11-24T12:00:00Z"),inject=false,nonce=0;
+ const clock=()=>now,store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)));if(inject&&v.schema_version==="hae.step.reservation.v1")now+=101}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("nonce"+(++nonce))},reviews=createReviewService(deps),reports=createReportService(deps);
+ const saved=await reviews.save(ctx,"review release"),reviewId=saved.saved_review.review_id,q=await reports.prepare(ctx,reviewId);assert.equal(q.ok,true);
+ assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);const approval=[...map.values()].find(v=>v.schema_version==="hae.approval.v2");approval.expires_at=now+100;inject=true;
+ const result=await reports.generate(ctx,q.request_id);assert.equal(result.code,"REPORT_APPROVAL_OR_EVIDENCE_EXPIRED");assert.equal(result.report,undefined);assert.equal([...map.values()].some(v=>v.schema_version==="hae.report.receipt.v2"),false);assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);assert.equal((await reports.generate(ctx,q.request_id)).ok,false);
+});

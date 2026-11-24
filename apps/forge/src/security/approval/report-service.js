@@ -70,14 +70,16 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    const stepLedger=createStepLedger(store,runLedger,p,clock);
    const reserved=await stepLedger.reserve(r.review_id,step.step_id,{plan_hash:r.review_id,approval_id:id,payload_digest:payloadDigest});
    if(!reserved.ok)return reserved;
-   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks:m.current.claim_review.checks.map(c=>({predicate:c.predicate,values:c.values,status:c.status,reason:c.reason})),missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:clock()};
+   const generatedAt=clock();
+   if(!Number.isSafeInteger(generatedAt)||generatedAt<approved.receipt.created_at||generatedAt>=Math.min(approved.receipt.expires_at,b.expires_at,m.freshUntil))return fail("REPORT_APPROVAL_OR_EVIDENCE_EXPIRED");
+   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks:m.current.claim_review.checks.map(c=>({predicate:c.predicate,values:c.values,status:c.status,reason:c.reason})),missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:generatedAt};
    const reportDigest=digest(canonical(report));
    const recorded=await stepLedger.record(r.review_id,step.step_id,{state:"OBSERVED_SUCCESS",observation_digest:reportDigest,payload_digest:payloadDigest});if(!recorded.ok)return recorded;
    // Persist lineage metadata, never report text. Link the saved policy and
    // immutable approval/step/receipt nodes. It is not a Jira write read-back.
    const lineage=reportLineage(p,m.record,id,step,payloadDigest,reportDigest,digest);if(!lineage)return fail("REPORT_LINEAGE_UNKNOWN");
    await store.create(key(p,id,"receipt"),{schema_version:"hae.report.receipt.v2",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,review_id:r.review_id,report_digest:reportDigest,lineage,at:clock(),effect:"READ_ONLY_REPORT"});
-   const finished=await runLedger.finishReadOnlyReport(r.review_id,id,step.step_id,reportDigest);
+   const finished=await runLedger.finishReadOnlyReport(r.review_id,id,step.step_id,reportDigest,payloadDigest);
    if(!finished.ok)return finished;
    return {ok:true,request_id:id,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",report,report_digest:reportDigest,lineage,authorization:"CONSUMED",execution:"NO_JIRA_MUTATION"};
   }catch{return fail("REPORT_OUTCOME_OR_STORAGE_UNKNOWN")}

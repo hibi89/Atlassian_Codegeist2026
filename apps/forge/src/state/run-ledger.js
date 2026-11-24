@@ -64,30 +64,32 @@ function createRunLedger(store,p,clock){
   // Read-only report execution is isolated from the generic transition API.
   // It can start only after a durable, scoped broker consumption.
   async function startReadOnlyReport(runId,requestId,binding){
-    if(!/^[a-f0-9]{64}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId)||binding?.plan_hash!==runId||binding?.request_digest!==requestId||binding?.policy_version!=="cg-readonly-report-v1")return bad("REPORT_RUN_BINDING_INVALID");
+    if(!/^[a-f0-9]{64}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId)||binding?.plan_hash!==runId||binding?.request_digest!==requestId||binding?.policy_version!=="cg-readonly-report-v1"||!Number.isSafeInteger(binding.expires_at)||binding.expires_at<=clock()||binding.policy_decision!=="ALLOW"||binding.graph_status!=="VALID")return bad("REPORT_RUN_BINDING_INVALID");
     try{
       const cur=await read(runId);
       if(!cur.ok||cur.state!=="POLICY_REVIEW"||cur.events[0].plan_hash!==runId||cur.next_seq!==3)return bad("REPORT_RUN_ALREADY_STARTED_OR_UNKNOWN");
       const prefix="cg:approval:"+p.tenant+":"+p.actor+":"+requestId+":";
       const approval=await store.get(prefix+"record"),terminal=await store.get(prefix+"terminal");
-      if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==requestId||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==requestId||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||!Number.isSafeInteger(approval.created_at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at||approval.created_at>clock()||terminal.at>clock()||["plan_hash","evidence_bundle_hash","dependency_digest","policy_version","capability_lock","request_digest"].some(k=>approval[k]!==binding[k]))return bad("REPORT_RUN_APPROVAL_UNKNOWN");
+      if(approval?.schema_version!=="hae.approval.v2"||approval.approval_id!==requestId||approval.tenant!==p.tenant||approval.actor!==p.actor||approval.target!==p.target||approval.decision!=="APPROVED"||!Number.isSafeInteger(approval.expires_at)||approval.expires_at>binding.expires_at||approval.expires_at<=clock()||terminal?.schema_version!=="hae.approval.terminal.v1"||terminal.approval_id!==requestId||terminal.state!=="CONSUMED"||!Number.isSafeInteger(terminal.at)||!Number.isSafeInteger(approval.created_at)||terminal.at<approval.created_at||terminal.at>=approval.expires_at||approval.created_at>clock()||terminal.at>clock()||["plan_hash","evidence_bundle_hash","dependency_digest","policy_version","capability_lock","request_digest"].some(k=>approval[k]!==binding[k]))return bad("REPORT_RUN_APPROVAL_UNKNOWN");
       let prev=cur.events[cur.events.length-1],seq=cur.next_seq;
       for(const state of ["AWAITING_APPROVAL","READY","RUNNING"]){
-        const event={...prev,seq,state,at:new Date(clock()).toISOString(),receipt:null,execution_kind:"READ_ONLY_REPORT",report_request_id:requestId};
+        const at=clock();
+        if(!Number.isSafeInteger(at)||at<terminal.at||at>=approval.expires_at)return bad("REPORT_RUN_APPROVAL_EXPIRED");
+        const event={...prev,seq,state,at:new Date(at).toISOString(),receipt:null,execution_kind:"READ_ONLY_REPORT",report_request_id:requestId};
         await store.create(ledgerKey(p,runId,seq),event);prev=event;seq++;
       }
       return {ok:true,state:"RUNNING"};
     }catch{return bad("REPORT_RUN_START_CONFLICT_OR_UNKNOWN")}
   }
   async function finishReadOnlyReport(runId,requestId,stepId,reportDigest,expectedPayloadDigest){
-    if(!/^[a-f0-9]{64}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId)||!/^[a-f0-9]{64}$/.test(reportDigest)||typeof stepId!=="string"||!/^[a-z0-9_-]{1,40}$/.test(stepId))return bad("REPORT_RUN_BINDING_INVALID");
+    if(!/^[a-f0-9]{64}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId)||!/^[a-f0-9]{64}$/.test(reportDigest)||typeof stepId!=="string"||!/^[a-z0-9_-]{1,40}$/.test(stepId)||typeof expectedPayloadDigest!=="string"||!/^[a-f0-9]{64}$/.test(expectedPayloadDigest))return bad("REPORT_RUN_BINDING_INVALID");
     try{
       const cur=await read(runId),last=cur.events?.[cur.events.length-1];
       if(!cur.ok||!["RUNNING","RECONCILING","SUCCEEDED"].includes(cur.state)||last?.execution_kind!=="READ_ONLY_REPORT"||last.report_request_id!==requestId)return bad("REPORT_RUN_NOT_RUNNING");
       const prefix="cg:step:"+p.tenant+":"+p.actor+":"+runId+":"+stepId+":";
       const step=await store.get(prefix+"receipt"),reservation=await store.get(prefix+"reserve");
       const report=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+requestId+":receipt");
-      if(reservation?.schema_version!=="hae.step.reservation.v1"||reservation.tenant!==p.tenant||reservation.actor!==p.actor||reservation.target!==p.target||reservation.run_id!==runId||reservation.step_id!==stepId||reservation.plan_hash!==runId||reservation.approval_id!==requestId||typeof reservation.payload_digest!=="string"||!/^[a-f0-9]{64}$/.test(reservation.payload_digest)||reservation.payload_digest!==step?.payload_digest||expectedPayloadDigest!==undefined&&reservation.payload_digest!==expectedPayloadDigest||step?.schema_version!=="hae.step.receipt.v1"||step.tenant!==p.tenant||step.actor!==p.actor||step.target!==p.target||step.run_id!==runId||step.step_id!==stepId||step.approval_id!==requestId||step.plan_hash!==runId||step.state!=="OBSERVED_SUCCESS"||step.observation_digest!==reportDigest||report?.schema_version!=="hae.report.receipt.v2"||report.tenant!==p.tenant||report.actor!==p.actor||report.target!==p.target||report.request_id!==requestId||report.review_id!==runId||report.report_digest!==reportDigest||report.effect!=="READ_ONLY_REPORT")return bad("REPORT_RECEIPT_UNKNOWN");
+      if(reservation?.schema_version!=="hae.step.reservation.v1"||reservation.tenant!==p.tenant||reservation.actor!==p.actor||reservation.target!==p.target||reservation.run_id!==runId||reservation.step_id!==stepId||reservation.plan_hash!==runId||reservation.approval_id!==requestId||typeof reservation.payload_digest!=="string"||!/^[a-f0-9]{64}$/.test(reservation.payload_digest)||reservation.payload_digest!==step?.payload_digest||reservation.payload_digest!==expectedPayloadDigest||step?.schema_version!=="hae.step.receipt.v1"||step.tenant!==p.tenant||step.actor!==p.actor||step.target!==p.target||step.run_id!==runId||step.step_id!==stepId||step.approval_id!==requestId||step.plan_hash!==runId||step.state!=="OBSERVED_SUCCESS"||step.observation_digest!==reportDigest||report?.schema_version!=="hae.report.receipt.v2"||report.tenant!==p.tenant||report.actor!==p.actor||report.target!==p.target||report.request_id!==requestId||report.review_id!==runId||report.report_digest!==reportDigest||report.effect!=="READ_ONLY_REPORT")return bad("REPORT_RECEIPT_UNKNOWN");
       if(cur.state!=="RUNNING"&&last.receipt!==reportDigest)return bad("REPORT_RECEIPT_MISMATCH");
       if(cur.state==="SUCCEEDED")return {ok:true,state:"SUCCEEDED",historical:true};
       let prev=last,seq=cur.next_seq;
