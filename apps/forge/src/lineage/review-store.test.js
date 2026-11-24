@@ -133,7 +133,8 @@ for(const fault of ["lost-report-receipt-ack","before-success","missing-report-r
   assert.equal(r.ok,true);assert.equal(r.run_state,"SUCCEEDED");assert.equal(r.execution,"NO_JIRA_MUTATION");assert.equal(r.report,undefined);
   assert.equal((await reviews.recoverReport(ctx,reviewId)).report_digest,r.report_digest);
   assert.equal((await reviews.history(ctx,reviewId)).ok,true);assert.equal((await reports.generate(ctx,id)).ok,false);
-  const reservation=[...map.values()].find(v=>v.schema_version==="hae.step.reservation.v1");reservation.payload_digest="0".repeat(64);
+  const storedReceipt=[...map.values()].find(v=>v.schema_version==="hae.report.receipt.v2");const originalRelation=storedReceipt.lineage.edges[0].relation;storedReceipt.lineage.edges[0].relation="FORGED";assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);storedReceipt.lineage.edges[0].relation=originalRelation;
+  const reservation=[...map.values()].find(v=>v.schema_version==="hae.step.reservation.v1");const stepReceipt=[...map.values()].find(v=>v.schema_version==="hae.step.receipt.v1");reservation.payload_digest="0".repeat(64);stepReceipt.payload_digest=reservation.payload_digest;
   assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
   denied=true;assert.equal((await reviews.recoverReport(ctx,reviewId)).ok,false);
  });

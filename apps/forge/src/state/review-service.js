@@ -1,3 +1,5 @@
+import {canonical} from "../core/ir/plan.js";
+import {reportLineage} from "../lineage/receipt-lineage.js";
 import { historicalGraph } from "../lineage/history.js";
 import { readCommentJournal } from "./comment-journal.js";
 import { principal } from "../evidence/bundle.js";
@@ -70,7 +72,10 @@ function createReviewService({store,clock,digest,preview,development}){
    if(step?.op_id!=="report.evidence.generate")return deny("REPORT_RECOVERY_NOT_ESTABLISHED");
    const receipt=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+requestId+":receipt");
    if(!receipt||typeof receipt.report_digest!=="string"||!/^[a-f0-9]{64}$/.test(receipt.report_digest))return deny("REPORT_RECEIPT_UNKNOWN");
-   const result=await ledger.finishReadOnlyReport(id,requestId,step.step_id,receipt.report_digest);
+   const payloadDigest=digest(canonical([id,requestId,h.record.evidence.bundle_hash,h.record.graph.graph_revision,step]));
+   const expected=reportLineage(p,h.record,requestId,step,payloadDigest,receipt.report_digest,digest);
+   if(!expected||canonical(receipt.lineage)!==canonical(expected))return deny("REPORT_LINEAGE_UNKNOWN");
+   const result=await ledger.finishReadOnlyReport(id,requestId,step.step_id,receipt.report_digest,payloadDigest);
    if(!result.ok)return result;
    return {ok:true,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",review_id:id,run_state:"SUCCEEDED",report_digest:receipt.report_digest,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
   }catch{return deny("REPORT_RECOVERY_STORAGE_UNKNOWN")}

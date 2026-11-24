@@ -27,3 +27,9 @@ test("denied/missing/rate limit/invalid and transport errors",async()=>{
   assert.equal((await readIssue(ctx,async()=>({status:200,text:async()=>JSON.stringify({...raw,key:"OTHER-1"})}),clock,digest)).code,"JIRA_RESPONSE_INVALID");
   assert.equal((await readIssue(ctx,async()=>{throw Error("network")},clock,digest)).code,"JIRA_READ_UNAVAILABLE");
 });
+
+test("P2 Jira byte limit applies to multibyte UTF-8 responses",async()=>{
+ const large=JSON.stringify({...raw,fields:{...raw.fields,extra:"한".repeat(50000)}});
+ assert.ok(large.length<131072);assert.ok(Buffer.byteLength(large,"utf8")>131072);
+ assert.equal((await readIssue(ctx,async()=>({status:200,text:async()=>large}),clock,digest)).code,"JIRA_RESPONSE_TOO_LARGE");
+});

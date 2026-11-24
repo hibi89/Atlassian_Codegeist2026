@@ -25,7 +25,7 @@ async function readback(transport,plan,accountId,id,digest){
   if(list?.status!==200||!Array.isArray(list.comments)||list.comments.length>20)return {state:"UNKNOWN_OUTCOME_REVIEW"};
   const hits=list.comments.filter(c=>observedComment(c,plan,accountId));
   return hits.length===1?{state:"OBSERVED_SUCCESS",comment_id:hits[0].id,observation_digest:commentObservationDigest(plan,hits[0].id,digest)}:{state:"UNKNOWN_OUTCOME_REVIEW"};
- }catch{return {state:"UNKNOWN_OUTCOME_REVIEW"}}
+ }catch{return {state:"UNKNOWN_OUTCOME_REVIEW",...(validId(id)?{known_comment_id:id}:{})}}
 }
 export function createCommentExecutor({store,p,clock,digest,transport,accountId,canDispatch=()=>true}){
  const key=(id,kind)=>"cg:comment:"+p.tenant+":"+p.actor+":"+id+":"+kind;
