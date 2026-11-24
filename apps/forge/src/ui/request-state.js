@@ -17,3 +17,13 @@ export function commentResponse(operation,result){
  if(operation==="executeDemoComment"&&!terminal.has(result?.status)&&!knownBeforeDispatch(result))return {...result,ok:false,status:"UNKNOWN_OUTCOME_REVIEW"};
  return result;
 }
+
+// Local-clock UX only. The backend rechecks authorization and evidence.
+export function requestDeadline(request,state,approvedStatus,now){
+ const requestAt=request?.expires_at;
+ if(!Number.isSafeInteger(now)||!Number.isSafeInteger(requestAt))return {ready:false,remaining:null};
+ const approved=state?.status===approvedStatus;
+ if(approved&&!Number.isSafeInteger(state?.expires_at))return {ready:false,remaining:null};
+ const end=approved?Math.min(requestAt,state.expires_at):requestAt;
+ return {ready:end>now,remaining:Math.max(0,end-now)};
+}

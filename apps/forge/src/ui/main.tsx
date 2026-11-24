@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { invoke } from "@forge/bridge";
 import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
-import {createRequestGate,unresolvedCommentId,commentResponse} from "./request-state.js";
+import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
@@ -84,6 +84,9 @@ function App(){
   const [provider,setProvider]=useState("template");const [fixture,setFixture]=useState("change");const [consent,setConsent]=useState(false);
   const gate=useRef(createRequestGate());
   const [unresolvedId,setUnresolvedId]=useState("");
+  const [localNow,setLocalNow]=useState(()=>Date.now());
+  useEffect(()=>{if(!reportRequest&&!commentRequest)return;setLocalNow(Date.now());const timer=window.setInterval(()=>setLocalNow(Date.now()),1000);return()=>window.clearInterval(timer)},[reportRequest,commentRequest]);
+  const reportDeadline=requestDeadline(reportRequest,reportState,"READ_ONLY_APPROVED",localNow),commentDeadline=requestDeadline(commentRequest,commentState,"COMMENT_APPROVED",localNow);
   useEffect(()=>{let alive=true;invoke<SafetySettings>("getSafetySettings").then(v=>{if(alive)setSafety(v)}).catch(()=>{if(alive)setSafety({ok:false})});invoke<Result>("getPanelContext").then(v=>{if(alive)setContext(v)}).catch(()=>{if(alive)setContext({ok:false,code:"BACKEND_UNAVAILABLE"})});return()=>{alive=false}},[]);
   async function loadIssue(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setIssue(null);setPreview(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setSavedStatus(null);setReviewId("");setCommentId("");
@@ -110,6 +113,7 @@ function App(){
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function reportAction(operation:"prepareReadOnlyReport"|"approveReadOnlyReport"|"generateReadOnlyReport"|"revokeReadOnlyReport"){
+    if((operation==="approveReadOnlyReport"||operation==="generateReadOnlyReport")&&!requestDeadline(reportRequest,reportState,"READ_ONLY_APPROVED",Date.now()).ready)return;
     const token=gate.current.begin();if(token===null)return;setBusy(true);
     try{
       const requestId=reportRequest?.request_id;
@@ -120,6 +124,7 @@ function App(){
   }
   async function commentAction(operation:"prepareDemoComment"|"approveDemoComment"|"executeDemoComment"|"revokeDemoComment"|"reconcileDemoComment"){
     if(unresolvedId&&operation!=="reconcileDemoComment")return;
+    if((operation==="approveDemoComment"||operation==="executeDemoComment")&&!requestDeadline(commentRequest,commentState,"COMMENT_APPROVED",Date.now()).ready)return;
     const token=gate.current.begin();if(token===null)return;setBusy(true);
     if(operation==="prepareDemoComment"){setCommentRequest(null);setCommentState(null);setCommentId("");}
     const id=operation==="reconcileDemoComment"?commentId:commentRequest?.request_id;
@@ -173,16 +178,16 @@ function App(){
         </section>
         <section aria-label="Read-only report approval"><h3>Approve a read-only evidence report</h3><p>Only report generation is approved. No Jira mutation, no external AI. The exact saved plan, evidence and policy are rechecked at each stage. Development storage requests are capped at 24 per installation per UTC day.</p>
           <button type="button" disabled={busy||!/^[a-f0-9]{64}$/.test(reviewId)} onClick={()=>reportAction("prepareReadOnlyReport")}>Prepare read-only report</button>
-          {reportRequest?.ok&&<><p>Exact request digest: <code>{reportRequest.request_id}</code></p><ol>{reportRequest.operations?.map((s,i)=><li key={i}>{s.operation} · {s.effect}</li>)}</ol><button type="button" disabled={busy||reportState?.status!=="AWAITING_READ_ONLY_APPROVAL"} onClick={()=>reportAction("approveReadOnlyReport")}>Approve this report only</button><button type="button" disabled={busy||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("generateReadOnlyReport")}>Generate approved report</button><button type="button" disabled={busy||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("revokeReadOnlyReport")}>Revoke approval</button></>}
+          {reportRequest?.ok&&<><p>Exact request digest: <code>{reportRequest.request_id}</code></p>{["AWAITING_READ_ONLY_APPROVAL","READ_ONLY_APPROVED"].includes(reportState?.status??"")&&<p role="status">{reportDeadline.ready?`Local remaining time: ${Math.ceil((reportDeadline.remaining??0)/1000)}s`:"Local deadline expired or unavailable. Prepare a fresh request; server authorization is independently checked."}</p>}<ol>{reportRequest.operations?.map((s,i)=><li key={i}>{s.operation} · {s.effect}</li>)}</ol><button type="button" disabled={busy||!reportDeadline.ready||reportState?.status!=="AWAITING_READ_ONLY_APPROVAL"} onClick={()=>reportAction("approveReadOnlyReport")}>Approve this report only</button><button type="button" disabled={busy||!reportDeadline.ready||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("generateReadOnlyReport")}>Generate approved report</button><button type="button" disabled={busy||reportState?.status!=="READ_ONLY_APPROVED"} onClick={()=>reportAction("revokeReadOnlyReport")}>Revoke approval</button></>}
           {reportState&&<div role="status"><p>{reportState.status??reportState.code??"REPORT_UNAVAILABLE"}</p>{reportState.report&&<><p>{reportState.report.status}</p><ul>{reportState.report.sources.map(s=><li key={s.uri}>{s.uri} · {s.version} · {s.status}</li>)}</ul><ul>{reportState.report.checks.map((c,i)=><li key={i}>{c.predicate}: {c.values.join(" / ")} · {c.status}</li>)}</ul><p>Missing reported fields: {reportState.report.missing.join(", ")||"None reported"}</p>{reportState.report.release_assessment&&<ReleasePanel assessment={reportState.report.release_assessment}/>}<p>Report digest: <code>{reportState.report_digest}</code></p><p>Run state: {reportState.run_state}</p>{reportState.lineage&&<p>Persisted lineage: {reportState.lineage.nodes.map(n=>n.kind).join(" → ")} · {reportState.lineage.edges.length} links</p>}</>}</div>}
         </section>
         {context.key==="HTF-2"&&<section aria-label="Synthetic Jira comment approval">
           <h3>Guarded demo comment</h3><p>One non-certifying annotation to the configured synthetic issue only. Required reported requirement, linked test and policy labels must be present; incident coordination also needs ownership evidence. Review the exact text, approve it, then execute. Source changes or permission loss block execution. A timeout must be reconciled; never retry a write blindly.</p>
           {unresolvedId&&<div role="alert"><p>Previous comment outcome is unresolved. Do not prepare or execute a replacement. Reconcile this exact request first.</p><code>{unresolvedId}</code><button type="button" disabled={busy} onClick={()=>setCommentId(unresolvedId)}>Use unresolved request ID</button></div>}
           <button type="button" disabled={busy||!!unresolvedId||!/^[a-f0-9]{64}$/.test(reviewId)} onClick={()=>commentAction("prepareDemoComment")}>Prepare demo comment</button>
-          {commentRequest?.ok&&<><dl><dt>Target issue</dt><dd>{commentRequest.target}</dd><dt>Exact comment</dt><dd><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{commentRequest.comment}</pre></dd><dt>Request digest</dt><dd><code>{commentRequest.request_id}</code></dd><dt>Approval expires</dt><dd>{new Date(commentRequest.expires_at??0).toLocaleString()}</dd></dl>
-            <button type="button" disabled={busy||!!unresolvedId||commentState?.status!=="AWAITING_COMMENT_APPROVAL"} onClick={()=>commentAction("approveDemoComment")}>Approve exact Jira comment</button>
-            <button type="button" disabled={busy||!!unresolvedId||commentState?.status!=="COMMENT_APPROVED"} onClick={()=>commentAction("executeDemoComment")}>Execute approved comment</button>
+          {commentRequest?.ok&&<><dl><dt>Target issue</dt><dd>{commentRequest.target}</dd><dt>Exact comment</dt><dd><pre style={{whiteSpace:"pre-wrap",overflowWrap:"anywhere"}}>{commentRequest.comment}</pre></dd><dt>Request digest</dt><dd><code>{commentRequest.request_id}</code></dd><dt>Request expires</dt><dd>{commentRequest.expires_at?new Date(commentRequest.expires_at).toLocaleString():"Unknown"}</dd></dl>{["AWAITING_COMMENT_APPROVAL","COMMENT_APPROVED"].includes(commentState?.status??"")&&<p role="status">{commentDeadline.ready?`Local remaining time: ${Math.ceil((commentDeadline.remaining??0)/1000)}s`:"Local deadline expired or unavailable. Prepare a fresh request if no previous execution is unresolved."}</p>}
+            <button type="button" disabled={busy||!!unresolvedId||!commentDeadline.ready||commentState?.status!=="AWAITING_COMMENT_APPROVAL"} onClick={()=>commentAction("approveDemoComment")}>Approve exact Jira comment</button>
+            <button type="button" disabled={busy||!!unresolvedId||!commentDeadline.ready||commentState?.status!=="COMMENT_APPROVED"} onClick={()=>commentAction("executeDemoComment")}>Execute approved comment</button>
             <button type="button" disabled={busy||!!unresolvedId||commentState?.status!=="COMMENT_APPROVED"} onClick={()=>commentAction("revokeDemoComment")}>Revoke comment approval</button></>}
           <label htmlFor="comment-request-id">Comment request ID for read-only reconciliation</label><input id="comment-request-id" value={commentId} maxLength={64} disabled={busy} onChange={e=>setCommentId(e.target.value)}/>
           <button type="button" disabled={busy||!/^[a-f0-9]{64}$/.test(commentId)} onClick={()=>commentAction("reconcileDemoComment")}>Reconcile observed comment</button>

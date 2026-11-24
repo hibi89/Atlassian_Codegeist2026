@@ -79,7 +79,7 @@ async function collectEvidence(context,adapter,digest,clock){
         try{return {key,result:await adapter.read(key)}}catch{return {key,failed:true}}
       }));
       for(const {key,result,failed} of batch){
-        if(failed||!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++;
+        try{if(failed||!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++}catch{unknown++}
       }
     }
   }else unknown++;
