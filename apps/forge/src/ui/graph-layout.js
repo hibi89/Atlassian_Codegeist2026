@@ -74,3 +74,13 @@ export function traceVisibleGraph(nodes,edges,selected,direction){
  for(let i=0;i<pending.length;i++)for(const link of links.get(pending[i])){edgeIndices.add(link.index);if(!visited.has(link.id)){visited.add(link.id);pending.push(link.id)}}
  return {nodeIds:[...visited],edgeIndices:[...edgeIndices]};
 }
+
+// Local node lookup; a filter never rewrites the graph or the selected node.
+export function visibleNodeSearch(nodes,query,kind="all"){
+ if(!Array.isArray(nodes)||nodes.length>620||typeof query!=="string"||query.length>160||typeof kind!=="string")return null;
+ const ids=new Set(),kinds=new Set();
+ for(const n of nodes){if(typeof n?.id!=="string"||typeof n.label!=="string"||typeof n.kind!=="string"||ids.has(n.id))return null;ids.add(n.id);kinds.add(n.kind)}
+ if(kind!=="all"&&!kinds.has(kind))return null;
+ const needle=query.trim().toLowerCase();
+ return {kinds:[...kinds].sort(),matches:nodes.filter(n=>(kind==="all"||n.kind===kind)&&[n.label,n.kind,n.state??"",n.id].join(" ").toLowerCase().includes(needle))};
+}

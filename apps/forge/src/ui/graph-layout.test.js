@@ -150,3 +150,10 @@ test("revision filters preserve observed source counts and reject contradictory 
  for(const bad of [{...data,status:"CURRENT_OBSERVED"},{...data,rows:[row,row]},{...data,rows:[{...same,content_changed:true}]},{...data,rows:[{...fresh,revision_changed:false}]},{...data,rows:[{...row,current_version:"unknown"}]}])assert.equal(revisionView(bad),null);
  assert.equal(revisionView(data,"other"),null);assert.equal(revisionView(null),null);
 });
+
+import {visibleNodeSearch} from "./graph-layout.js";
+test("graph node lookup retains original topology and supports large recorded graphs",()=>{
+ const nodes=[{id:"a",label:"Jira HTF-2",kind:"SOURCE",state:"CURRENTLY_REOBSERVED"},{id:"b",label:"Historical receipt",kind:"RECEIPT",state:"HISTORICAL_RECEIPT_CHAIN"},{id:"c",label:"Typed policy",kind:"POLICY",state:"STALE_AT_INVALIDATION"}];const original=JSON.stringify(nodes);
+ assert.deepEqual(visibleNodeSearch(nodes,"receipt").matches,[nodes[1]]);assert.deepEqual(visibleNodeSearch(nodes,"STALE","POLICY").matches,[nodes[2]]);assert.equal(visibleNodeSearch(nodes,"receipt","SOURCE").matches.length,0);assert.equal(visibleNodeSearch(nodes,"","missing"),null);assert.equal(visibleNodeSearch([...nodes,nodes[0]],""),null);assert.equal(JSON.stringify(nodes),original);
+ const large=Array.from({length:620},(_,i)=>({id:String(i),label:"Node "+i,kind:"CHECK"}));assert.equal(visibleNodeSearch(large,"","CHECK").matches.length,620);assert.equal(visibleNodeSearch([...large,{id:"extra",label:"extra",kind:"CHECK"}],""),null);
+});
