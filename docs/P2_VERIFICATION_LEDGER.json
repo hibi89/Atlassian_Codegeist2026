@@ -557,5 +557,37 @@
     "pr_run_id": 45681893868,
     "pr_status": "completed",
     "pr_conclusion": "success"
+  },
+  "submission_benchmark": {
+    "source_sha": "45bd439390b839fe42596eac7694523612ee7953",
+    "run_id": 45681884565,
+    "job_id": 139444274688,
+    "scope": "NATIVE_SYNTHETIC_ADAPTER",
+    "rows": [
+      {
+        "scenario": "unchanged",
+        "pairs": 20,
+        "full_ms": 41.427,
+        "selective_ms": 60.863,
+        "reused_groups": 8,
+        "decision_equal": true
+      },
+      {
+        "scenario": "changed",
+        "pairs": 20,
+        "full_ms": 21.791,
+        "selective_ms": 36.237,
+        "reused_groups": 4,
+        "decision_equal": true
+      },
+      {
+        "scenario": "denied",
+        "pairs": 20,
+        "full_ms": 14.014,
+        "selective_ms": 13.597,
+        "reused_groups": 0,
+        "decision_equal": true
+      }
+    ]
   }
 }

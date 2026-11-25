@@ -16,8 +16,8 @@ Forge Custom UI, React, a Node.js 22 resolver, Jira as-user REST reads and an im
 ## Challenges and learning
 Evidence availability and revisions are distinct from objective truth. A source change must invalidate a bound approval even when the recomputed classification matches. An uncertain write response must lead to read-only reconciliation rather than a blind retry. A local cap is not a provider billing guarantee. We also need to prove the actual Forge runtime, current permission semantics and independent installation.
 
-## Current accomplishments (draft evidence, 2026-11-24)
-25/25 implementation candidates; 107/107 automated synthetic tests on source 319be063f81077a02ac5ed4987105926b16f8dcd; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45418283729. Sixty paired full/selective observations produced the same decisions. The synthetic timing totals do not establish an overall selective speed advantage. P2 acceptance: 1/15 PASS, 11 PARTIAL, 3 NOT_RUN. Replace this section only with exact later evidence; do not claim live results from synthetic tests.
+## Current accomplishments — evidence-backed draft
+See the generated [synthetic evidence snapshot](SYNTHETIC_EVIDENCE.md) for the exact candidate CI, native paired measurement and prior owner-reported live source references. The snapshot distinguishes implementation candidates, recorded P2 gates, synthetic tests and independent/live acceptance. The benchmark supports only the reported agreement of paired decisions in its fixed synthetic cases; it does not establish a speed advantage or universal accuracy. Do not copy an old test count into the final submission. Refresh the evidence snapshot after the final verified candidate and actual judge-site test.
 
 ## Next
 Finish development-site acceptance and separate independent reviews. Resolve judge installation portability while retaining safe scope and cost boundaries. Capture real screenshots and a real app demonstration; confirm rights, pricing and owner approval before sharing.

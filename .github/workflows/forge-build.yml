@@ -2,11 +2,11 @@ name: Forge development build
 on:
   push:
     branches: ['feature/forge-p1']
-    paths: ['apps/forge/**', '.github/workflows/forge-build.yml']
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml', 'docs/submission/build-evidence*.mjs']
   pull_request:
     branches: ['develop']
     types: [opened, synchronize, reopened, ready_for_review]
-    paths: ['apps/forge/**', '.github/workflows/forge-build.yml']
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml', 'docs/submission/build-evidence*.mjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,6 +36,10 @@ jobs:
           git rev-parse HEAD
           node --version
           npm --version
+      - name: Submission evidence source contract
+        run: |
+          node --test ../../docs/submission/build-evidence.test.mjs
+          node ../../docs/submission/build-evidence.mjs --check
       - name: Install exact locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=1
       - name: Source syntax
