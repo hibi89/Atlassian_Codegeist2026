@@ -471,13 +471,13 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "de99b7d62ea44deeb1de6b0b4048639fbeb872a8",
+    "source_sha": "def668451da5b1804f714467c8c7c47b7a2fd7d5",
     "date_kst": "2026-11-26",
-    "run_id": 45662752091,
-    "push_run_id": 45662752091,
-    "job_id": 139376671388,
-    "artifact_id": 15046476265,
-    "smoke_pass": 86,
+    "run_id": 45664536137,
+    "push_run_id": 45664536137,
+    "job_id": 139382983038,
+    "artifact_id": 15045873361,
+    "smoke_pass": 89,
     "p2_regression_pass": 50,
     "fail": 0,
     "skip": 0,
@@ -512,11 +512,17 @@
       "live": "NOT_RUN",
       "authority": "NONE",
       "scope": "INITIAL_JOURNAL_ONLY"
+    },
+    "local_preflight": {
+      "ci_outputs_only": "PASS",
+      "windows_full": "NOT_RUN",
+      "forge_lint": "NOT_RUN",
+      "deployment": "NOT_RUN"
     }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "de99b7d62ea44deeb1de6b0b4048639fbeb872a8",
-    "run_id": 45662752091,
+    "source_sha": "def668451da5b1804f714467c8c7c47b7a2fd7d5",
+    "run_id": 45664536137,
     "status": "completed",
     "conclusion": "success"
   }
