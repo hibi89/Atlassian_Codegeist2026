@@ -471,13 +471,13 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "0d798fd469e0919462ffb0ff4f3a843acc024d31",
+    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
     "date_kst": "2026-11-26",
-    "run_id": 45687487092,
-    "push_run_id": 45687487092,
-    "job_id": 139463820506,
-    "artifact_id": 15057580646,
-    "smoke_pass": 95,
+    "run_id": 45688420827,
+    "push_run_id": 45688420827,
+    "job_id": 139467085148,
+    "artifact_id": 15056719125,
+    "smoke_pass": 96,
     "p2_regression_pass": 60,
     "fail": 0,
     "skip": 0,
@@ -552,44 +552,54 @@
       "report_output": "PASS",
       "live": "NOT_RUN"
     },
-    "submission_contract_pass": 4
+    "submission_contract_pass": 4,
+    "build_evidence": {
+      "manifest_sha256": "980158b6510ceac3162352767f695ce76fde78b4aa866ad5609e66815765b021",
+      "files": 11,
+      "verification": "CI_LOCAL_HASH_MATCH",
+      "external_digest_check": "NOT_RUN",
+      "artifact_download": "NOT_RUN",
+      "artifact_expires_at": "2026-12-02T19:46:14Z",
+      "signature": "NONE",
+      "deployment": "NOT_RUN"
+    }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "0d798fd469e0919462ffb0ff4f3a843acc024d31",
-    "run_id": 45687487092,
+    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
+    "run_id": 45688420827,
     "status": "completed",
     "conclusion": "success",
-    "pr_run_id": 45687500332,
+    "pr_run_id": 45688431881,
     "pr_status": "completed",
     "pr_conclusion": "success"
   },
   "submission_benchmark": {
-    "source_sha": "0d798fd469e0919462ffb0ff4f3a843acc024d31",
-    "run_id": 45687487092,
-    "job_id": 139463820506,
+    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
+    "run_id": 45688420827,
+    "job_id": 139467085148,
     "scope": "NATIVE_SYNTHETIC_ADAPTER",
     "rows": [
       {
         "scenario": "unchanged",
         "pairs": 20,
-        "full_ms": 47.184,
-        "selective_ms": 72.582,
+        "full_ms": 36.18,
+        "selective_ms": 59.101,
         "reused_groups": 8,
         "decision_equal": true
       },
       {
         "scenario": "changed",
         "pairs": 20,
-        "full_ms": 23.285,
-        "selective_ms": 37.253,
+        "full_ms": 22.168,
+        "selective_ms": 35.567,
         "reused_groups": 4,
         "decision_equal": true
       },
       {
         "scenario": "denied",
         "pairs": 20,
-        "full_ms": 13.269,
-        "selective_ms": 13.777,
+        "full_ms": 13.036,
+        "selective_ms": 12.881,
         "reused_groups": 0,
         "decision_equal": true
       }
