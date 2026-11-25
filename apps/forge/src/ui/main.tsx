@@ -4,7 +4,7 @@ import { invoke } from "@forge/bridge";
 import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
 import {overviewState,countBreakdown,requestMatches,requestStage} from "./overview-state.js";
-import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment} from "./request-state.js";
+import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
@@ -21,7 +21,7 @@ type SavedReview = {ok:boolean;report_digest?:string;revalidation?:{reused:numbe
 type Result = { release_assessment?:ReleaseAssessment;provider?:{mode:string;reason:string;external_attempted:boolean;synthetic_only:boolean;model:string};revalidation?:{reused:number;recomputed:number};revalidated_from?:string;saved_review?:SavedReview;graph?:Graph; impact_summary?:{status:string;code?:string;affected_count?:number;unaffected_count?:number;stale_approval_count?:number}; claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string;reason?:string;source_refs?:string[]}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[];unchanged?:string[];unknown?:string[];changed_count?:number;unchanged_count?:number;unknown_count?:number}; policy?:{decision:string;reason:string;execution:string;authorization?:string;policy_version?:string;graph_status?:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
   DEMO_SITE_NOT_CONFIGURED:"The owner must configure the verified development site before saving or executing synthetic reviews.", DEMO_SITE_MISMATCH:"This Jira installation is not the configured demo site.", SYNTHETIC_ISSUE_REQUIRED:"Open the synthetic HTF-2 issue to use saved reviews and approved actions.", DEVELOPMENT_ENVIRONMENT_REQUIRED:"Only the approved development environment is enabled.", SYNTHETIC_DEMO_SCOPE_REQUIRED:"This action requires the configured synthetic issue and demo site.", DEVELOPMENT_BUDGET_DAY_CHANGED:"UTC day changed during reservation. This action was not admitted.",
-  AUTH_REQUIRED:"Sign in to Jira to continue.", DEVELOPMENT_DAILY_BUDGET_EXHAUSTED:"Daily development request limit reached. No new action was admitted.", DEVELOPMENT_BUDGET_CONFLICT_OR_UNKNOWN:"Request budget could not be safely reserved. No action was admitted.", DEVELOPMENT_STORAGE_ONLY:"This operation is disabled outside the approved development environment.", BACKEND_UNAVAILABLE:"TrustFlow could not connect to its backend. Reload the issue or contact the developer.", REQUEST_RESPONSE_MISMATCH:"The response did not match the active request. No outcome is established.", COMMENT_OUTCOME_UNCONFIRMED:"The exact comment outcome is unconfirmed. Reconcile the same request before continuing.", AUTH_CONTEXT_REQUIRED:"The authenticated installation context is unavailable.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
+  REVIEW_RESPONSE_UNCONFIRMED:"The new review identity was not confirmed. The previous lookup ID is retained; recheck it before taking action.", AUTH_REQUIRED:"Sign in to Jira to continue.", DEVELOPMENT_DAILY_BUDGET_EXHAUSTED:"Daily development request limit reached. No new action was admitted.", DEVELOPMENT_BUDGET_CONFLICT_OR_UNKNOWN:"Request budget could not be safely reserved. No action was admitted.", DEVELOPMENT_STORAGE_ONLY:"This operation is disabled outside the approved development environment.", BACKEND_UNAVAILABLE:"TrustFlow could not connect to its backend. Reload the issue or contact the developer.", REQUEST_RESPONSE_MISMATCH:"The response did not match the active request. No outcome is established.", COMMENT_OUTCOME_UNCONFIRMED:"The exact comment outcome is unconfirmed. Reconcile the same request before continuing.", AUTH_CONTEXT_REQUIRED:"The authenticated installation context is unavailable.", ISSUE_CONTEXT_REQUIRED:"Open TrustFlow from a Jira issue.",
   SOURCE_ACCESS_UNKNOWN:"Current user access could not be verified.", SOURCE_NOT_VISIBLE_OR_MISSING:"Issue is missing or not visible to you.",
   JIRA_RATE_LIMITED:"Jira rate limit reached. Try again later.", JIRA_UNAVAILABLE:"Jira is temporarily unavailable.",
   JIRA_RESPONSE_INVALID:"Jira returned an unexpected response.", JIRA_RESPONSE_TOO_LARGE:"Jira response exceeded the safe limit.",
@@ -130,8 +130,8 @@ function App(){
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function saveReview(){
-    const token=gate.current.begin();if(token===null)return;setBusy(true);setReviewId("");setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);
-    try{const result=await invoke<Result>("saveCurrentReview",{intent});if(gate.current.current(token)){setPreview(result);if(result.saved_review){setReviewId(result.saved_review.review_id??"");setSavedStatus(result.saved_review)}}}
+    const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);
+    try{const result=await invoke<Result>("saveCurrentReview",{intent});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,result);if(checked.ok){setPreview(result);setReviewId(checked.id);setSavedStatus(checked.saved)}else{setPreview(result.ok?{ok:false,code:checked.code}:result);setSavedStatus({ok:false,code:checked.code})}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -168,7 +168,7 @@ function App(){
   }
   async function revalidateReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setPreview(null);setHistory(null);setReportRequest(null);setReportState(null);setCommentRequest(null);setCommentState(null);setCommentId("");
-    try{const v=await invoke<Result>("revalidateSavedReview",{review_id:reviewId});if(gate.current.current(token)){setPreview(v);if(v.ok&&v.saved_review){setReviewId(v.saved_review.review_id??"");setSavedStatus({...v.saved_review,revalidation:v.revalidation})}else setSavedStatus({ok:false,code:v.code})}}
+    try{const v=await invoke<Result>("revalidateSavedReview",{review_id:reviewId});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,v,true);if(checked.ok){setPreview(v);setReviewId(checked.id);setSavedStatus({...checked.saved,revalidation:v.revalidation})}else{setPreview(v.ok?{ok:false,code:checked.code}:v);setSavedStatus({ok:false,code:checked.code})}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"REVALIDATION_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
