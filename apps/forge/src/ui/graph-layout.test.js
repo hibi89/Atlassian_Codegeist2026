@@ -31,3 +31,9 @@ test("review save and replacement retain prior lookup identity on denial or malf
 
 import {environmentReadiness} from "./request-state.js";
 test("installation panel never claims development is enabled without positive server settings",()=>{for(const value of [null,undefined,{}, {ok:false,environment:"DEVELOPMENT"},{ok:true,environment:"PRODUCTION"},{ok:true,environment:"STAGING"},{ok:true,environment:"DISABLED"},{ok:true}])assert.equal(environmentReadiness(value).ready,false);assert.deepEqual(environmentReadiness({ok:true,environment:"DEVELOPMENT"}),{ready:true,code:"DEVELOPMENT_CONFIRMED"});assert.equal(environmentReadiness(null).code,"ENVIRONMENT_NOT_CONFIRMED");assert.equal(environmentReadiness({ok:true,environment:"DISABLED"}).code,"DEVELOPMENT_ENVIRONMENT_REQUIRED")});
+
+import {budgetRetryAt} from "./request-state.js";
+test("UI displays only a confirmed valid UTC admission reset",()=>{
+ const at=Date.parse("2026-11-26T00:00:00.000Z"),r={ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",retry_at:at};
+ assert.equal(budgetRetryAt(r),at);for(const bad of [null,{...r,ok:true},{...r,code:"BACKEND_UNAVAILABLE"},{...r,retry_at:at+1},{...r,retry_at:0},{...r,retry_at:String(at)},{...r,retry_at:Infinity}])assert.equal(budgetRetryAt(bad),null);
+});

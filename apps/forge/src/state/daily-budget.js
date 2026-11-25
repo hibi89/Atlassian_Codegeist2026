@@ -18,7 +18,10 @@ export async function reserveDailySlot(kvs,now,limit=24,clock=()=>now){
    if(!sameDay())return rollover();
    if(existing!=null)lo=mid+1;else hi=mid;
   }
-  if(lo===limit)return {ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED"};
+  if(lo===limit){
+   const retry_at=(Math.floor(now/86400000)+1)*86400000;
+   return {ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",...(Number.isSafeInteger(retry_at)&&retry_at<=8640000000000000?{retry_at}:{})};
+  }
   if(!sameDay())return rollover();
   try{await kvs.set(slot(lo),{schema_version:"hae.dev.budget.v1",at:now},{keyPolicy:"FAIL_IF_EXISTS",ttl:{unit:"DAYS",value:2}});return sameDay()?{ok:true}:rollover()}
   catch{return {ok:false,code:"DEVELOPMENT_BUDGET_CONFLICT_OR_UNKNOWN"}}

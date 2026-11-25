@@ -57,7 +57,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
 });
 test("development daily budget admits at most the configured number, fails closed on storage errors",async()=>{
  const m=new Map(),kvs={get:async k=>m.get(k),set:async(k,v,o)=>{assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");if(m.has(k))throw Error("conflict");m.set(k,v)}};
- assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.equal((await reserveDailySlot(kvs,86401000,2)).ok,true);
+ assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);assert.equal((await reserveDailySlot(kvs,1000,2)).ok,true);const exhausted=await reserveDailySlot(kvs,1000,2);assert.equal(exhausted.code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.equal(exhausted.retry_at,86400000);assert.equal((await reserveDailySlot(kvs,86401000,2)).ok,true);
  assert.equal((await reserveDailySlot({get:async()=>{throw Error("network")}},1000)).ok,false);
 });
 
@@ -178,4 +178,12 @@ test("report claim provenance resolves only current authorized sources",()=>{
  assert.equal(reportClaimChecks({sources:[e.sources[0],e.sources[0]]},{checks:[c]}),null);
  assert.equal(reportClaimChecks(e,{checks:[{...c,predicate:"jira.status",subject:a,source_refs:[a]}]})[0].subject,"/browse/DEMO-1");
  assert.deepEqual(reportClaimChecks(e,{checks:[{...c,source_refs:[a,a,b]}]})[0].source_uris,["/browse/DEMO-1","/browse/DEMO-2"]);
+});
+
+test("daily exhaustion returns the next UTC midnight without allocating another slot",async()=>{
+ const now=Date.parse("2026-11-25T23:59:59.000Z"),records=new Map(),kvs={get:async k=>records.get(k),set:async(k,v)=>{if(records.has(k))throw Error("duplicate");records.set(k,v)}};
+ assert.equal((await reserveDailySlot(kvs,now,1)).ok,true);
+ const result=await reserveDailySlot(kvs,now,1);
+ assert.deepEqual(result,{ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",retry_at:Date.parse("2026-11-26T00:00:00.000Z")});
+ assert.equal(records.size,1);assert.equal((await reserveDailySlot(kvs,result.retry_at,1)).ok,true);assert.equal(records.size,2);
 });

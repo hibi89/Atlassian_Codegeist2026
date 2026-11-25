@@ -55,3 +55,10 @@ export function environmentReadiness(safety){
  if(safety.environment!=="DEVELOPMENT")return {ready:false,code:"DEVELOPMENT_ENVIRONMENT_REQUIRED"};
  return {ready:true,code:"DEVELOPMENT_CONFIRMED"};
 }
+
+// UTC reset reported by the admission service. This is an informational hint,
+// not permission to retry or a client-side replacement for the server cap.
+export function budgetRetryAt(result){
+ const at=result?.retry_at;
+ return result?.ok===false&&result.code==="DEVELOPMENT_DAILY_BUDGET_EXHAUSTED"&&Number.isSafeInteger(at)&&at>0&&at<=8640000000000000&&at%86400000===0?at:null;
+}

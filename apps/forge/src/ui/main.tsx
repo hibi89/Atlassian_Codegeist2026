@@ -4,7 +4,7 @@ import { invoke } from "@forge/bridge";
 import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
 import {overviewState,countBreakdown,requestMatches,requestStage} from "./overview-state.js";
-import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness} from "./request-state.js";
+import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness,budgetRetryAt} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
@@ -111,6 +111,12 @@ function App(){
   const [history,setHistory]=useState<HistoricalGraph|null>(null);
   const [safety,setSafety]=useState<SafetySettings|null>(null);
   const environment=environmentReadiness(safety);
+  const [quotaResetAt,setQuotaResetAt]=useState<number|null>(null);
+  async function budgetedInvoke<T extends {ok:boolean}>(operation:string,payload?:Record<string,unknown>):Promise<T>{
+    const result=await invoke<T>(operation,payload);
+    const reset=budgetRetryAt(result);if(reset!==null)setQuotaResetAt(reset);else if(result?.ok===true)setQuotaResetAt(null);
+    return result;
+  }
   const [provider,setProvider]=useState("template");const [fixture,setFixture]=useState("change");const [consent,setConsent]=useState(false);
   const gate=useRef(createRequestGate());
   const [unresolvedId,setUnresolvedId]=useState("");
@@ -121,25 +127,25 @@ function App(){
   async function loadIssue(){
     if(!environment.ready)return;
     const token=gate.current.begin();if(token===null)return;setBusy(true);setIssue(null);setPreview(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setSavedStatus(null);setReviewId("");setCommentId("");
-    try{const v=await invoke<Result>("readCurrentIssue");if(gate.current.current(token))setIssue(v)}
+    try{const v=await budgetedInvoke<Result>("readCurrentIssue");if(gate.current.current(token))setIssue(v)}
     catch{if(gate.current.current(token))setIssue({ok:false,code:"JIRA_READ_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function createPreview(e:React.FormEvent){
     e.preventDefault();if(!environment.ready)return;const token=gate.current.begin();if(token===null)return;setBusy(true);setPreview(null);
-    try{const v=await invoke<Result>("previewIntent",{intent});if(gate.current.current(token))setPreview(v)}
+    try{const v=await budgetedInvoke<Result>("previewIntent",{intent});if(gate.current.current(token))setPreview(v)}
     catch{if(gate.current.current(token))setPreview({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function saveReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);
-    try{const result=await invoke<Result>("saveCurrentReview",{intent});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,result);if(checked.ok){setPreview(result);setReviewId(checked.id);setSavedStatus(checked.saved)}else{setPreview(result.ok?{ok:false,code:checked.code}:result);setSavedStatus({ok:false,code:checked.code})}}}
+    try{const result=await budgetedInvoke<Result>("saveCurrentReview",{intent});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,result);if(checked.ok){setPreview(result);setReviewId(checked.id);setSavedStatus(checked.saved)}else{setPreview(result.ok?{ok:false,code:checked.code}:result);setSavedStatus({ok:false,code:checked.code})}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function recheckReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);setIssue(null);
-    try{const result=await invoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){setSavedStatus(result);if(result.comment_journal?.request_id)setCommentId(result.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result.comment_journal))}}
+    try{const result=await budgetedInvoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){setSavedStatus(result);if(result.comment_journal?.request_id)setCommentId(result.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result.comment_journal))}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -149,7 +155,7 @@ function App(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);
     try{
       const requestId=reportRequest?.request_id;
-      const result=await invoke<ReportResult>(operation,operation==="prepareReadOnlyReport"?{review_id:reviewId}:{request_id:requestId,expected_digest:requestId});
+      const result=await budgetedInvoke<ReportResult>(operation,operation==="prepareReadOnlyReport"?{review_id:reviewId}:{request_id:requestId,expected_digest:requestId});
       if(gate.current.current(token)){const safeResult=operation!=="prepareReadOnlyReport"&&(result.ok===true||result.request_id!==undefined)&&!requestMatches(reportRequest,result)?{ok:false,code:"REQUEST_RESPONSE_MISMATCH"}:result;setReportState(safeResult);if(operation==="prepareReadOnlyReport")setReportRequest(result.ok?result:null);}
     }catch{if(gate.current.current(token))setReportState({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
@@ -163,32 +169,32 @@ function App(){
     if(operation==="prepareDemoComment"){setCommentRequest(null);setCommentState(null);setCommentId("");}
     const id=operation==="reconcileDemoComment"?commentId:commentRequest?.request_id;
     try{
-      const result=await invoke<CommentResult>(operation,operation==="prepareDemoComment"?{review_id:reviewId}:{request_id:id,expected_digest:id});
+      const result=await budgetedInvoke<CommentResult>(operation,operation==="prepareDemoComment"?{review_id:reviewId}:{request_id:id,expected_digest:id});
       if(gate.current.current(token)){setCommentState(commentResponse(operation,id??"",result));setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",result));if(operation==="prepareDemoComment"){if(result.ok)setCommentRequest(result);if(result.request_id)setCommentId(result.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result));}}
     }catch{if(gate.current.current(token)){setCommentState({ok:false,code:"BACKEND_UNAVAILABLE",status:operation==="executeDemoComment"?"UNKNOWN_OUTCOME_REVIEW":"REQUEST_UNAVAILABLE"});setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",null));}}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function revalidateReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setPreview(null);setHistory(null);setReportRequest(null);setReportState(null);setCommentRequest(null);setCommentState(null);setCommentId("");
-    try{const v=await invoke<Result>("revalidateSavedReview",{review_id:reviewId});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,v,true);if(checked.ok){setPreview(v);setReviewId(checked.id);setSavedStatus({...checked.saved,revalidation:v.revalidation})}else{setPreview(v.ok?{ok:false,code:checked.code}:v);setSavedStatus({ok:false,code:checked.code})}}}
+    try{const v=await budgetedInvoke<Result>("revalidateSavedReview",{review_id:reviewId});if(gate.current.current(token)){const checked=savedReviewResponse(reviewId,v,true);if(checked.ok){setPreview(v);setReviewId(checked.id);setSavedStatus({...checked.saved,revalidation:v.revalidation})}else{setPreview(v.ok?{ok:false,code:checked.code}:v);setSavedStatus({ok:false,code:checked.code})}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"REVALIDATION_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function recoverReportReceipt(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportRequest(null);setReportState(null);
-    try{const result=await invoke<SavedReview>("recoverSavedReport",{review_id:reviewId});if(gate.current.current(token))setSavedStatus(result)}
+    try{const result=await budgetedInvoke<SavedReview>("recoverSavedReport",{review_id:reviewId});if(gate.current.current(token))setSavedStatus(result)}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"REPORT_RECOVERY_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function loadHistory(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setHistory(null);
-    try{const v=await invoke<HistoricalGraph>("readSavedGraph",{review_id:reviewId});if(gate.current.current(token))setHistory(v)}
+    try{const v=await budgetedInvoke<HistoricalGraph>("readSavedGraph",{review_id:reviewId});if(gate.current.current(token))setHistory(v)}
     catch{if(gate.current.current(token))setHistory({ok:false,code:"HISTORY_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function providerPreview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setPreview(null);
-    try{const v=await invoke<Result>("runSyntheticProvider",{provider,fixture,consent});if(gate.current.current(token))setPreview(v)}
+    try{const v=await budgetedInvoke<Result>("runSyntheticProvider",{provider,fixture,consent});if(gate.current.current(token))setPreview(v)}
     catch{if(gate.current.current(token))setPreview({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -196,6 +202,7 @@ function App(){
   return <main className="shell" aria-busy={busy}><header className="hero"><div className="hero-top"><div className="brand"><span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" width="30" height="30"><path d="M20 4 34 11v10c0 8-7 13-14 16C13 34 6 29 6 21V11z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="m12 20 5 5 11-12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg></span><div><div className="eyebrow">HAE / LA · TRUSTFLOW</div><h1>Decision assurance</h1></div></div><span className="environment-tag">{safety?.ok?safety.environment:"Environment unknown"}</span></div><p>Know why. Approve what. Revalidate what changes.</p><div className="hero-flow" aria-label="Workflow concept"><span>01 Evidence</span><span>02 Policy</span><span>03 Approval</span><span>04 Read-back</span></div></header>
     {context?.ok&&<><Overview state={overview}/><nav className="section-nav" aria-label="Review workspace"><a href="#issue-heading">Issue</a><a href="#review-workspace">Review</a><a href="#saved-workspace">Saved review</a><a href="#lineage-workspace">ProofGraph</a><a href="#report-workspace">Report</a>{context.key==="HTF-2"&&<a href="#comment-workspace">Execution</a>}<a href="#settings-workspace">Settings</a></nav></>}
     <div className="notice" role="status">{environment.ready?"Development environment. Drafts are not verified or approved. Only a configured synthetic demo issue may receive an explicitly approved comment. External AI is off by default; only an explicitly qualified synthetic fixture can be sent.":msg(environment.code)}</div>
+    {quotaResetAt!==null&&<div className="notice" role="status"><strong>Daily admission limit reached.</strong> The next UTC reset is {new Date(quotaResetAt).toLocaleString()} (local time), {new Date(quotaResetAt).toISOString()} UTC. No automatic retry. The server will check admission again on your next request.</div>}
     {!context?<p role="status">Loading issue context…</p>:!context.ok?<p role="alert">{msg(context.code)}</p>:<>
       <section aria-labelledby="issue-heading"><div className="section-head"><h2 id="issue-heading">Current issue · {context.key}</h2><button type="button" disabled={busy||!environment.ready} onClick={loadIssue}>Read Jira</button></div>
       {!issue?<p>Read the current issue using your Jira access.</p>:issue.ok&&issue.snapshot?<><h3>{issue.snapshot.summary}</h3><dl><dt>Status</dt><dd>{issue.snapshot.status}</dd><dt>Type</dt><dd>{issue.snapshot.issueType}</dd><dt>Source version</dt><dd>{issue.source?.version||"Unknown"}</dd></dl><p className="muted">Observed source metadata; not proof of completion.</p>{issue.evidence&&<><h4>TruthGate evidence</h4><p>{issue.evidence.coverage} · {issue.evidence.unknown_count} unknown reads</p><ul>{issue.evidence.sources.map(s=><li key={s.source_ref}><code>{s.uri}</code> · {s.status} · {s.version||"Unknown version"}</li>)}</ul></>}</>:<p role="alert">{msg(issue.code)}</p>}</section>
