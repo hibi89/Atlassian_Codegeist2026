@@ -471,14 +471,14 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "14f2701d505fec0356e916c92d17e9866376376e",
+    "source_sha": "27dce087926d7418e1ac8a70f6372d08a179c3ba",
     "date_kst": "2026-11-26",
-    "run_id": 45648959042,
-    "push_run_id": 45648953408,
-    "job_id": 139327810182,
-    "artifact_id": null,
-    "smoke_pass": 76,
-    "p2_regression_pass": 45,
+    "run_id": 45649969909,
+    "push_run_id": 45649969909,
+    "job_id": 139331488275,
+    "artifact_id": 15038739358,
+    "smoke_pass": 79,
+    "p2_regression_pass": 47,
     "fail": 0,
     "skip": 0,
     "cancelled": 0,
@@ -489,14 +489,20 @@
     "ui_output": "PASS",
     "live_forge": "NOT_RUN",
     "independent_review": "NOT_RUN",
-    "comment_storage_peak": null,
-    "report_storage_peak": null,
+    "comment_storage_peak": {
+      "reads": 21,
+      "writes": 7
+    },
+    "report_storage_peak": {
+      "reads": 46,
+      "writes": 9
+    },
     "prior_live_evidence_source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
     "gate_counts_unchanged": true
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "14f2701d505fec0356e916c92d17e9866376376e",
-    "run_id": 45648959042,
+    "source_sha": "27dce087926d7418e1ac8a70f6372d08a179c3ba",
+    "run_id": 45649969909,
     "status": "completed",
     "conclusion": "success"
   }
