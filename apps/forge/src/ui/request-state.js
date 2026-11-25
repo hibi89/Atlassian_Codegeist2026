@@ -80,3 +80,11 @@ export function savedLookupResponse(reviewId,result){
 export function draftRepairHint(result){
  return result?.ok===false&&["REVIEW_JOURNAL_PARTIAL","REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED","REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN","REVIEW_DRAFT_REPAIR_STALE","REVIEW_DRAFT_REPAIR_DENIED"].includes(result.code)&&validRequestId(result.repair_review_id)?result.repair_review_id:"";
 }
+
+// Session-only report recovery guard. Unknown outcomes cannot be regenerated for
+// the same review until an explicitly recovered verified receipt is observed.
+export function unresolvedReport(previous,operation,reviewId,result){
+ if(operation==="generateReadOnlyReport"&&validRequestId(reviewId)&&result?.report_integrity!=="SHA256_MATCH")return previous||reviewId;
+ if(operation==="recoverSavedReport"&&previous===reviewId&&result?.ok===true&&result.review_id===reviewId&&result.status==="HISTORICAL_REPORT_RECEIPT_RECOVERED"&&result.run_state==="SUCCEEDED"&&result.authorization==="NONE"&&result.execution==="NO_JIRA_MUTATION"&&validRequestId(result.report_digest))return "";
+ return previous;
+}

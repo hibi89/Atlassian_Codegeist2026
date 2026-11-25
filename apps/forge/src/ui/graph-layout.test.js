@@ -157,3 +157,18 @@ test("graph node lookup retains original topology and supports large recorded gr
  assert.deepEqual(visibleNodeSearch(nodes,"receipt").matches,[nodes[1]]);assert.deepEqual(visibleNodeSearch(nodes,"STALE","POLICY").matches,[nodes[2]]);assert.equal(visibleNodeSearch(nodes,"receipt","SOURCE").matches.length,0);assert.equal(visibleNodeSearch(nodes,"","missing"),null);assert.equal(visibleNodeSearch([...nodes,nodes[0]],""),null);assert.equal(JSON.stringify(nodes),original);
  const large=Array.from({length:620},(_,i)=>({id:String(i),label:"Node "+i,kind:"CHECK"}));assert.equal(visibleNodeSearch(large,"","CHECK").matches.length,620);assert.equal(visibleNodeSearch([...large,{id:"extra",label:"extra",kind:"CHECK"}],""),null);
 });
+
+import {reportContentShape} from "./report-integrity.js";
+import {unresolvedReport} from "./request-state.js";
+test("matching report hash is insufficient when report citations or rendered schema are malformed",async()=>{
+ const review="a".repeat(64),request="b".repeat(64),uri="/browse/HTF-2",report={schema_version:"hae.readonly.report.v1",review_id:review,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",generated_at:Date.parse("2026-11-24T12:00:00Z"),sources:[{uri,version:"2026-11-24T11:00:00Z",status:"VERSION_OBSERVED"}],checks:[{subject:uri,predicate:"jira.status",values:["Open"],status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD",source_uris:[uri]}],missing:[],policy:"cg-readonly-report-v1"};
+ assert.equal(reportContentShape(report),true);
+ for(const bad of [{...report,checks:[{...report.checks[0],source_uris:["/browse/HIDDEN-1"]}]},{...report,checks:[{...report.checks[0],values:null}]},{...report,sources:[report.sources[0],report.sources[0]]},{...report,release_assessment:{requirements:null}},{...report,missing:[{}]}]){
+  const result={ok:true,request_id:request,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",authorization:"CONSUMED",execution:"NO_JIRA_MUTATION",report:bad,report_digest:reportHash("sha256").update(canonicalReport(bad)).digest("hex")};
+  assert.equal((await verifyGeneratedReport(review,request,result,webcrypto.subtle)).code,"REPORT_CONTENT_SCHEMA_UNCONFIRMED");
+ }
+});
+test("session report recovery guard retains exact review across unrelated responses",()=>{
+ const a="a".repeat(64),b="b".repeat(64),receipt={ok:true,review_id:a,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",run_state:"SUCCEEDED",authorization:"NONE",execution:"NO_JIRA_MUTATION",report_digest:b};
+ assert.equal(unresolvedReport("","generateReadOnlyReport",a,null),a);assert.equal(unresolvedReport(a,"recoverSavedReport",b,receipt),a);assert.equal(unresolvedReport(a,"recoverSavedReport",a,{...receipt,report_digest:"bad"}),a);assert.equal(unresolvedReport(a,"recoverSavedReport",a,receipt),"");assert.equal(unresolvedReport("","generateReadOnlyReport",a,{report_integrity:"SHA256_MATCH"}),"");
+});
