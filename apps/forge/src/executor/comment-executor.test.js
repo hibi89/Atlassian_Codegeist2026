@@ -12,8 +12,8 @@ import {createCommentExecutor} from "./comment-executor.js";
 import {createCommentService} from "../security/approval/comment-service.js";
 import {createDevelopmentStore} from "../state/forge-review.js";
 const digest=s=>createHash("sha256").update(s).digest("hex");
-function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"],linkedLabels=null,canDispatch=()=>true){
- const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/demo",extension:{issue:{key:"HTF-2"}}};
+function fixture(labels=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1","tf-owner-DEMO-1-OPS"],linkedLabels=null,canDispatch=()=>true,cloudId="demo"){
+ const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/"+cloudId,extension:{issue:{key:"HTF-2"}}};
  let now=Date.parse("2026-11-24T12:00:00Z"),version="2026-11-24T11:00:00Z",allowed=true,add=true,posts=0,counter=0,mode="ok",reads=0,changeAt=Infinity;
  const clock=()=>now;
  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,JSON.parse(JSON.stringify(v)))}};
@@ -236,4 +236,16 @@ test("P2 receipt chronology and conflicting remote identity cannot imply histori
  Object.assign(receipt,original);
  assert.equal((await readCommentJournal(f.store,p,q.review_id,f.deps.clock)).status,"HISTORICAL_OBSERVED_SUCCESS");
  assert.equal((await f.writes.reconcile(f.ctx,q.request_id)).ok,true);assert.equal(f.posts(),1);
+});
+
+import {loadProjectDashboard} from "../dashboard/project-dashboard.js";
+test("project dashboard bounded sample verifies real comment receipt chain without a second dispatch",async()=>{
+ const cloud="00000000-0000-4000-8000-000000000001",f=fixture(undefined,null,()=>true,cloud),context={...f.ctx,extension:{type:"jira:projectPage",project:{id:"10001",key:"HTF"}}};
+ for(const intent of ["review change","review release","coordinate incident"]){assert.equal((await f.reviews.save(f.ctx,intent)).ok,true);f.advance(1000)}
+ const prepared=await f.request();assert.equal(prepared.ok,true);assert.equal((await f.writes.approve(f.ctx,prepared.request_id,prepared.request_id)).ok,true);assert.equal((await f.writes.execute(f.ctx,prepared.request_id)).ok,true);
+ const p=principal(f.ctx,digest),prefix="cg:review:"+p.tenant+":"+p.actor+":",clock=f.deps.clock;
+ const page={results:[...f.map.entries()].filter(([k])=>k.startsWith(prefix)&&k.endsWith(":snapshot")).map(([key,value])=>({key,value,expireTime:new Date(value.expires_at).toISOString()})).reverse(),nextCursor:"synthetic-next-page"};
+ let pointReads=0;const input={development:true,cloudId:cloud,digest,clock,admit:async()=>({ok:true}),readProjectIssue:async()=>({key:"HTF-2",id:"2",project_id:"10001",project_key:"HTF"}),readEvidence:async()=>({ok:true,snapshot:{objectId:"2"},evidence:(await f.preview(f.ctx,"review change")).evidence}),readStored:async k=>{pointReads++;return f.store.get(k)},queryReviews:async (key,limit)=>{assert.equal(key,prefix);assert.equal(limit,12);return page}};
+ const size=f.map.size;let result=await loadProjectDashboard(context,input);assert.equal(result.ok,true);assert.equal(result.rows.length,3);assert.equal(result.scan_truncated,true);assert.equal(result.rows_truncated,true);assert.equal(result.rows[0].review_id,prepared.review_id);assert.equal(result.rows[0].comment_state,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(result.rows[0].journal_state,"POLICY_REVIEW");assert.ok(pointReads<=60);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
+ const receipt=[...f.map.values()].find(v=>v.schema_version==="hae.comment.receipt.v1");receipt.observation_digest="bad";pointReads=0;result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].comment_state,"NOT_ESTABLISHED");assert.ok(pointReads<=60);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
 });

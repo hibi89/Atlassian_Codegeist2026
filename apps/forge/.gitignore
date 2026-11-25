@@ -1,5 +1,6 @@
 node_modules/
 src/ui/dist/
+src/ui/project-dist/
 .forge/
 .env
 .env.*
