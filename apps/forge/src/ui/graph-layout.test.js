@@ -60,3 +60,10 @@ test("prepared approval and saved lookup responses must belong to the exact sele
  const recovery={ok:false,status:"UNKNOWN_OUTCOME_REVIEW",request_id:q};assert.equal(preparedRequest("comment",a,"HTF-2",recovery),recovery);
  assert.equal(savedLookupResponse(a,{ok:true,review_id:b}).ok,false);assert.equal(savedLookupResponse(a,{ok:true}).ok,false);assert.equal(savedLookupResponse(a,{ok:true,review_id:a}).ok,true);assert.equal(savedLookupResponse(a,null).ok,false);
 });
+
+import {evidenceDistribution} from "./overview-state.js";
+test("evidence distribution preserves independent denominators and unknown status",()=>{
+ const e={sources:[{status:"VERSION_OBSERVED"},{status:"UNVERIFIED_VERSION"},{status:"unexpected"}],unknown_count:9},r={checks:[{status:"SOURCE_OBSERVED"},{status:"UNVERIFIED_CLAIM"},{status:"CONFLICT_FOUND"},{status:"CONFLICT_FOUND"},{status:"unexpected"}]};
+ const d=evidenceDistribution(e,r);assert.deepEqual(d.sources,{total:3,counts:{VERSION_OBSERVED:1,UNVERIFIED_VERSION:1,UNKNOWN:1}});assert.deepEqual(d.checks,{total:5,counts:{SOURCE_OBSERVED:1,UNVERIFIED_CLAIM:1,CONFLICT_FOUND:2,UNKNOWN:1}});
+ assert.deepEqual(evidenceDistribution(null,null),{sources:null,checks:null});assert.equal(evidenceDistribution(e,{reason:"CLAIMS_UNKNOWN",checks:[]}).checks,null);assert.equal(evidenceDistribution({sources:[]},{checks:[]}).checks.total,0);
+});

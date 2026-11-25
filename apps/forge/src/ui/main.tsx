@@ -4,7 +4,7 @@ import { invoke } from "@forge/bridge";
 import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
 import {describePreviewNodes} from "./graph-layout.js";
-import {overviewState,countBreakdown,requestMatches,requestStage} from "./overview-state.js";
+import {overviewState,countBreakdown,requestMatches,requestStage,evidenceDistribution} from "./overview-state.js";
 import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness,budgetRetryAt,preparedRequest,savedLookupResponse} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
@@ -41,6 +41,12 @@ function ReleasePanel({assessment}:{assessment:ReleaseAssessment}){
  {!!assessment.unmatched_tests?.length&&<><h5>Reported tests without matching requirement</h5><ul>{assessment.unmatched_tests.map(t=><li key={t.subject}>{t.subject} · {t.values.join(" / ")} · {t.status} · {t.source_refs.join(", ")||"Unknown source"}</li>)}</ul></>}
  {assessment.conflicts.length>0&&<ul>{assessment.conflicts.map((c,i)=><li key={i}>{c.predicate}: {c.subject} · {c.sources.join(", ")}</li>)}</ul>}<p>No release certification or Jira mutation is granted.</p></section>
 }
+function EvidenceDistribution({result}:{result:Result}){
+ const stats=evidenceDistribution(result.evidence,result.claim_review);
+ const rows=[{title:"Visible source versions",data:stats.sources,labels:{VERSION_OBSERVED:"Version observed",UNVERIFIED_VERSION:"Version unverified",UNKNOWN:"Unknown state"}},{title:"Deterministic check outcomes",data:stats.checks,labels:{SOURCE_OBSERVED:"Observed field",UNVERIFIED_CLAIM:"Reported, not certified",CONFLICT_FOUND:"Conflicting values",UNKNOWN:"Unknown state"}}];
+ return <section className="distribution-panel" aria-label="Evidence state counts"><h4>Evidence state distribution</h4>{rows.map(row=><div key={row.title}><h5>{row.title}</h5>{row.data===null?<p>Not established</p>:row.data.total===0?<p>No observations in this category.</p>:<><p>{row.data.total} recorded {row.title==="Visible source versions"?"sources":"checks"}</p><div className="distribution-track" aria-hidden="true">{Object.entries(row.data.counts).map(([status,count])=>Number(count)>0?<span key={status} className={"distribution-"+status.toLowerCase()} style={{width:(Number(count)/row.data.total*100)+"%"}}/>:null)}</div><dl>{Object.entries(row.data.counts).map(([status,count])=><React.Fragment key={status}><dt>{(row.labels as Record<string,string>)[status]??status}</dt><dd>{Number(count)} / {row.data.total}</dd></React.Fragment>)}</dl></>}</div>)}<p className="muted">Counts describe current returned observations only. Omitted evidence and unobserved checks are not part of either denominator. Not a confidence score.</p></section>
+}
+
 function EvidencePanel({result}:{result:Result}){
   const evidence=result.evidence;
   const freshness=result.freshness;
@@ -58,7 +64,7 @@ function EvidencePanel({result}:{result:Result}){
     </>}
     <h4>Source re-read</h4>
     {freshness?<><p role="status">{freshness.status} · {freshness.reason}</p><dl><dt>Changed</dt><dd>{freshness.changed_count??freshness.changed.length} · {sourceNames(freshness.changed)}</dd><dt>Unchanged observations</dt><dd>{freshness.unchanged_count??freshness.unchanged?.length??"Unknown"} · {sourceNames(freshness.unchanged)}</dd><dt>Unknown</dt><dd>{freshness.unknown_count??freshness.unknown?.length??"Unknown"} · {sourceNames(freshness.unknown)}{(freshness.unknown_count??0)>(freshness.unknown?.length??0)?" · Inaccessible identities withheld":""}</dd></dl><p className="muted">A matching re-read is not an execution approval or future freshness guarantee.</p></>:<p>Freshness not established.</p>}
-    <h4>Claim comparisons</h4>
+    <EvidenceDistribution result={result}/><h4>Claim comparisons</h4>
     {!review?<p>Claim review unavailable.</p>:<><p role="status">{review.status} · {review.reason}</p>{review.checks.length===0?<p>No comparable claims returned.</p>:<ul>{review.checks.map(c=><li key={JSON.stringify([c.subject,c.predicate])}><strong>{c.predicate}</strong> · {c.status}<dl><dt>Subject</dt><dd>{visible.get(c.subject)??(c.predicate.startsWith("jira.")?"Observed Jira issue":c.subject)}</dd><dt>Reported values</dt><dd>{c.values.join(" / ")||"Unknown"}</dd><dt>Visible sources</dt><dd>{sourceNames(c.source_refs)}</dd><dt>Reason</dt><dd>{c.reason??"Unknown"}</dd></dl></li>)}</ul>}{!!review.missing_predicates?.length&&<p>Missing reported fields: {review.missing_predicates.join(", ")}</p>}<p className="muted">Reported labels do not independently certify a test or policy.</p></>}
     <h4 className="module-heading"><span className="module-index">02</span>SovereignGuard 2.0 · policy</h4>
     {policy?<><div className="section-head"><StatusChip tone={policy.decision==="REVIEW"?"warning":policy.decision==="DENY"?"danger":"neutral"}>{policy.decision}</StatusChip><span>{policy.reason}</span></div><dl><dt>Policy version</dt><dd>{policy.policy_version??"Unknown"}</dd><dt>Authorization</dt><dd>{policy.authorization??"Not established"}</dd><dt>Execution</dt><dd>{policy.execution}</dd><dt>Graph</dt><dd>{policy.graph_status??"Not established"}</dd></dl></>:<p>Policy decision unavailable.</p>}

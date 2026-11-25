@@ -33,3 +33,10 @@ export function requestStage(kind,request,result,deadline,unresolvedId=""){
  if(s==="BLOCKED_BEFORE_DISPATCH"||s==="DEFINITE_REJECTION"||s==="COMMENT_APPROVAL_REVOKED"||s==="READ_ONLY_APPROVAL_REVOKED")return {label:s,tone:"warning"};
  return {label:"Outcome not established",tone:"neutral"};
 }
+
+// Separate denominators: source version observations and deterministic check
+// outcomes. Neither is a probability of truth or an execution authorization.
+export function evidenceDistribution(evidence,review){
+ const group=(items,allowed)=>{if(!Array.isArray(items))return null;const counts=Object.fromEntries(allowed.map(k=>[k,0]));counts.UNKNOWN=0;for(const item of items){const status=item?.status;counts[allowed.includes(status)?status:"UNKNOWN"]++;}return {total:items.length,counts};};
+ return {sources:group(evidence?.sources,["VERSION_OBSERVED","UNVERIFIED_VERSION"]),checks:review?.reason==="CLAIMS_UNKNOWN"?null:group(review?.checks,["SOURCE_OBSERVED","UNVERIFIED_CLAIM","CONFLICT_FOUND"])};
+}
