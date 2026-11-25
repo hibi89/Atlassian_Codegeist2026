@@ -67,13 +67,13 @@ test("P2 preflight hashes complete known resource sets and rejects stale or miss
 });
 
 
-import {createBuildManifest,verifyBuildManifest,validManifest} from "../scripts/build-evidence-manifest.mjs";
+import {createBuildManifest,verifyBuildManifest,validManifest,manifestDigest} from "../scripts/build-evidence-manifest.mjs";
 test("P2 build evidence binds the complete extracted artifact to an exact source and run",()=>{
  const root=mkdtempSync(join(tmpdir(),"trustflow-build-evidence-")),sha="a".repeat(40);
  try{
   for(const file of ["package-lock.json","dependency-inventory.json","third-party-notices-review.txt"])writeFileSync(join(root,file),file);
   for(const dir of ["src/ui/dist","src/ui/project-dist"]){mkdirSync(join(root,dir),{recursive:true});for(const name of ["index.html","app.js","app.css"])writeFileSync(join(root,dir,name),name);}
-  const m=createBuildManifest(root,sha,123,1);assert.equal(validManifest(m),true);assert.equal(m.files.length,9);assert.deepEqual(verifyBuildManifest(root,m,sha,123,1),{ok:true,files:9,scope:"NATIVE_BUILD_OUTPUTS_ONLY",deployment:"NOT_RUN",signature:"NONE"});
+  const m=createBuildManifest(root,sha,123,1);assert.equal(validManifest(m),true);const md=manifestDigest(m);assert.match(md,/^[a-f0-9]{64}$/);assert.equal(manifestDigest({...m,files:[...m.files].reverse()}),md);assert.notEqual(manifestDigest({...m,run_attempt:2}),md);assert.equal(m.files.length,9);assert.deepEqual(verifyBuildManifest(root,m,sha,123,1),{ok:true,files:9,scope:"NATIVE_BUILD_OUTPUTS_ONLY",deployment:"NOT_RUN",signature:"NONE"});
   for(const [source,run,attempt] of [["b".repeat(40),123,1],[sha,124,1],[sha,123,2]])assert.throws(()=>verifyBuildManifest(root,m,source,run,attempt),/EVIDENCE_REFERENCE_MISMATCH/);
   const mutations=[x=>x.files.pop(),x=>x.files.push({...x.files[0]}),x=>x.files[0].file="../secret",x=>x.files[0].sha256="x",x=>x.deployment="PASS",x=>x.signature="SIGNED"];
   for(const mutate of mutations){const x=structuredClone(m);mutate(x);assert.equal(validManifest(x),false);assert.throws(()=>verifyBuildManifest(root,x,sha,123,1),/EVIDENCE_REFERENCE_MISMATCH/);}

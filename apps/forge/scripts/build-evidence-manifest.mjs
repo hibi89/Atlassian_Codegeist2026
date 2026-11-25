@@ -25,6 +25,13 @@ function observedFiles(base){
 export function validManifest(m){
  return !!m&&m.schema_version===schema&&sha(m.source_sha)&&positive(m.run_id)&&positive(m.run_attempt)&&m.scope==="NATIVE_BUILD_OUTPUTS_ONLY"&&m.deployment==="NOT_RUN"&&m.signature==="NONE"&&Array.isArray(m.files)&&m.files.length>=required.length&&m.files.length<=permitted.size&&new Set(m.files.map(f=>f?.file)).size===m.files.length&&required.every(n=>m.files.some(f=>f?.file===n))&&m.files.every(f=>permitted.has(f?.file)&&positive(f.bytes)&&f.bytes<=10*1024*1024&&hash(f.sha256));
 }
+// Canonicalize the validated allowlisted record before digesting it. The digest
+// can be copied from a separately trusted CI log or repository evidence record.
+export function manifestDigest(m){
+ if(!validManifest(m))throw Error("EVIDENCE_MANIFEST_INVALID");
+ const ordered={schema_version:m.schema_version,source_sha:m.source_sha,run_id:m.run_id,run_attempt:m.run_attempt,scope:m.scope,deployment:m.deployment,signature:m.signature,files:m.files.map(f=>({file:f.file,bytes:f.bytes,sha256:f.sha256})).sort((a,b)=>a.file<b.file?-1:a.file>b.file?1:0)};
+ return createHash("sha256").update(JSON.stringify(ordered)).digest("hex");
+}
 export function createBuildManifest(base,source,run,attempt){
  const m={schema_version:schema,source_sha:source,run_id:run,run_attempt:attempt,scope:"NATIVE_BUILD_OUTPUTS_ONLY",deployment:"NOT_RUN",signature:"NONE",files:observedFiles(base)};
  if(!validManifest(m))throw Error("EVIDENCE_MANIFEST_INVALID");
@@ -38,7 +45,7 @@ export function verifyBuildManifest(base,m,source,run,attempt){
 }
 function id(x){return typeof x==="string"&&/^[1-9][0-9]*$/.test(x)&&positive(Number(x))?Number(x):null}
 function main(args){
- if(args.length!==5||!["--create","--verify"].includes(args[0])||!sha(args[2])||!id(args[3])||!id(args[4]))throw Error("EVIDENCE_ARGS_INVALID");
+ if(!["--create","--verify"].includes(args[0])||!sha(args[2])||!id(args[3])||!id(args[4])||args[0]==="--create"&&args.length!==5||args[0]==="--verify"&&!(args.length===5||args.length===6&&hash(args[5])))throw Error("EVIDENCE_ARGS_INVALID");
  const base=path.resolve(args[1]),st=lstatSync(base);
  if(!st.isDirectory()||st.isSymbolicLink())throw Error("EVIDENCE_DIRECTORY_INVALID");
  const file=path.join(base,"build-evidence-manifest.json");
@@ -47,11 +54,14 @@ function main(args){
   // Do not overwrite a prior file or follow an existing symlink.
   writeFileSync(file,JSON.stringify(m,null,2)+"\n",{flag:"wx"});
   console.log("BUILD_EVIDENCE_MANIFEST="+JSON.stringify(m));
+  console.log("BUILD_EVIDENCE_MANIFEST_SHA256="+manifestDigest(m));
  }else{
   const st=lstatSync(file);if(!st.isFile()||st.isSymbolicLink()||st.size>65536)throw Error("EVIDENCE_MANIFEST_INVALID");
   const m=JSON.parse(readFileSync(file,"utf8"));
+  const actualDigest=manifestDigest(m);
+  if(args[5]!==undefined&&actualDigest!==args[5])throw Error("EVIDENCE_MANIFEST_DIGEST_MISMATCH");
   const r=verifyBuildManifest(base,m,args[2],id(args[3]),id(args[4]));
-  console.log("BUILD_EVIDENCE_VERIFY="+JSON.stringify(r));
+  console.log("BUILD_EVIDENCE_VERIFY="+JSON.stringify({...r,manifest_sha256:actualDigest,external_digest_match:args[5]===undefined?"NOT_CHECKED":"MATCH"}));
  }
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
