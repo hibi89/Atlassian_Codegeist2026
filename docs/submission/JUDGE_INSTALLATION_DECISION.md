@@ -16,3 +16,16 @@ Keep existing development policy unchanged. Introduce a separately reviewed judg
 5. Only after evidence: capture/finish presentation and submit with owner GO.
 
 No registration, role changes, production deployment, link generation or distribution performed in this round.
+
+## 2026-11-26 KST — current official distribution and admission constraints (design proposal only)
+
+Official rules require a working installation link and an independent judge-site installation with the depicted behavior. Forge external sharing requires production deployment, developer-console sharing and a site administrator to install. Organization-only sharing does not suffice for an outside judge unless eligible membership is separately established. A rotated link prevents later use of the old link but does not disable existing installations; stopping sharing is not the application's authorization boundary. Sources checked 2026-11-26:
+- https://codegeist2026.devpost.com/rules
+- https://developer.atlassian.com/platform/forge/distribute-your-apps/
+- https://developer.atlassian.com/platform/forge/runtime-reference/app-context-api/
+- https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-permissions/
+- https://developer.atlassian.com/platform/forge/runtime-reference/storage-api-basic/
+
+**Proposed next design review, not approved implementation.** Maintain the current development path exactly as-is. Evaluate a separate production judge admission policy with default-denied business operations, server-observed environment/installation identity, explicit owner-authorized enrollment and an administrator-selected *synthetic* target whose real object ID and project identity are checked as the current actor. Forge documents server-side app and installation ARIs and installation-scoped storage; actual resolver/runtime semantics and Jira permission scope requirements must be verified before any change. Admin status alone does not prove that a tenant or issue is safe for the demo. A shared link or a browser-supplied ID is not authorization. The enrollment protocol, owner trust source, judge setup burden, expiry and revocation need explicit design GO. Do not transmit enrollment credentials via this public repository or include them in demo evidence.
+
+Candidate clean-site acceptance sequence after separate approvals: (1) new installation using approved link, with product/version/environment verified; (2) unadmitted and foreign-target negative checks, zero business effects; (3) approved synthetic enrollment and current as-user rights checks; (4) A/B/C, exact stale-denial/fresh-approval/read-back/recovery with existing caps intact; (5) revoke/expire enrollment and verify blocked operation even from an existing installation; (6) capture redacted evidence and post-test costs. Judge setup must be independently reproducible, not require the developer's local CLI, personal credentials or real customer data. This is a proposed acceptance sequence, not evidence that a judge-mode app exists. Link, production activation, scope changes and new permissions remain HOLD.
