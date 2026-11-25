@@ -78,5 +78,5 @@ export function savedLookupResponse(reviewId,result){
 
 // Only a known partial initial journal may provide a repair lookup hint.
 export function draftRepairHint(result){
- return result?.ok===false&&["REVIEW_JOURNAL_PARTIAL","REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN","REVIEW_DRAFT_REPAIR_STALE","REVIEW_DRAFT_REPAIR_DENIED"].includes(result.code)&&validRequestId(result.repair_review_id)?result.repair_review_id:"";
+ return result?.ok===false&&["REVIEW_JOURNAL_PARTIAL","REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED","REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN","REVIEW_DRAFT_REPAIR_STALE","REVIEW_DRAFT_REPAIR_DENIED"].includes(result.code)&&validRequestId(result.repair_review_id)?result.repair_review_id:"";
 }

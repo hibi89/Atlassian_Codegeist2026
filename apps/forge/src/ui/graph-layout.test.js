@@ -91,6 +91,6 @@ test("generated report display requires exact review, request and independently 
 import {draftRepairHint} from "./request-state.js";
 test("draft repair lookup never accepts unrelated or malformed success references",()=>{
  const id="a".repeat(64);assert.equal(draftRepairHint({ok:false,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:id}),id);
- assert.equal(draftRepairHint({ok:false,code:"REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN",repair_review_id:id}),id);
+ assert.equal(draftRepairHint({ok:false,code:"REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN",repair_review_id:id}),id);assert.equal(draftRepairHint({ok:false,code:"REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED",repair_review_id:id}),id);
  for(const r of [null,{ok:true,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:id},{ok:false,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:"bad"},{ok:false,code:"OTHER",repair_review_id:id}])assert.equal(draftRepairHint(r),"");
 });

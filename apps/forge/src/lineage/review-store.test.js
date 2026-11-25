@@ -267,3 +267,17 @@ test("draft repair cannot revive stale or corrupt partial snapshots",async()=>{
  map.set(key.slice(0,-1)+"3",{...event,seq:3,state:"AWAITING_APPROVAL"});assert.equal((await reviews.repairDraft(ctx,id)).ok,false);map.delete(key.slice(0,-1)+"3");
  version="2026-11-24T11:05:00Z";assert.equal((await reviews.repairDraft(ctx,id)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reviews.repairDraft(ctx,id)).ok,false);assert.equal([...map.values()].filter(v=>v.schema_version==="hae.run.event.v1").length,1);
 });
+
+test("snapshot save acknowledgement loss exposes only a confirmed exact repair reference",async()=>{
+ for(const fault of ["before","after","corrupt","read-failure"]){
+  const now=Date.parse("2026-11-24T12:00:00Z"),clock=()=>now,map=new Map(),ctx={accountId:"actor",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};let inject=true;
+  const store={get:async k=>{if(inject&&fault==="read-failure"&&k.endsWith(":snapshot"))throw Error("unavailable");return map.get(k)},create:async(k,v)=>{if(map.has(k))throw Error("conflict");if(inject&&k.endsWith(":snapshot")){if(fault!=="before"){map.set(k,structuredClone(v));if(fault==="corrupt")map.get(k).record_digest="bad"}throw Error("unconfirmed insert")}map.set(k,structuredClone(v))}};
+  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(now).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+  const reviews=createReviewService({store,clock,digest,preview,development:()=>true});
+  const result=await reviews.save(ctx,"review change");assert.equal(result.ok,false);assert.equal(result.authorization,"NONE");assert.equal([...map.values()].some(v=>v.schema_version==="hae.run.event.v1"),false);
+  inject=false;
+  if(fault==="after"){assert.equal(result.code,"REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED");assert.match(result.repair_review_id,/^[a-f0-9]{64}$/);assert.equal(map.size,1);assert.equal((await reviews.repairDraft(ctx,result.repair_review_id)).ok,true);assert.equal(map.size,4);}
+  else{assert.equal(result.code,"REVIEW_SAVE_CONFLICT_OR_UNKNOWN");assert.equal(result.repair_review_id,undefined);}
+ }
+});

@@ -49,7 +49,13 @@ function createReviewStore(store,p,clock,digest){
    const record={...body,record_digest:digest(canonical(body))};
    if(!validRecord(record,id)||Buffer.byteLength(JSON.stringify(record),"utf8")>61440)return bad("REVIEW_STORAGE_LIMIT");
    // Explicit save only; immutable snapshot. No raw Jira descriptions or claim values.
-   await store.create(key(id,"snapshot"),record);
+   try{await store.create(key(id,"snapshot"),record)}catch{
+    // A lost acknowledgement is not a failed insert. Only the exact immutable
+    // scoped record can provide a repair hint; never assume the journal exists.
+    const existing=await store.get(key(id,"snapshot"));
+    if(validRecord(existing,id)&&existing.record_digest===record.record_digest)return {...bad("REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED"),repair_review_id:id};
+    return bad("REVIEW_SAVE_CONFLICT_OR_UNKNOWN");
+   }
    return {ok:true,review_id:id,expires_at:body.expires_at,metadata:inspectMetadata(record),authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_SAVE_CONFLICT_OR_UNKNOWN")}
  }
