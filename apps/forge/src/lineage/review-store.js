@@ -24,8 +24,9 @@ function validProjection(g,projection){
  const all=[...projection.affected,...projection.unaffected,...projection.preserved_receipts],nodes=new Map(g.nodes.map(n=>[n.id,n.kind]));
  return all.length===nodes.size&&new Set(all).size===all.length&&all.every(id=>nodes.has(id))&&projection.preserved_receipts.every(id=>nodes.get(id)==="RECEIPT")&&[...projection.affected,...projection.unaffected].every(id=>nodes.get(id)!=="RECEIPT");
 }
+const invalidationReasons=new Set(["ACCESS_OR_COVERAGE_UNKNOWN","DEPENDENCY_UNKNOWN_OR_CHANGED","POLICY_CHANGED_OR_REVIEW","DEPENDENCY_CHANGED"]);
 export function validInvalidationMarker(r,id,m,now,digest){
- if(!m||m.schema_version!=="hae.review.invalidation.v2"||m.snapshot_digest!==r.record_digest||m.review_id!==id||!Number.isSafeInteger(m.at)||m.at<r.created_at||m.at>now||!validProjection(r.graph,m.projection))return false;
+ if(!m||m.schema_version!=="hae.review.invalidation.v2"||m.snapshot_digest!==r.record_digest||m.review_id!==id||!invalidationReasons.has(m.reason)||!Number.isSafeInteger(m.at)||m.at<r.created_at||m.at>now||!validProjection(r.graph,m.projection))return false;
  const {marker_digest,...body}=m;return hex(marker_digest)&&digest(canonical(body))===marker_digest;
 }
 
@@ -88,17 +89,19 @@ function createReviewStore(store,p,clock,digest){
    // versions match. Source/claim/check nodes are not silently marked verified.
    if(policyChanged)for(const n of r.graph.nodes)if(n.kind==="PLAN"||n.kind==="POLICY"||n.kind==="APPROVAL"||n.kind==="STEP")affected.add(n.id);
    const projection={affected:[...affected].sort(),unaffected:r.graph.nodes.filter(n=>n.kind!=="RECEIPT"&&!affected.has(n.id)).map(n=>n.id).sort(),preserved_receipts:r.graph.nodes.filter(n=>n.kind==="RECEIPT").map(n=>n.id).sort(),status:"STALE_REVIEW_REQUIRED"};
-   if(stale&&!await invalidate(policyChanged?"POLICY_CHANGED_OR_REVIEW":"DEPENDENCY_CHANGED",projection))return bad("REVIEW_INVALIDATION_UNKNOWN");
+   if(stale&&!await invalidate(impact.affected.length>0?"DEPENDENCY_CHANGED":"POLICY_CHANGED_OR_REVIEW",projection))return bad("REVIEW_INVALIDATION_UNKNOWN");
    // Read the immutable marker after a possible competing insert. A reverted
    // source must not make the old affected set or stale state disappear.
    const persisted=stale?await store.get(key(id,"invalidated")):null;
    if(stale&&!validMarker(persisted))return bad("REVIEW_INVALIDATION_UNKNOWN");
    const priorProjection=persisted?.projection;
+   // Safe aggregate metadata only; preserve first recorded reason even if source reverts.
+   const invalidation=persisted?{reason:persisted.reason,at:persisted.at}:null;
    const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
-   if(internal==="history")return {ok:true,record:r,current,projection:priorProjection??null,stale};
+   if(internal==="history")return {ok:true,record:r,current,projection:priorProjection??null,stale,invalidation};
    if(internal&&internal!=="refresh"){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
-   const view={ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
-   return internal==="refresh"?{ok:true,view,record:r,current,projection:priorProjection??null,stale}:view;
+   const view={ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,invalidation,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
+   return internal==="refresh"?{ok:true,view,record:r,current,projection:priorProjection??null,stale,invalidation}:view;
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
  return {validRecord,save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),refreshWithRecord:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"refresh"),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true),history:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"history")};
