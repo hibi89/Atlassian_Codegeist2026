@@ -130,3 +130,14 @@ test("coverage reasons expose bounded omissions and unknown versions without lea
  const mixed=await collectEvidence(ctx,{read:async k=>k==="DEMO-2"?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:sample(k,null),links:async()=>({ok:true,keys:["DEMO-2"],complete:false}),page:async()=>({ok:false,code:"CONFLUENCE_ACCESS_UNKNOWN"})},digest,clock);
  assert.equal(mixed.evidence.unknown_count,4);assert.deepEqual(mixed.evidence.coverage_reasons,["DOCUMENT_OBSERVATION_UNKNOWN","LINKED_SOURCE_UNKNOWN","LINK_COVERAGE_INCOMPLETE","SOURCE_VERSION_UNKNOWN"]);assert.equal(JSON.stringify(mixed.evidence).includes("/browse/DEMO-2"),false);
 });
+
+test("incident assessment links ownership to requirements and exposes conflicting and unmatched teams",async()=>{
+ let labels=["tf-req-DEMO-1","tf-owner-DEMO-1-OPS","tf-policy-DEMO-v1"],linked=["tf-owner-DEMO-1-SEC"],denied=false;
+ const a={...adapter,read:async k=>denied&&k==="DEMO-2"?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:{...sample(k),snapshot:{...sample(k).snapshot,reportedTags:typedTags(k==="DEMO-1"?labels:linked)},source:{...sample(k).source,contentHash:digest(k+JSON.stringify(k==="DEMO-1"?labels:linked))}}};
+ const run=()=>guardedPreview(ctx,"coordinate incident",{adapter:a,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ let x=await run();assert.equal(x.incident_assessment.status,"CONFLICT_REVIEW");assert.equal(x.incident_assessment.ownership[0].state,"OWNERSHIP_CONFLICT");assert.equal(x.incident_assessment.ownership[0].source_uris.length,2);assert.equal(x.policy.decision,"REVIEW");
+ linked=["tf-owner-OTHER-7-SEC"];x=await run();assert.equal(x.incident_assessment.status,"MISSING_OR_UNMATCHED_COORDINATION_EVIDENCE");assert.equal(x.incident_assessment.unmatched_owners[0].subject,"OTHER-7");
+ labels=["tf-req-DEMO-1","tf-policy-DEMO-v1"];linked=[];x=await run();assert.equal(x.incident_assessment.ownership[0].state,"MISSING_REPORTED_OWNER");
+ labels.push("tf-owner-DEMO-1-OPS");x=await run();assert.equal(x.incident_assessment.status,"HUMAN_COORDINATION_REVIEW_REQUIRED");assert.equal(x.incident_assessment.authorization,"NONE");assert.equal(x.incident_assessment.execution,"NO_JIRA_MUTATION");
+ denied=true;x=await run();assert.equal(x.incident_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(JSON.stringify(x.incident_assessment).includes("/browse/DEMO-2"),false);
+});

@@ -1,4 +1,5 @@
 import { assessRelease } from "../evidence/release-assessment.js";
+import { assessIncident } from "../evidence/incident-assessment.js";
 import { selectiveChecks } from "../lineage/selective-checks.js";
 import { analyzeImpact } from "../lineage/impact.js";
 import { buildObservedGraph } from "../lineage/observed-graph.js";
@@ -27,7 +28,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const draft=services.preview(context,input,services.clock());
   if(!draft.ok)return draft;
   const observed=await refreshEvidence(context,services.adapter,services.digest,services.clock);
-  if(!observed.ok)return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(null,null,null)}:{}),policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
+  if(!observed.ok)return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(null,null,null)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(null,null,null)}:{}),policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
   const reuse=savedRecord?selectiveChecks(p,savedRecord,observed.evidence,services.digest,services.clock()):undefined;
   const claim_review=reviewClaims(observed.evidence,reuse);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
@@ -51,7 +52,7 @@ async function guardedPreview(context,input,services,savedRecord){
     freshness[k]=refs.filter(ref=>visibleRefs.has(ref));
     freshness[k+"_count"]=refs.length;
   }
-  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
+  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
 }
 
 export { evaluatePolicy, guardedPreview };

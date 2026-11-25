@@ -93,7 +93,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    if(!reserved.ok)return reserved;
    const generatedAt=clock();
    if(!Number.isSafeInteger(generatedAt)||generatedAt<approved.receipt.created_at||generatedAt>=Math.min(approved.receipt.expires_at,b.expires_at,m.freshUntil))return fail("REPORT_APPROVAL_OR_EVIDENCE_EXPIRED");
-   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks,missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:generatedAt};
+   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks,missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:m.record.intent==="incident-coordinate"?{incident_assessment:m.current.incident_assessment}:{}),policy:policyVersion,generated_at:generatedAt};
    const reportDigest=digest(canonical(report));
    const recorded=await stepLedger.record(r.review_id,step.step_id,{state:"OBSERVED_SUCCESS",observation_digest:reportDigest,payload_digest:payloadDigest});if(!recorded.ok)return recorded;
    // Persist lineage metadata, never report text. Link the saved policy and
