@@ -134,3 +134,11 @@ test("source navigation accepts only the observed Jira and Confluence relative r
  for(const path of ["https://example.com","//example.com","/browse/../admin","/browse/HTF-2?next=x","/browse/HTF-2#x","/browse/HTF-0","/wiki/pages/viewpage.action?pageId=1&redirect=x","/wiki/pages/viewpage.action?pageId=0","/browse/HTF-2\n","javascript:alert(1)",null]){assert.equal(sourceNavigationPath(path),null);assert.equal((await openObservedSource(path,async p=>opened.push(p))).ok,false)}
  assert.deepEqual(opened,[jira,wiki]);assert.equal((await openObservedSource(jira,async()=>{throw Error("bridge")})).code,"SOURCE_NAVIGATION_UNAVAILABLE");
 });
+
+import {claimExplorer} from "./claim-explorer.js";
+test("claim explorer filters only currently returned cited checks and rejects unknown provenance",()=>{
+ const a="a".repeat(64),b="b".repeat(64),e={sources:[{source_ref:a,uri:"/browse/HTF-2"},{source_ref:b,uri:"/browse/HTF-3"}]},checks=[{subject:"REQ-1",predicate:"test.reported_result",values:["pass","fail"],status:"CONFLICT_FOUND",source_refs:[a,b]},{subject:b,predicate:"jira.status",values:["Open"],status:"SOURCE_OBSERVED",source_refs:[b]}],review={checks};
+ const all=claimExplorer(e,review);assert.equal(all.total,2);assert.equal(all.counts.CONFLICT_FOUND,1);assert.equal(claimExplorer(e,review,"CONFLICT_FOUND",a,"fail").rows.length,1);assert.equal(claimExplorer(e,review,"SOURCE_OBSERVED",a).rows.length,0);assert.equal(all.rows[1].subject,"/browse/HTF-3");
+ for(const bad of [{checks:[{...checks[0],source_refs:["hidden"]}]},{checks:[checks[0],checks[0]]},{checks,reason:"CLAIMS_UNKNOWN"}])assert.equal(claimExplorer(e,bad),null);
+ assert.equal(claimExplorer(e,review,"all","hidden"),null);assert.equal(claimExplorer(e,review,"unknown"),null);
+});
