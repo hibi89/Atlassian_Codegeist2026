@@ -471,14 +471,14 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "27dce087926d7418e1ac8a70f6372d08a179c3ba",
+    "source_sha": "d0081b789e16bbf302d6cf1e069cee0f1ad23d29",
     "date_kst": "2026-11-26",
-    "run_id": 45649969909,
-    "push_run_id": 45649969909,
-    "job_id": 139331488275,
-    "artifact_id": 15038739358,
-    "smoke_pass": 79,
-    "p2_regression_pass": 47,
+    "run_id": 45653836238,
+    "push_run_id": 45653836238,
+    "job_id": 139345085755,
+    "artifact_id": 15042270610,
+    "smoke_pass": 82,
+    "p2_regression_pass": 48,
     "fail": 0,
     "skip": 0,
     "cancelled": 0,
@@ -498,11 +498,19 @@
       "writes": 9
     },
     "prior_live_evidence_source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
-    "gate_counts_unchanged": true
+    "gate_counts_unchanged": true,
+    "project_dashboard": {
+      "scope": "CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",
+      "scan_limit": 12,
+      "row_limit": 3,
+      "point_read_limit": 60,
+      "synthetic_integration": "PASS",
+      "live": "NOT_RUN"
+    }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "27dce087926d7418e1ac8a70f6372d08a179c3ba",
-    "run_id": 45649969909,
+    "source_sha": "d0081b789e16bbf302d6cf1e069cee0f1ad23d29",
+    "run_id": 45653836238,
     "status": "completed",
     "conclusion": "success"
   }
