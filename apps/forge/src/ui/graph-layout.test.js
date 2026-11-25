@@ -67,3 +67,12 @@ test("evidence distribution preserves independent denominators and unknown statu
  const d=evidenceDistribution(e,r);assert.deepEqual(d.sources,{total:3,counts:{VERSION_OBSERVED:1,UNVERIFIED_VERSION:1,UNKNOWN:1}});assert.deepEqual(d.checks,{total:5,counts:{SOURCE_OBSERVED:1,UNVERIFIED_CLAIM:1,CONFLICT_FOUND:2,UNKNOWN:1}});
  assert.deepEqual(evidenceDistribution(null,null),{sources:null,checks:null});assert.equal(evidenceDistribution(e,{reason:"CLAIMS_UNKNOWN",checks:[]}).checks,null);assert.equal(evidenceDistribution({sources:[]},{checks:[]}).checks.total,0);
 });
+
+import {projectResponse,projectSampleCounts} from "./project-state.js";
+test("dashboard does not turn malformed responses into observed sample counts",()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION"};
+ const base={ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:now,scan_limit:12,row_limit:3,scan_truncated:false,rows_truncated:false,withheld_count:0,rows:[row],authorization:"NONE",execution:"NO_JIRA_MUTATION"};
+ assert.equal(projectResponse(base),base);assert.deepEqual(projectSampleCounts(base),{total:1,changed_or_invalidated:1,report_receipts:1,comment_observations:0,unconfirmed:0});
+ for(const x of [{...base,rows:undefined},{...base,project_key:"OTHER"},{...base,rows:[row,row]},{...base,rows:[{...row,journal_state:"SUCCEEDED"}]},{...base,rows:[{...row,expires_at:now}]},{...base,authorization:"APPROVED"},{...base,withheld_count:12},{...base,observed_at:Infinity}]){assert.equal(projectResponse(x).ok,false);assert.equal(projectSampleCounts(x),null)}
+ assert.deepEqual(projectSampleCounts({...base,rows:[]}),{total:0,changed_or_invalidated:0,report_receipts:0,comment_observations:0,unconfirmed:0});
+});

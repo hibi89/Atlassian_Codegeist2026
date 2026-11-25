@@ -225,3 +225,16 @@ test("project dashboard is current-actor synthetic only and filters inaccessible
  const badMarker=map.get(prefix+id+":invalidated");badMarker.marker_digest="bad";result=await loadProjectDashboard(context,deps);assert.equal(result.rows[0].journal_state,"NOT_ESTABLISHED");assert.equal(result.rows[0].invalidation,"NOT_ESTABLISHED");
  const original=map.get(k);map.delete(k);result=await loadProjectDashboard(context,deps);assert.equal(result.rows.length,0);map.set(k,original);assert.equal((await projectDashboard({})).ok,false);
 });
+
+test("dashboard verifies historical report receipts within bounded point reads and rejects corruption",async()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z"),clock=()=>now,cloud="00000000-0000-4000-8000-000000000001",context={accountId:"actor",installContext:"ari:cloud:jira::site/"+cloud,extension:{type:"jira:projectPage",project:{id:"10001",key:"HTF"}}};
+ const {p,issueContext}=projectScope(context,true,cloud,digest),map=new Map(),store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,structuredClone(v))}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(now).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+ const preview=(c,intent,saved)=>guardedPreview(c,intent,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("project-report")},reviews=createReviewService(deps),reports=createReportService(deps);
+ const saved=await reviews.save(issueContext,"review release"),id=saved.saved_review.review_id,q=await reports.prepare(issueContext,id);assert.equal((await reports.approve(issueContext,q.request_id,q.request_id)).ok,true);assert.equal((await reports.generate(issueContext,q.request_id)).ok,true);
+ const key="cg:review:"+p.tenant+":"+p.actor+":"+id+":snapshot",page={results:[{key,value:map.get(key),expireTime:new Date(now+86400000).toISOString()}]};
+ let reads=0;const input={development:true,cloudId:cloud,digest,clock,admit:async()=>({ok:true}),readProjectIssue:async()=>({key:"HTF-2",id:"2",project_id:"10001",project_key:"HTF"}),readEvidence:async c=>({ok:true,snapshot:{objectId:"2"},evidence:(await preview(c,"review release")).evidence}),readStored:async k=>{reads++;return store.get(k)},queryReviews:async()=>page};
+ const size=map.size;let result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].journal_state,"REPORT_RECEIPT_VERIFIED");assert.equal(result.rows[0].comment_state,"NO_COMMENT_ATTEMPT");assert.ok(reads<=17);assert.equal(map.size,size);
+ const receipt=[...map.values()].find(v=>v.schema_version==="hae.report.receipt.v2");receipt.report_digest="bad";reads=0;result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].journal_state,"NOT_ESTABLISHED");assert.ok(reads<=17);assert.equal(map.size,size);
+});

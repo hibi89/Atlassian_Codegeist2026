@@ -43,8 +43,11 @@ export async function loadProjectDashboard(context,{development,cloudId,digest,c
   rows.sort((a,b)=>b.row.created_at-a.row.created_at||a.row.review_id.localeCompare(b.row.review_id));
   const details=[];
   for(const {record,row} of rows.slice(0,PROJECT_ROW_LIMIT))details.push({...row,...await readReviewSummary({record,row,p,e,clock,digest,readStored,prefix})});
-  if(e.sources.some(s=>Date.parse(s.freshness_deadline)<=clock()))return fail("PROJECT_EVIDENCE_UNKNOWN");
-  return {ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:clock(),scan_limit:PROJECT_SCAN_LIMIT,row_limit:PROJECT_ROW_LIMIT,scan_truncated:!!page.nextCursor,rows_truncated:rows.length>PROJECT_ROW_LIMIT,withheld_count:withheld,rows:details,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
+  const observedAt=clock();
+  if(!Number.isSafeInteger(observedAt)||e.sources.some(s=>Date.parse(s.freshness_deadline)<=observedAt))return fail("PROJECT_EVIDENCE_UNKNOWN");
+  const active=details.filter(row=>row.expires_at>observedAt);
+  withheld+=details.length-active.length;
+  return {ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:observedAt,scan_limit:PROJECT_SCAN_LIMIT,row_limit:PROJECT_ROW_LIMIT,scan_truncated:!!page.nextCursor,rows_truncated:rows.length>PROJECT_ROW_LIMIT,withheld_count:withheld,rows:active,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
  }catch{return fail("PROJECT_DASHBOARD_UNKNOWN")}
 }
 
