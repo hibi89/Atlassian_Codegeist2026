@@ -62,6 +62,9 @@ export async function historicalGraph({store,p,record,current,projection,stale,r
     return {uri:s.uri,saved_version:old?.version??null,current_version:s.version,state:!old?"NEW_DEPENDENCY":comparison.changed.includes(s.source_ref)?"CHANGED":"UNCHANGED",content_changed:old?old.content_digest!==s.content_digest:null,revision_changed:old?old.revision_key!==s.revision_key:null};
    })};
   }
-  return {ok:true,review_id:record.id,source_comparison,status:stale?"HISTORICAL_STALE":"HISTORICAL_CURRENT_OBSERVATION",nodes,edges,metadata:{classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(record),"utf8"),record_digest:record.record_digest,graph_revision:g.graph_revision,expires_at:record.expires_at,source_count:record.evidence.sources.length,node_count:nodes.length,edge_count:edges.length},authorization:"NONE",execution:"DISABLED"};
+  // The run ledger is the review/report state machine, not the Jira comment
+  // journal. Project them separately to avoid fabricating comment events.
+  const run_timeline=run.events.map(e=>({sequence:e.seq,state:e.state,at:e.at,kind:e.execution_kind==="READ_ONLY_REPORT"?"READ_ONLY_REPORT":"REVIEW"}));
+  return {ok:true,review_id:record.id,source_comparison,run_timeline,comment_journal:{status:journal.status,...(hex(journal.request_id)?{request_id:journal.request_id}:{})},status:stale?"HISTORICAL_STALE":"HISTORICAL_CURRENT_OBSERVATION",nodes,edges,metadata:{classification:"DERIVED_METADATA_ONLY",record_bytes:Buffer.byteLength(JSON.stringify(record),"utf8"),record_digest:record.record_digest,graph_revision:g.graph_revision,expires_at:record.expires_at,source_count:record.evidence.sources.length,node_count:nodes.length,edge_count:edges.length},authorization:"NONE",execution:"DISABLED"};
  }catch{return fail("HISTORY_STORAGE_UNKNOWN")}
 }
