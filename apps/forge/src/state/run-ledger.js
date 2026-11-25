@@ -96,16 +96,18 @@ function createRunLedger(store,p,clock){
       return {ok:true,state:"RUNNING"};
     }catch{return bad("REPORT_RUN_START_CONFLICT_OR_UNKNOWN")}
   }
-  async function finishReadOnlyReport(runId,requestId,stepId,reportDigest,expectedPayloadDigest){
+  async function finishReadOnlyReport(runId,requestId,stepId,reportDigest,expectedPayloadDigest,canFinalize=()=>true){
     if(!/^[a-f0-9]{64}$/.test(runId)||!/^[a-f0-9]{64}$/.test(requestId)||!/^[a-f0-9]{64}$/.test(reportDigest)||typeof stepId!=="string"||!/^[a-z0-9_-]{1,40}$/.test(stepId)||typeof expectedPayloadDigest!=="string"||!/^[a-f0-9]{64}$/.test(expectedPayloadDigest))return bad("REPORT_RUN_BINDING_INVALID");
     try{
       const cur=await read(runId),last=cur.events?.[cur.events.length-1];
       if(!cur.ok||!["RUNNING","RECONCILING","SUCCEEDED"].includes(cur.state)||last?.execution_kind!=="READ_ONLY_REPORT"||last.report_request_id!==requestId)return bad("REPORT_RUN_NOT_RUNNING");
       if(!await verifyReportReceipt(store,p,cur,runId,requestId,stepId,reportDigest,expectedPayloadDigest,clock))return bad("REPORT_RECEIPT_UNKNOWN");
+      if(typeof canFinalize!=="function"||!canFinalize())return bad("REVIEW_ACCESS_WINDOW_EXPIRED");
       if(cur.state!=="RUNNING"&&last.receipt!==reportDigest)return bad("REPORT_RECEIPT_MISMATCH");
       if(cur.state==="SUCCEEDED")return {ok:true,state:"SUCCEEDED",historical:true};
       let prev=last,seq=cur.next_seq;
       for(const state of cur.state==="RUNNING"?["RECONCILING","SUCCEEDED"]:["SUCCEEDED"]){
+        if(!canFinalize())return bad("REVIEW_ACCESS_WINDOW_EXPIRED");
         const event={...prev,seq,state,at:new Date(clock()).toISOString(),receipt:reportDigest};
         await store.create(ledgerKey(p,runId,seq),event);prev=event;seq++;
       }

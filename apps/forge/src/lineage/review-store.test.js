@@ -293,3 +293,27 @@ test("release report distinguishes test presence from missing per-requirement ow
  const saved=await reviews.save(ctx,"review release"),q=await reports.prepare(ctx,saved.saved_review.review_id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);
  const generated=await reports.generate(ctx,q.request_id),assessment=generated.report.release_assessment;assert.equal(generated.ok,true);assert.equal(assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal(assessment.requirements[1].state,"REPORTED_PASS_NOT_CERTIFIED");assert.equal(assessment.requirements[1].ownership_state,"MISSING_REPORTED_OWNER");assert.equal(assessment.authorization,"NONE");assert.equal(generated.report_digest,digest(canonical(generated.report)));
 });
+
+
+test("P2 review and report recovery withhold metadata when source authorization window expires during storage reads",async()=>{
+ for(const scenario of ["draft-marker","draft-journal","report-history","report-recover-finalize"]){
+  let now=Date.parse("2026-11-24T12:00:00Z"),trigger=null,denySuccess=false,nonce=0;
+  const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}},clock=()=>now;
+  const store={get:async k=>{if(trigger&&trigger(k)){trigger=null;now+=120001}return map.get(k)},create:async(k,v)=>{if(map.has(k)||denySuccess&&v.state==="SUCCEEDED")throw Error("synthetic rejected");map.set(k,structuredClone(v))}};
+  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("access-window"+(++nonce))},reviews=createReviewService(deps),reports=createReportService(deps);
+  const saved=await reviews.save(ctx,"review release");assert.equal(saved.ok,true);const id=saved.saved_review.review_id;
+  if(scenario.startsWith("report")){
+   const q=await reports.prepare(ctx,id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);
+   denySuccess=scenario==="report-recover-finalize";assert.equal((await reports.generate(ctx,q.request_id)).ok,!denySuccess);denySuccess=false;
+  }
+  trigger=scenario==="draft-marker"?k=>k.endsWith(":invalidated"):scenario==="draft-journal"?k=>k.startsWith("cg:run:"):scenario==="report-history"?k=>k.startsWith("cg:report:")&&k.endsWith(":receipt"):k=>k.startsWith("cg:step:")&&k.endsWith(":receipt");
+  const size=map.size,out=scenario==="report-recover-finalize"?await reviews.recoverReport(ctx,id):await reviews.refresh(ctx,id);
+  assert.equal(trigger,null,scenario);assert.equal(out.ok,false,scenario);assert.equal(out.code,"REVIEW_ACCESS_WINDOW_EXPIRED",scenario);assert.equal(out.metadata,undefined);assert.equal(out.comment_journal,undefined);assert.equal(out.report_digest,undefined);assert.equal(map.size,size);
+  if(scenario==="report-recover-finalize"){
+   assert.equal([...map.values()].some(v=>v.state==="SUCCEEDED"),false);
+   const recovered=await reviews.recoverReport(ctx,id);assert.equal(recovered.ok,true);assert.equal(recovered.status,"HISTORICAL_REPORT_RECEIPT_RECOVERED");assert.equal(recovered.execution,"NO_JIRA_MUTATION");
+  }
+ }
+});

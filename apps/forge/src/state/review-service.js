@@ -4,7 +4,7 @@ import { historicalGraph } from "../lineage/history.js";
 import { readCommentJournal } from "./comment-journal.js";
 import { principal } from "../evidence/bundle.js";
 import { createRunLedger } from "./run-ledger.js";
-import { createReviewStore } from "../lineage/review-store.js";
+import { createReviewStore,currentReviewAccess } from "../lineage/review-store.js";
 const aliases={"change-review":"review change","incident-coordinate":"coordinate incident","release-review":"review release"};
 const deny=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
 // Actual server caller. Only trusted Forge context and fresh preview can create a review.
@@ -40,10 +40,12 @@ function createReviewService({store,clock,digest,preview,development}){
   // Reuse the same scoped, current-access and lineage checks as history.
   if(run.state==="SUCCEEDED"){
    const checked=await historicalGraph({store,p,...internal,run,digest,clock,includeRecoveryJournal:true});
+   if(!currentReviewAccess(p,internal.record,internal.current,clock())||checked.code==="HISTORY_ACCESS_UNKNOWN")return deny("REVIEW_ACCESS_WINDOW_EXPIRED");
    if(!checked.ok)return {...review,comment_journal:checked.recovery_comment_journal??{status:"JOURNAL_UNKNOWN"},run_state:"REPORT_OUTCOME_REVIEW_REQUIRED",receipt_status:"UNCONFIRMED",receipt_code:checked.code};
    return {...review,comment_journal:checked.comment_journal,run_state:"SUCCEEDED",receipt_status:"HISTORICAL_REPORT_RECEIPT_VERIFIED"};
   }
   const comment_journal=await readCommentJournal(store,p,id,clock);
+  if(!currentReviewAccess(p,internal.record,internal.current,clock()))return deny("REVIEW_ACCESS_WINDOW_EXPIRED");
   return {...review,comment_journal,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
  async function history(context,id){
@@ -96,8 +98,11 @@ function createReviewService({store,clock,digest,preview,development}){
    const payloadDigest=digest(canonical([id,requestId,h.record.evidence.bundle_hash,h.record.graph.graph_revision,step]));
    const expected=reportLineage(p,h.record,requestId,step,payloadDigest,receipt.report_digest,digest);
    if(!expected||canonical(receipt.lineage)!==canonical(expected))return deny("REPORT_LINEAGE_UNKNOWN");
-   const result=await ledger.finishReadOnlyReport(id,requestId,step.step_id,receipt.report_digest,payloadDigest);
+   const access=()=>currentReviewAccess(p,h.record,h.current,clock());
+   if(!access())return deny("REVIEW_ACCESS_WINDOW_EXPIRED");
+   const result=await ledger.finishReadOnlyReport(id,requestId,step.step_id,receipt.report_digest,payloadDigest,access);
    if(!result.ok)return result;
+   if(!access())return deny("REVIEW_ACCESS_WINDOW_EXPIRED");
    return {ok:true,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",review_id:id,run_state:"SUCCEEDED",report_digest:receipt.report_digest,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
   }catch{return deny("REPORT_RECOVERY_STORAGE_UNKNOWN")}
  }

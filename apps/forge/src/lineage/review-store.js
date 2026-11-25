@@ -10,6 +10,10 @@ const ttlMs=24*60*60*1000;
 function scope(p){return p&&hex(p.tenant)&&hex(p.actor)&&typeof p.target==="string"&&/^[A-Z][A-Z0-9_]*-[1-9][0-9]*$/.test(p.target)&&p.target.length<=64}
 function scopedGraph(p,g){return g?.ok===true&&g.installation_ref===p.tenant&&g.actor_ref===p.actor&&g.target===p.target&&g.coverage==="BOUNDED_READ_COMPLETE"&&hex(g.graph_revision)&&Array.isArray(g.nodes)&&Array.isArray(g.edges)}
 function scopedEvidence(p,e){return e?.installation_ref===p.tenant&&e.actor_ref===p.actor&&e.target===p.target&&e.coverage==="BOUNDED_READ_COMPLETE"&&Array.isArray(e.sources)&&e.sources.length>0&&e.sources.length<=8&&hex(e.bundle_hash)&&e.sources.every(s=>s.installation_ref===p.tenant&&hex(s.source_ref)&&hex(s.revision_key)&&hex(s.content_digest)&&s.status==="VERSION_OBSERVED"&&typeof s.version==="string"&&Number.isFinite(Date.parse(s.version))&&typeof s.freshness_deadline==="string")}
+// Recheck the already observed authorization window after awaited storage reads.
+export function currentReviewAccess(p,record,current,now){
+ return Number.isSafeInteger(now)&&record?.tenant===p?.tenant&&record?.actor===p?.actor&&record?.target===p?.target&&Number.isSafeInteger(record?.expires_at)&&record.expires_at>now&&scopedEvidence(p,current?.evidence)&&current.evidence.sources.every(s=>Number.isFinite(Date.parse(s.freshness_deadline))&&Date.parse(s.freshness_deadline)>now);
+}
 function evidenceMetadata(e){
  return {installation_ref:e.installation_ref,actor_ref:e.actor_ref,target:e.target,coverage:e.coverage,bundle_hash:e.bundle_hash,sources:e.sources.map(s=>({installation_ref:s.installation_ref,source_ref:s.source_ref,revision_key:s.revision_key,content_digest:s.content_digest,version:s.version,status:s.status,freshness_deadline:s.freshness_deadline}))};
 }
@@ -104,8 +108,9 @@ function createReviewStore(store,p,clock,digest){
    // Safe aggregate metadata only; preserve first recorded reason even if source reverts.
    const invalidation=persisted?{reason:persisted.reason,at:persisted.at}:null;
    const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
+   if(!currentReviewAccess(p,r,current,clock()))return bad("REVIEW_ACCESS_WINDOW_EXPIRED");
    if(internal==="history")return {ok:true,record:r,current,projection:priorProjection??null,stale,invalidation};
-   if(internal&&internal!=="refresh"){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
+   if(internal&&internal!=="refresh"){if(stale||!validatePlan(r.plan,clock()).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
    const view={ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,invalidation,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
    return internal==="refresh"?{ok:true,view,record:r,current,projection:priorProjection??null,stale,invalidation}:view;
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
