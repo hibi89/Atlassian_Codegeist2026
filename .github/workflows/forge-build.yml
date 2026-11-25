@@ -64,11 +64,16 @@ jobs:
           sha256sum package-lock.json src/ui/dist/index.html src/ui/dist/app.js src/ui/dist/app.css
       - name: Exact source local preflight artifact contract
         run: node scripts/live-preflight.mjs --expected-sha "$(git rev-parse HEAD)" --outputs-only
+      - name: Create and verify local build evidence manifest
+        run: |
+          node scripts/build-evidence-manifest.mjs --create . "$(git rev-parse HEAD)" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          node scripts/build-evidence-manifest.mjs --verify . "$(git rev-parse HEAD)" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
       - name: Lockfile and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: forge-build-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
+            apps/forge/build-evidence-manifest.json
             apps/forge/package-lock.json
             apps/forge/dependency-inventory.json
             apps/forge/third-party-notices-review.txt
