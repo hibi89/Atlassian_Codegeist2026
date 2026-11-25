@@ -31,7 +31,7 @@ test("KVS adapter uses only bounded conditional writes, package export resolved"
  await assert.rejects(store.create("test:large",{x:"x".repeat(61441)}));
 });
 
-import {createReportService} from "../security/approval/report-service.js";
+import {createReportService,reportClaimChecks} from "../security/approval/report-service.js";
 import {reserveDailySlot} from "../state/daily-budget.js";
 test("read-only approval is exact, consumed once and refuses changed evidence or revocation",async()=>{
  const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
@@ -48,7 +48,7 @@ test("read-only approval is exact, consumed once and refuses changed evidence or
  assert.equal((await reports.approve({...ctx,accountId:"other"},id,id)).ok,false);
  assert.equal((await reports.approve(ctx,id,id)).ok,true);
  const pair=await Promise.all([reports.generate(ctx,id),reports.generate(ctx,id)]);assert.equal(pair.filter(x=>x.ok).length,1);
- const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal(result.report.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");const history=await reviews.history(ctx,result.report.review_id);assert.equal(history.ok,true);assert.ok(history.nodes.some(n=>n.kind==="RECEIPT"));assert.equal((await reviews.history({...ctx,accountId:"other"},result.report.review_id)).ok,false);assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
+ const result=pair.find(x=>x.ok);assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(result.run_state,"SUCCEEDED");assert.equal(result.lineage.nodes.length,3);assert.equal(result.report.sources[0].uri,"/browse/DEMO-1");assert.equal(result.report.checks.length,2);assert.ok(result.report.checks.every(c=>c.subject==="/browse/DEMO-1"&&c.source_uris.length===1&&c.source_uris[0]==="/browse/DEMO-1"));assert.equal(result.report_digest,digest(canonical(result.report)));assert.equal(result.report.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal((await reviews.refresh(ctx,result.report.review_id)).run_state,"SUCCEEDED");const history=await reviews.history(ctx,result.report.review_id);assert.equal(history.ok,true);assert.ok(history.nodes.some(n=>n.kind==="RECEIPT"));assert.equal((await reviews.history({...ctx,accountId:"other"},result.report.review_id)).ok,false);assert.equal((await reports.prepare(ctx,result.report.review_id)).ok,false);
  const storedStep=[...map.values()].find(x=>x.schema_version==="hae.step.receipt.v1"),oldAt=storedStep.at;storedStep.at=new Date(clock()+1000).toISOString();assert.equal((await reviews.history(ctx,result.report.review_id)).ok,false);storedStep.at=oldAt;
  const receipt=[...map.values()].find(x=>x.schema_version==="hae.report.receipt.v2");const edge=receipt.lineage.edges[0],relation=edge.relation;edge.relation="FORGED";assert.equal((await reviews.history(ctx,result.report.review_id)).ok,false);edge.relation=relation;assert.equal((await reviews.history(ctx,result.report.review_id)).ok,true);
  assert.equal(JSON.stringify([...map.values()]).includes("RAW_SECRET_FIXTURE"),false);
@@ -169,4 +169,13 @@ test("P2 full report journey fits the production storage adapter budget per invo
 test("P2 synthetic readiness reports precise safe setup reason without site identifiers",()=>{
  const cloud="12345678-1234-1234-1234-123456789abc",ctx={installContext:"ari:cloud:jira::site/"+cloud,extension:{issue:{key:"HTF-2"}}};
  assert.equal(syntheticReadiness(ctx,true,cloud),"READY_FOR_SYNTHETIC_REQUESTS");assert.equal(syntheticReadiness(ctx,false,cloud),"DEVELOPMENT_ENVIRONMENT_REQUIRED");assert.equal(syntheticReadiness(ctx,true,undefined),"DEMO_SITE_NOT_CONFIGURED");assert.equal(syntheticReadiness({...ctx,installContext:"foreign"},true,cloud),"DEMO_SITE_MISMATCH");assert.equal(syntheticReadiness({...ctx,extension:{issue:{key:"HTF-3"}}},true,cloud),"SYNTHETIC_ISSUE_REQUIRED");
+});
+
+test("report claim provenance resolves only current authorized sources",()=>{
+ const a="a".repeat(64),b="b".repeat(64),hidden="c".repeat(64),e={sources:[{source_ref:a,uri:"/browse/DEMO-1"},{source_ref:b,uri:"/browse/DEMO-2"}]},c={subject:"REQ-1",predicate:"test.reported_result",values:["pass","fail"],status:"CONFLICT_FOUND",reason:"COMPARABLE_VALUES_DIFFER",source_refs:[a,b]};
+ assert.deepEqual(reportClaimChecks(e,{checks:[c]}),[{subject:"REQ-1",predicate:c.predicate,values:c.values,status:c.status,reason:c.reason,source_uris:["/browse/DEMO-1","/browse/DEMO-2"]}]);
+ for(const bad of [{...c,source_refs:[a,hidden]},{...c,source_refs:[]},{...c,source_refs:null},{...c,predicate:"jira.status",subject:hidden},{...c,predicate:"jira.status",subject:b,source_refs:[a]}])assert.equal(reportClaimChecks(e,{checks:[bad]}),null);
+ assert.equal(reportClaimChecks({sources:[e.sources[0],e.sources[0]]},{checks:[c]}),null);
+ assert.equal(reportClaimChecks(e,{checks:[{...c,predicate:"jira.status",subject:a,source_refs:[a]}]})[0].subject,"/browse/DEMO-1");
+ assert.deepEqual(reportClaimChecks(e,{checks:[{...c,source_refs:[a,a,b]}]})[0].source_uris,["/browse/DEMO-1","/browse/DEMO-2"]);
 });

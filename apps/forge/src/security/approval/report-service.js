@@ -9,6 +9,26 @@ const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const aliases={"change-review":"review change","incident-coordinate":"coordinate incident","release-review":"review release"};
 const policyVersion="cg-readonly-report-v1";
 const fail=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
+
+// The report contains only claims and references from the final authorized read.
+// Never return saved-only source identifiers or raw Jira/Confluence text.
+export function reportClaimChecks(evidence,review){
+ if(!Array.isArray(evidence?.sources)||!Array.isArray(review?.checks))return null;
+ const visible=new Map();
+ for(const source of evidence.sources){
+  if(!hex(source?.source_ref)||typeof source.uri!=="string"||!source.uri||visible.has(source.source_ref))return null;
+  visible.set(source.source_ref,source.uri);
+ }
+ const checks=[];
+ for(const c of review.checks){
+  if(typeof c?.subject!=="string"||typeof c.predicate!=="string"||!Array.isArray(c.values)||!Array.isArray(c.source_refs)||!c.source_refs.length||c.source_refs.some(ref=>!visible.has(ref)))return null;
+  const observedSubject=c.predicate.startsWith("jira.")||c.predicate==="confluence.page_version";
+  if(observedSubject&&(!visible.has(c.subject)||!c.source_refs.includes(c.subject)))return null;
+  checks.push({subject:observedSubject?visible.get(c.subject):c.subject,predicate:c.predicate,values:c.values,status:c.status,reason:c.reason,source_uris:[...new Set(c.source_refs.map(ref=>visible.get(ref)))]});
+ }
+ return checks;
+}
+
 function createReportService({store,clock,digest,preview,development,nonce}){
  function actor(context){return development()?principal(context,digest):null}
  function key(p,id,kind){return "cg:report:"+p.tenant+":"+p.actor+":"+id+":"+kind}
@@ -62,6 +82,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
   try{
    const r=await load(p,id);if(!r)return fail("REPORT_REQUEST_UNAVAILABLE");
    const m=await material(p,context,r.review_id),b=binding(r,m,id);if(!b)return fail("REPORT_REVIEW_STALE_OR_EXPIRED");
+   const checks=reportClaimChecks(m.current.evidence,m.current.claim_review);if(!checks)return fail("REPORT_CLAIM_PROVENANCE_UNKNOWN");
    const approved=await createApprovalBroker(store,clock).consume(p,id,b);if(!approved.ok)return approved;
    const runLedger=createRunLedger(store,p,clock);
    const started=await runLedger.startReadOnlyReport(r.review_id,id,b);if(!started.ok)return started;
@@ -72,7 +93,7 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    if(!reserved.ok)return reserved;
    const generatedAt=clock();
    if(!Number.isSafeInteger(generatedAt)||generatedAt<approved.receipt.created_at||generatedAt>=Math.min(approved.receipt.expires_at,b.expires_at,m.freshUntil))return fail("REPORT_APPROVAL_OR_EVIDENCE_EXPIRED");
-   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks:m.current.claim_review.checks.map(c=>({predicate:c.predicate,values:c.values,status:c.status,reason:c.reason})),missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:generatedAt};
+   const report={schema_version:"hae.readonly.report.v1",review_id:r.review_id,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",sources:m.current.evidence.sources.map(s=>({uri:s.uri,version:s.version,status:s.status})),checks,missing:m.current.claim_review.missing_predicates??[],...(m.record.intent==="release-review"?{release_assessment:m.current.release_assessment}:{}),policy:policyVersion,generated_at:generatedAt};
    const reportDigest=digest(canonical(report));
    const recorded=await stepLedger.record(r.review_id,step.step_id,{state:"OBSERVED_SUCCESS",observation_digest:reportDigest,payload_digest:payloadDigest});if(!recorded.ok)return recorded;
    // Persist lineage metadata, never report text. Link the saved policy and
