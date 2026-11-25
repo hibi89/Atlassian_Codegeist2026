@@ -471,14 +471,14 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "d0081b789e16bbf302d6cf1e069cee0f1ad23d29",
+    "source_sha": "0398ea86b69ce4c75558c0c5fcfd2a7f86cf64b7",
     "date_kst": "2026-11-26",
-    "run_id": 45653836238,
-    "push_run_id": 45653836238,
-    "job_id": 139345085755,
-    "artifact_id": 15042270610,
-    "smoke_pass": 82,
-    "p2_regression_pass": 48,
+    "run_id": 45660108358,
+    "push_run_id": 45660108358,
+    "job_id": 139367355169,
+    "artifact_id": 15043364214,
+    "smoke_pass": 83,
+    "p2_regression_pass": 49,
     "fail": 0,
     "skip": 0,
     "cancelled": 0,
@@ -509,8 +509,8 @@
     }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "d0081b789e16bbf302d6cf1e069cee0f1ad23d29",
-    "run_id": 45653836238,
+    "source_sha": "0398ea86b69ce4c75558c0c5fcfd2a7f86cf64b7",
+    "run_id": 45660108358,
     "status": "completed",
     "conclusion": "success"
   }
