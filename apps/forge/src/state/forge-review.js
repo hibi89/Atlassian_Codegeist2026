@@ -13,6 +13,8 @@ import kvsModule from "@forge/kvs";
 import { digest } from "../evidence/forge-evidence.js";
 import { previewWithPolicy } from "../security/forge-policy.js";
 import { createReviewService } from "./review-service.js";
+import { demoInstallMatches, syntheticReadiness, syntheticScopeAllowed, developmentAdmission } from "../security/installation-policy.js";
+import { validPageId } from "../adapters/confluence/reader.js";
 // Package interop is resolved at invocation time, not at resolver startup.
 function getKvs(module=kvsModule){
  for(const k of [module,module?.kvs,module?.default])if(k&&typeof k.get==="function"&&typeof k.set==="function")return k;
@@ -39,34 +41,19 @@ function createDevelopmentStore(kvs,clock=Date.now){
   }
  };
 }
-function allowedDemoInstall(context){
- const id=process.env.TRUSTFLOW_DEMO_CLOUD_ID;
- return typeof id==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)&&context.installContext==="ari:cloud:jira::site/"+id;
-}
+function allowedDemoInstall(context){return demoInstallMatches(context,process.env.TRUSTFLOW_DEMO_CLOUD_ID);}
 function providerConfig(){return {enabled:process.env.TRUSTFLOW_GEMINI_ENABLED==="true",billingDisabled:process.env.TRUSTFLOW_GEMINI_BILLING_DISABLED==="true",verifiedUntil:process.env.TRUSTFLOW_GEMINI_FREE_VERIFIED_UNTIL,apiKey:process.env.TRUSTFLOW_GEMINI_API_KEY}}
 export function getSafetySettings(context){
  if(!principal(context,digest))return {ok:false,code:"AUTH_CONTEXT_REQUIRED"};
  const development=isDevelopment(),readiness=syntheticReadiness(context,development,process.env.TRUSTFLOW_DEMO_CLOUD_ID);
- return {ok:true,synthetic_storage_ready:readiness==="READY_FOR_SYNTHETIC_REQUESTS",synthetic_readiness:readiness,environment:development?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:isDevelopment()&&allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:allowedDemoInstall(context)&&context.extension?.issue?.key==="HTF-2"&&!!process.env.TRUSTFLOW_DEMO_PAGE_ID};
-}
-export function syntheticReadiness(context,development,cloudId){
- if(!development)return "DEVELOPMENT_ENVIRONMENT_REQUIRED";
- if(!context||context.extension?.issue?.key!=="HTF-2")return "SYNTHETIC_ISSUE_REQUIRED";
- if(typeof cloudId!=="string"||!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cloudId))return "DEMO_SITE_NOT_CONFIGURED";
- if(!syntheticScopeAllowed(context,"save",cloudId))return "DEMO_SITE_MISMATCH";
- return "READY_FOR_SYNTHETIC_REQUESTS";
-}
-function requiresSyntheticScope(operation){return operation!=="read"&&operation!=="preview"}
-function syntheticScopeAllowed(context,operation,cloudId){
- if(!requiresSyntheticScope(operation))return true;
- return typeof cloudId==="string"&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cloudId)&&context?.installContext==="ari:cloud:jira::site/"+cloudId&&context?.extension?.issue?.key==="HTF-2";
+ return {ok:true,synthetic_storage_ready:readiness==="READY_FOR_SYNTHETIC_REQUESTS",synthetic_readiness:readiness,environment:development?"DEVELOPMENT":"DISABLED",daily_admitted_actions:24,storage_reads_per_action:64,storage_writes_per_action:12,max_record_bytes:61440,retention_hours:24,comment_attempts_per_day:1,external_ai_default:"OFF",external_ai_config_ready:readiness==="READY_FOR_SYNTHETIC_REQUESTS"&&freeProjectReady(providerConfig(),Date.now()),model:GEMINI_MODEL,...providerLimits,billing:"OWNER_CONSOLE_CHECK_REQUIRED",paid_fallback:"DISABLED",document_page_configured:readiness==="READY_FOR_SYNTHETIC_REQUESTS"&&validPageId(process.env.TRUSTFLOW_DEMO_PAGE_ID)};
 }
 async function call(context,input,operation,confirmation){
  const started=performance.now();
  // 25s platform invocation limit; reserve a conservative 10s for POST/readback and storage.
  const canDispatch=()=>performance.now()-started<15000;
- if(!isDevelopment()||!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
- if(!syntheticScopeAllowed(context,operation,process.env.TRUSTFLOW_DEMO_CLOUD_ID))return {ok:false,code:"SYNTHETIC_DEMO_SCOPE_REQUIRED",authorization:"NONE",execution:"DISABLED"};
+ if(!principal(context,digest))return {ok:false,code:"DEVELOPMENT_STORAGE_ONLY"};
+ const authorization=developmentAdmission(context,isDevelopment(),process.env.TRUSTFLOW_DEMO_CLOUD_ID,operation);if(!authorization.ok)return authorization;
  try{
   const kvs=getKvs();
   const admission=await reserveDailySlot(kvs,Date.now(),24,Date.now);if(!admission.ok)return admission;
@@ -99,4 +86,4 @@ export const readSavedGraph=(context,id)=>call(context,id,"history");
 export const budgetedRead=(context)=>call(context,null,"read");
 export const budgetedPreview=(context,input)=>call(context,input,"preview");
 export const runSyntheticProvider=(context,input)=>call(context,input,"provider");
-export {getKvs,createDevelopmentStore,syntheticScopeAllowed};
+export {getKvs,createDevelopmentStore,syntheticScopeAllowed,syntheticReadiness};

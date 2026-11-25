@@ -5,6 +5,7 @@ const api = resolveForgeApi(apiModule);
 import { readPage, validPageId } from "../adapters/confluence/reader.js";
 import { readIssue } from "../adapters/jira/reader.js";
 import { boundedLinks, collectEvidence } from "./bundle.js";
+import { demoIssueMatches } from "../security/installation-policy.js";
 export const digest = text => createHash("sha256").update(text,"utf8").digest("hex");
 export function scopedAdapter(context){
   let reads=0;
@@ -16,7 +17,7 @@ export function scopedAdapter(context){
       const cloud=process.env.TRUSTFLOW_DEMO_CLOUD_ID,id=process.env.TRUSTFLOW_DEMO_PAGE_ID;
       if(!id)return null;
       // Optional configured page is a dependency only in the intended demo site/issue.
-      if(!cloud||context.installContext!=="ari:cloud:jira::site/"+cloud||context.extension?.issue?.key!=="HTF-2")return null;
+      if(!demoIssueMatches(context,cloud))return null;
       if(!validPageId(id))return {ok:false,code:"CONFLUENCE_TARGET_INVALID"};
       budget();return readPage(id,pageId=>api.asUser().requestConfluence(route`/wiki/api/v2/pages/${pageId}?body-format=storage`,{method:"GET",headers:{Accept:"application/json"}}),Date.now,digest);
     },
