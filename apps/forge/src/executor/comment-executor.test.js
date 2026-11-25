@@ -261,3 +261,19 @@ test("preview explains the same reported evidence prerequisites enforced by actu
  assert.equal((await f.preview(f.ctx,"review release")).comment_readiness.status,"NOT_APPLICABLE");
  const conflict=fixture(undefined,["tf-owner-DEMO-1-SEC"]);assert.equal((await conflict.preview(conflict.ctx,"coordinate incident")).comment_readiness.code,"WRITE_DEPENDENCY_OR_POLICY_DENIED");assert.equal(conflict.posts(),0);
 });
+
+
+test("P2 report corruption preserves independently scoped unresolved comment recovery reference",async()=>{
+ const f=fixture(),r=await f.request();assert.equal(r.ok,true);
+ assert.equal((await f.writes.approve(f.ctx,r.request_id,r.request_id)).ok,true);
+ f.setMode("timeout");const uncertain=await f.writes.execute(f.ctx,r.request_id);assert.equal(uncertain.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ const {createReportService}=await import("../security/approval/report-service.js"),reports=createReportService(f.deps);
+ const q=await reports.prepare(f.ctx,r.review_id);assert.equal(q.ok,true);assert.equal((await reports.approve(f.ctx,q.request_id,q.request_id)).ok,true);
+ assert.equal((await reports.generate(f.ctx,q.request_id)).ok,true);
+ const receipt=[...f.map.values()].find(x=>x.schema_version==="hae.report.receipt.v2");assert.ok(receipt);receipt.lineage.edges[0].relation="FORGED";
+ const v=await f.reviews.refresh(f.ctx,r.review_id);assert.equal(v.receipt_status,"UNCONFIRMED");assert.equal(v.run_state,"REPORT_OUTCOME_REVIEW_REQUIRED");assert.deepEqual(v.comment_journal,{status:"UNKNOWN_OUTCOME_REVIEW",request_id:r.request_id});assert.equal(v.report_digest,undefined);
+ const history=await f.reviews.history(f.ctx,r.review_id);assert.equal(history.ok,false);assert.equal(history.recovery_comment_journal,undefined);
+ assert.equal((await f.reviews.refresh({...f.ctx,accountId:"other"},r.review_id)).ok,false);
+ const {restoreUnresolvedComment}=await import("../ui/request-state.js");assert.equal(restoreUnresolvedComment("",v.comment_journal),r.request_id);
+ assert.equal(f.posts(),1);
+});

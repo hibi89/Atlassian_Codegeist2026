@@ -39,8 +39,8 @@ function createReviewService({store,clock,digest,preview,development}){
   // A terminal journal state alone is not a verified report receipt.
   // Reuse the same scoped, current-access and lineage checks as history.
   if(run.state==="SUCCEEDED"){
-   const checked=await historicalGraph({store,p,...internal,run,digest,clock});
-   if(!checked.ok)return {...review,comment_journal:{status:"JOURNAL_UNKNOWN"},run_state:"REPORT_OUTCOME_REVIEW_REQUIRED",receipt_status:"UNCONFIRMED",receipt_code:checked.code};
+   const checked=await historicalGraph({store,p,...internal,run,digest,clock,includeRecoveryJournal:true});
+   if(!checked.ok)return {...review,comment_journal:checked.recovery_comment_journal??{status:"JOURNAL_UNKNOWN"},run_state:"REPORT_OUTCOME_REVIEW_REQUIRED",receipt_status:"UNCONFIRMED",receipt_code:checked.code};
    return {...review,comment_journal:checked.comment_journal,run_state:"SUCCEEDED",receipt_status:"HISTORICAL_REPORT_RECEIPT_VERIFIED"};
   }
   const comment_journal=await readCommentJournal(store,p,id,clock);

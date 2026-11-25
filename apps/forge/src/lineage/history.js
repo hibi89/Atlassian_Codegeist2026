@@ -6,7 +6,7 @@ import {readCommentJournal} from "../state/comment-journal.js";
 import {verifyReportReceipt} from "../state/run-ledger.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const fail=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
-export async function historicalGraph({store,p,record,current,projection,stale,invalidation=null,run,digest,clock}){
+export async function historicalGraph({store,p,record,current,projection,stale,invalidation=null,run,digest,clock,includeRecoveryJournal=false}){
  try{
   const g=record.graph;
   const currentSources=new Map(current.evidence.sources.map(s=>[s.source_ref,s]));
@@ -38,16 +38,22 @@ export async function historicalGraph({store,p,record,current,projection,stale,i
    const a=await store.get(prefix+"reconciled")??await store.get(prefix+"outcome");
    if(!validateCommentPlan(p,plan,clock(),{allowExpired:true}).ok||digest(canonical(plan))!==id||plan.review_id!==record.id||plan.dependency_digest!==g.graph_revision||a?.tenant!==p.tenant||a.actor!==p.actor||a.target!==p.target||a.request_id!==id||!hex(a.observation_digest)||typeof a.comment_id!=="string"||!/^[1-9][0-9]{0,30}$/.test(a.comment_id)||a.payload_digest!==digest(canonical(commentBody(plan.typed_args.comment)))||a.observation_digest!==commentObservationDigest(plan,a.comment_id,digest)||canonical(a.lineage)!==canonical(commentLineage(p,plan,id,a,digest))||!append(a.lineage,a.lineage?.base_graph_revision))return fail("HISTORY_COMMENT_LINEAGE_UNKNOWN");
   }
+  // A report failure must not hide an independently validated comment recovery reference.
+  // Only refresh opts into this bounded metadata; full history remains fail-closed.
+  const accessCurrent=()=>{const now=clock();return record.expires_at>now&&[...currentSources.values()].every(s=>Number.isFinite(Date.parse(s.freshness_deadline))&&Date.parse(s.freshness_deadline)>now)};
+  const reportFailure=code=>accessCurrent()?{...fail(code),...(includeRecoveryJournal?{recovery_comment_journal:{status:journal.status,...(hex(journal.request_id)?{request_id:journal.request_id}:{})}}:{})}:fail("HISTORY_ACCESS_UNKNOWN");
   const last=run.events[run.events.length-1];
   if(run.state==="SUCCEEDED"&&last.execution_kind==="READ_ONLY_REPORT"){
+   try{
    const id=last.report_request_id;
-   if(!hex(id))return fail("HISTORY_REPORT_UNKNOWN");
+   if(!hex(id))return reportFailure("HISTORY_REPORT_UNKNOWN");
    const receipt=await store.get("cg:report:"+p.tenant+":"+p.actor+":"+id+":receipt");
    const step=record.plan.steps.at(-1);
-   if(step?.op_id!=="report.evidence.generate"||!hex(last.receipt))return fail("HISTORY_REPORT_UNKNOWN");
+   if(step?.op_id!=="report.evidence.generate"||!hex(last.receipt))return reportFailure("HISTORY_REPORT_UNKNOWN");
    const payloadDigest=digest(canonical([record.id,id,record.evidence.bundle_hash,g.graph_revision,step]));
-   if(!await verifyReportReceipt(store,p,run,record.id,id,step.step_id,last.receipt,payloadDigest,clock))return fail("HISTORY_REPORT_RECEIPT_UNKNOWN");
-   if(receipt?.schema_version!=="hae.report.receipt.v2"||receipt.tenant!==p.tenant||receipt.actor!==p.actor||receipt.target!==p.target||receipt.review_id!==record.id||receipt.request_id!==id||receipt.report_digest!==last.receipt||receipt.effect!=="READ_ONLY_REPORT"||canonical(receipt.lineage)!==canonical(reportLineage(p,record,id,step,payloadDigest,last.receipt,digest))||!append(receipt.lineage,receipt.lineage?.graph_revision))return fail("HISTORY_REPORT_LINEAGE_UNKNOWN");
+   if(!await verifyReportReceipt(store,p,run,record.id,id,step.step_id,last.receipt,payloadDigest,clock))return reportFailure("HISTORY_REPORT_RECEIPT_UNKNOWN");
+   if(receipt?.schema_version!=="hae.report.receipt.v2"||receipt.tenant!==p.tenant||receipt.actor!==p.actor||receipt.target!==p.target||receipt.review_id!==record.id||receipt.request_id!==id||receipt.report_digest!==last.receipt||receipt.effect!=="READ_ONLY_REPORT"||canonical(receipt.lineage)!==canonical(reportLineage(p,record,id,step,payloadDigest,last.receipt,digest))||!append(receipt.lineage,receipt.lineage?.graph_revision))return reportFailure("HISTORY_REPORT_LINEAGE_UNKNOWN");
+   }catch{return reportFailure("HISTORY_REPORT_STORAGE_UNKNOWN")}
   }
   if(nodes.length>620||edges.length>1524)return fail("HISTORY_GRAPH_LIMIT");
   // Expose saved/current revision comparison only for currently authorized sources.
