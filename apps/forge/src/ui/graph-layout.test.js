@@ -126,3 +126,11 @@ test("workbench navigation prioritizes unresolved outcomes and stale reviews wit
  assert.equal(workbenchGuide({...base,reportRequest:{...reportRequest,review_id:"c".repeat(64)},reportState}).steps.find(s=>s.key==="report").label,"Not prepared");
  assert.equal(workbenchGuide({context:{key:"OTHER-1"}}).steps.some(s=>s.key==="comment"),false);
 });
+
+import {sourceNavigationPath,openObservedSource} from "./source-navigation.js";
+test("source navigation accepts only the observed Jira and Confluence relative reference formats",async()=>{
+ const jira="/browse/HTF-2",wiki="/wiki/pages/viewpage.action?pageId=12345",opened=[];
+ for(const path of [jira,wiki]){assert.equal(sourceNavigationPath(path),path);assert.equal((await openObservedSource(path,async p=>opened.push(p))).ok,true)}
+ for(const path of ["https://example.com","//example.com","/browse/../admin","/browse/HTF-2?next=x","/browse/HTF-2#x","/browse/HTF-0","/wiki/pages/viewpage.action?pageId=1&redirect=x","/wiki/pages/viewpage.action?pageId=0","/browse/HTF-2\n","javascript:alert(1)",null]){assert.equal(sourceNavigationPath(path),null);assert.equal((await openObservedSource(path,async p=>opened.push(p))).ok,false)}
+ assert.deepEqual(opened,[jira,wiki]);assert.equal((await openObservedSource(jira,async()=>{throw Error("bridge")})).code,"SOURCE_NAVIGATION_UNAVAILABLE");
+});
