@@ -82,3 +82,27 @@ test("P2 build evidence binds the complete extracted artifact to an exact source
   writeFileSync(join(root,"src/ui/dist/app.js.LEGAL.txt"),"new notice");assert.throws(()=>verifyBuildManifest(root,m,sha,123,1),/EVIDENCE_HASH_MISMATCH/);
  }finally{rmSync(root,{recursive:true,force:true})}
 });
+
+
+import {lockPackageName,inspectDependencies} from "../scripts/dependency-inventory.mjs";
+test("P2 dependency inventory validates portable lock paths and distinguishes nested packages",()=>{
+ for(const [p,n] of [["node_modules/a","a"],["node_modules/@scope/a","@scope/a"],["node_modules/a/node_modules/@scope/b","@scope/b"]])assert.equal(lockPackageName(p),n);
+ for(const p of ["","../node_modules/a","node_modules/../a","node_modules/a/other/b","node_modules/a/node_modules","node_modules/@scope","node_modules/a\\b","node_modules//a","node_modules/.","node_modules/@../a"])assert.equal(lockPackageName(p),null);
+ const root=mkdtempSync(join(tmpdir(),"trustflow-inventory-"));
+ try{
+  const paths=["node_modules/a","node_modules/a/node_modules/b","node_modules/b"];
+  for(const p of paths){mkdirSync(join(root,p),{recursive:true});writeFileSync(join(root,p,"package.json"),JSON.stringify({name:p.endsWith("/a")?"a":"b",version:"1.0.0",license:"MIT"}));}
+  writeFileSync(join(root,paths[0],"LICENSE"),"license text");writeFileSync(join(root,paths[1],"NOTICE"),"nested notice");
+  const lock={packages:{"":{},...Object.fromEntries(paths.map(p=>[p,{version:"1.0.0",license:"MIT"}])),"node_modules/missing":{version:"1.0.0",license:"MIT",optional:true}}};
+  const result=inspectDependencies(root,lock);assert.deepEqual(result.summary,{lock_entries:4,installed:3,manual_review:1,optional_absent:1,legal_status:"NOT_REVIEWED"});
+  assert.equal(result.inventory.filter(x=>x.name==="b").length,2);
+  assert.match(result.notices,/node_modules\/a\/node_modules\/b/);assert.equal(result.inventory.find(x=>x.path===paths[2]).review_reasons[0],"LICENSE_FILE_MISSING");
+  const mismatched=structuredClone(lock);mismatched.packages[paths[0]].license="ISC";assert.equal(inspectDependencies(root,mismatched).summary.manual_review,2);
+  const optional=structuredClone(lock);optional.packages[paths[0]].optional=true;rmSync(join(root,paths[0],"package.json"));assert.throws(()=>inspectDependencies(root,optional));
+  writeFileSync(join(root,paths[0],"package.json"),JSON.stringify({name:"wrong",version:"1.0.0",license:"MIT"}));assert.throws(()=>inspectDependencies(root,lock),/LOCK_PACKAGE_IDENTITY_MISMATCH/);
+  if(process.platform!=="win32"){
+   writeFileSync(join(root,paths[0],"package.json"),JSON.stringify({name:"a",version:"1.0.0",license:"MIT"}));
+   rmSync(join(root,paths[0],"LICENSE"));symlinkSync(join(root,paths[1],"NOTICE"),join(root,paths[0],"LICENSE"));assert.throws(()=>inspectDependencies(root,lock),/EVIDENCE_FILE_INVALID/);
+  }
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
