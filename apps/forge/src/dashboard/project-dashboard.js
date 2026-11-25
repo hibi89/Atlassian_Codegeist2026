@@ -6,7 +6,12 @@ import {historicalGraph} from "../lineage/history.js";
 const hex=x=>typeof x==="string"&&/^[a-f0-9]{64}$/.test(x);
 const numericId=x=>typeof x==="string"&&/^[1-9][0-9]{0,30}$/.test(x);
 const fail=code=>({ok:false,code,authorization:"NONE",execution:"DISABLED"});
-export const PROJECT_SCAN_LIMIT=12,PROJECT_ROW_LIMIT=3,PROJECT_DETAIL_READ_LIMIT=16;
+export const PROJECT_SCAN_LIMIT=12,PROJECT_ROW_LIMIT=3,PROJECT_DETAIL_READ_LIMIT=24,PROJECT_TOTAL_DETAIL_READ_LIMIT=48;
+const PROJECT_MIN_LATER_ROW_READS=8;
+// Allocate only the remaining shared budget; reserve a basic inspection for later rows.
+export function projectDetailAllowance(used,later){
+ return Number.isSafeInteger(used)&&used>=0&&used<=PROJECT_TOTAL_DETAIL_READ_LIMIT&&Number.isSafeInteger(later)&&later>=0&&later<PROJECT_ROW_LIMIT?Math.max(0,Math.min(PROJECT_DETAIL_READ_LIMIT,PROJECT_TOTAL_DETAIL_READ_LIMIT-used-later*PROJECT_MIN_LATER_ROW_READS)):0;
+}
 // Same existing synthetic target. No client-provided target, prefix, cursor or actor.
 export function projectScope(context,development,cloudId,digest){
  const project=context?.extension?.project;
@@ -41,8 +46,18 @@ export async function loadProjectDashboard(context,{development,cloudId,digest,c
   }
   if(e.sources.some(s=>Date.parse(s.freshness_deadline)<=clock()))return fail("PROJECT_EVIDENCE_UNKNOWN");
   rows.sort((a,b)=>b.row.created_at-a.row.created_at||a.row.review_id.localeCompare(b.row.review_id));
-  const details=[];
-  for(const {record,row} of rows.slice(0,PROJECT_ROW_LIMIT))details.push({...row,...await readReviewSummary({record,row,p,e,clock,digest,readStored,prefix})});
+  const details=[],selected=rows.slice(0,PROJECT_ROW_LIMIT);
+  let detailReads=0;
+  for(const [index,{record,row}] of selected.entries()){
+   const allowance=projectDetailAllowance(detailReads,selected.length-index-1);
+   let rowReads=0,limited=false;
+   const boundedRead=async key=>{
+    if(rowReads>=allowance||detailReads>=PROJECT_TOTAL_DETAIL_READ_LIMIT){limited=true;throw Error("PROJECT_DETAIL_READ_LIMIT")}
+    rowReads++;detailReads++;return readStored(key);
+   };
+   const summary=await readReviewSummary({record,row,p,e,clock,digest,readStored:boundedRead,prefix});
+   details.push({...row,...summary,detail_read_limit_reached:limited});
+  }
   const observedAt=clock();
   if(!Number.isSafeInteger(observedAt)||e.sources.some(s=>Date.parse(s.freshness_deadline)<=observedAt))return fail("PROJECT_EVIDENCE_UNKNOWN");
   const active=details.filter(row=>row.expires_at>observedAt);
@@ -53,8 +68,7 @@ export async function loadProjectDashboard(context,{development,cloudId,digest,c
 
 async function readReviewSummary({record,row,p,e,clock,digest,readStored,prefix}){
  const unknown={journal_state:"NOT_ESTABLISHED",comment_state:"NOT_ESTABLISHED",invalidation:"NOT_ESTABLISHED"};
- let reads=0;
- const store={get:async key=>{if(++reads>PROJECT_DETAIL_READ_LIMIT)throw Error("PROJECT_DETAIL_READ_LIMIT");return readStored(key)}};
+ const store={get:readStored};
  try{
   const marker=await store.get(prefix+record.id+":invalidated");
   if(marker!=null&&!validInvalidationMarker(record,record.id,marker,clock(),digest))return unknown;

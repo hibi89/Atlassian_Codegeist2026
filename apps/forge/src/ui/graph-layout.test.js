@@ -70,10 +70,10 @@ test("evidence distribution preserves independent denominators and unknown statu
 
 import {projectResponse,projectSampleCounts} from "./project-state.js";
 test("dashboard does not turn malformed responses into observed sample counts",()=>{
- const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION"};
+ const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION",detail_read_limit_reached:false};
  const base={ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:now,scan_limit:12,row_limit:3,scan_truncated:false,rows_truncated:false,withheld_count:0,rows:[row],authorization:"NONE",execution:"NO_JIRA_MUTATION"};
  assert.equal(projectResponse(base),base);assert.deepEqual(projectSampleCounts(base),{total:1,changed_or_invalidated:1,report_receipts:1,comment_observations:0,unconfirmed:0});
- for(const x of [{...base,rows:undefined},{...base,project_key:"OTHER"},{...base,rows:[row,row]},{...base,rows:[{...row,journal_state:"SUCCEEDED"}]},{...base,rows:[{...row,expires_at:now}]},{...base,authorization:"APPROVED"},{...base,withheld_count:12},{...base,observed_at:Infinity}]){assert.equal(projectResponse(x).ok,false);assert.equal(projectSampleCounts(x),null)}
+ for(const x of [{...base,rows:undefined},{...base,project_key:"OTHER"},{...base,rows:[row,row]},{...base,rows:[{...row,journal_state:"SUCCEEDED"}]},{...base,rows:[{...row,expires_at:now}]},{...base,authorization:"APPROVED"},{...base,withheld_count:12},{...base,observed_at:Infinity},{...base,rows:[{...row,detail_read_limit_reached:true}]},{...base,rows:[{...row,detail_read_limit_reached:"false"}]}]){assert.equal(projectResponse(x).ok,false);assert.equal(projectSampleCounts(x),null)}
  assert.deepEqual(projectSampleCounts({...base,rows:[]}),{total:0,changed_or_invalidated:0,report_receipts:0,comment_observations:0,unconfirmed:0});
 });
 
@@ -107,7 +107,7 @@ test("visible path explorer traces a diamond without treating unrelated branches
 
 import {projectSampleRows} from "./project-state.js";
 test("project worklist filters use exactly the same observed sample as indicators",()=>{
- const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION"};
+ const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION",detail_read_limit_reached:false};
  const base={ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:now,scan_limit:12,row_limit:3,scan_truncated:true,rows_truncated:false,withheld_count:1,rows:[row,{...row,review_id:"b".repeat(64),comparison:"CURRENT_OBSERVED",journal_state:"POLICY_REVIEW",comment_state:"HISTORICAL_OBSERVED_SUCCESS",invalidation:"NO_MARKER_OBSERVED"},{...row,review_id:"c".repeat(64),comparison:"CURRENT_OBSERVED",journal_state:"RUNNING",invalidation:"NOT_ESTABLISHED"}],authorization:"NONE",execution:"NO_JIRA_MUTATION"};
  const before=JSON.stringify(base),counts=projectSampleCounts(base);
  for(const [filter,count] of [["all",counts.total],["changed",counts.changed_or_invalidated],["reports",counts.report_receipts],["comments",counts.comment_observations],["unresolved",counts.unconfirmed]])assert.equal(projectSampleRows(base,filter).length,count);

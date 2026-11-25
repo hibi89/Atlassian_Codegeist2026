@@ -277,3 +277,19 @@ test("P2 report corruption preserves independently scoped unresolved comment rec
  const {restoreUnresolvedComment}=await import("../ui/request-state.js");assert.equal(restoreUnresolvedComment("",v.comment_journal),r.request_id);
  assert.equal(f.posts(),1);
 });
+
+
+test("P2 dashboard verifies combined comment and report history within shared read cap",async()=>{
+ const cloud="00000000-0000-4000-8000-000000000001",f=fixture(undefined,null,()=>true,cloud),context={...f.ctx,extension:{type:"jira:projectPage",project:{id:"10001",key:"HTF"}}};
+ const {createReportService}=await import("../security/approval/report-service.js"),reports=createReportService(f.deps);
+ async function generate(reviewId){const q=await reports.prepare(f.ctx,reviewId);assert.equal(q.ok,true);assert.equal((await reports.approve(f.ctx,q.request_id,q.request_id)).ok,true);assert.equal((await reports.generate(f.ctx,q.request_id)).ok,true)}
+ for(const intent of ["review release","review change"]){const v=await f.reviews.save(f.ctx,intent);assert.equal(v.ok,true);await generate(v.saved_review.review_id);f.advance(1000)}
+ const r=await f.request();assert.equal(r.ok,true);assert.equal((await f.writes.approve(f.ctx,r.request_id,r.request_id)).ok,true);assert.equal((await f.writes.execute(f.ctx,r.request_id)).ok,true);await generate(r.review_id);
+ const p=principal(f.ctx,digest),prefix="cg:review:"+p.tenant+":"+p.actor+":",clock=f.deps.clock;
+ const page={results:[...f.map.entries()].filter(([key])=>key.startsWith(prefix)&&key.endsWith(":snapshot")).map(([key,value])=>({key,value,expireTime:new Date(value.expires_at).toISOString()}))};
+ let reads=0;const input={development:true,cloudId:cloud,digest,clock,admit:async()=>({ok:true}),readProjectIssue:async()=>({key:"HTF-2",id:"2",project_id:"10001",project_key:"HTF"}),readEvidence:async()=>({ok:true,snapshot:{objectId:"2"},evidence:(await f.preview(f.ctx,"review change")).evidence}),readStored:async k=>{reads++;return f.store.get(k)},queryReviews:async()=>page};
+ const size=f.map.size,v=await loadProjectDashboard(context,input);assert.equal(v.ok,true);assert.equal(v.rows.length,3);assert.equal(v.rows[0].review_id,r.review_id);assert.equal(v.rows[0].journal_state,"REPORT_RECEIPT_VERIFIED");assert.equal(v.rows[0].comment_state,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(v.rows[0].detail_read_limit_reached,false);
+ assert.equal(v.rows[1].journal_state,"REPORT_RECEIPT_VERIFIED");assert.equal(v.rows[2].detail_read_limit_reached,true);assert.equal(v.rows[2].journal_state,"NOT_ESTABLISHED");assert.equal(v.rows[2].comment_state,"NOT_ESTABLISHED");assert.ok(reads<=page.results.length+48);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
+ const {projectResponse,projectSampleCounts}=await import("../ui/project-state.js");assert.equal(projectResponse(v).ok,true);assert.equal(projectSampleCounts(v).report_receipts,2);assert.equal(projectSampleCounts(v).unconfirmed,1);
+ const receipt=[...f.map.values()].find(x=>x.schema_version==="hae.report.receipt.v2"&&x.review_id===r.review_id);receipt.lineage.edges[0].relation="FORGED";reads=0;const bad=await loadProjectDashboard(context,input);assert.equal(bad.rows[0].journal_state,"NOT_ESTABLISHED");assert.equal(bad.rows[0].detail_read_limit_reached,false);assert.ok(reads<=page.results.length+48);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
+});
