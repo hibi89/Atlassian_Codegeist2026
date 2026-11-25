@@ -317,3 +317,18 @@ test("P2 review and report recovery withhold metadata when source authorization 
   }
  }
 });
+
+
+test("P2 report response withholds content after access expiry during durable receipt completion",async()=>{
+ let now=Date.parse("2026-11-24T12:00:00Z"),delay=false,nonce=0;
+ const map=new Map(),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}},clock=()=>now;
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,structuredClone(v));if(delay&&v.schema_version==="hae.report.receipt.v2"){delay=false;now+=120001}}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k)}})};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("output-window"+(++nonce))},reviews=createReviewService(deps),reports=createReportService(deps);
+ const saved=await reviews.save(ctx,"review release"),id=saved.saved_review.review_id,q=await reports.prepare(ctx,id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);
+ delay=true;const out=await reports.generate(ctx,q.request_id);assert.equal(out.ok,false);assert.equal(out.code,"REPORT_OUTPUT_ACCESS_WINDOW_EXPIRED");assert.equal(out.request_id,q.request_id);assert.equal(out.report,undefined);assert.equal(out.report_digest,undefined);assert.equal(out.lineage,undefined);assert.equal(delay,false);
+ assert.equal([...map.values()].filter(v=>v.schema_version==="hae.report.receipt.v2").length,1);
+ const size=map.size,recovered=await reviews.recoverReport(ctx,id);assert.equal(recovered.ok,true);assert.equal(recovered.report,undefined);assert.equal(recovered.status,"HISTORICAL_REPORT_RECEIPT_RECOVERED");assert.equal(recovered.execution,"NO_JIRA_MUTATION");assert.equal(map.size,size);
+ assert.equal((await reports.generate(ctx,q.request_id)).ok,false);assert.equal(map.size,size);
+});

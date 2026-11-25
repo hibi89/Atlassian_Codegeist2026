@@ -1,7 +1,7 @@
 import { reportLineage } from "../../lineage/receipt-lineage.js";
 import { canonical } from "../../core/ir/plan.js";
 import { principal } from "../../evidence/bundle.js";
-import { createReviewStore } from "../../lineage/review-store.js";
+import { createReviewStore,currentReviewAccess } from "../../lineage/review-store.js";
 import { createRunLedger } from "../../state/run-ledger.js";
 import { createStepLedger } from "../../state/step-ledger.js";
 import { createApprovalBroker } from "./broker.js";
@@ -102,6 +102,8 @@ function createReportService({store,clock,digest,preview,development,nonce}){
    await store.create(key(p,id,"receipt"),{schema_version:"hae.report.receipt.v2",tenant:p.tenant,actor:p.actor,target:p.target,request_id:id,review_id:r.review_id,report_digest:reportDigest,lineage,at:clock(),effect:"READ_ONLY_REPORT"});
    const finished=await runLedger.finishReadOnlyReport(r.review_id,id,step.step_id,reportDigest,payloadDigest);
    if(!finished.ok)return finished;
+   // The historical receipt is durable, but never release report content after the observed access window expires.
+   if(!currentReviewAccess(p,m.record,m.current,clock()))return {...fail("REPORT_OUTPUT_ACCESS_WINDOW_EXPIRED"),request_id:id};
    return {ok:true,request_id:id,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",report,report_digest:reportDigest,lineage,authorization:"CONSUMED",execution:"NO_JIRA_MUTATION"};
   }catch{return fail("REPORT_OUTCOME_OR_STORAGE_UNKNOWN")}
  }
