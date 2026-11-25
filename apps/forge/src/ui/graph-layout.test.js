@@ -142,3 +142,11 @@ test("claim explorer filters only currently returned cited checks and rejects un
  for(const bad of [{checks:[{...checks[0],source_refs:["hidden"]}]},{checks:[checks[0],checks[0]]},{checks,reason:"CLAIMS_UNKNOWN"}])assert.equal(claimExplorer(e,bad),null);
  assert.equal(claimExplorer(e,review,"all","hidden"),null);assert.equal(claimExplorer(e,review,"unknown"),null);
 });
+
+import {revisionView} from "./revision-view.js";
+test("revision filters preserve observed source counts and reject contradictory metadata",()=>{
+ const old="2026-11-24T11:00:00.000Z",now="2026-11-24T11:05:00.000Z",row={uri:"/browse/HTF-2",saved_version:old,current_version:now,state:"CHANGED",content_changed:true,revision_changed:true},same={...row,uri:"/browse/HTF-3",current_version:old,state:"UNCHANGED",content_changed:false,revision_changed:false},fresh={...row,uri:"/browse/HTF-4",saved_version:null,state:"NEW_DEPENDENCY",content_changed:null,revision_changed:null};
+ const data={status:"STALE_VERSION",rows:[row,same,fresh]};assert.equal(revisionView(data).total,3);assert.equal(revisionView(data,"changed").rows.length,2);assert.deepEqual(revisionView(data,"unchanged").rows,[same]);
+ for(const bad of [{...data,status:"CURRENT_OBSERVED"},{...data,rows:[row,row]},{...data,rows:[{...same,content_changed:true}]},{...data,rows:[{...fresh,revision_changed:false}]},{...data,rows:[{...row,current_version:"unknown"}]}])assert.equal(revisionView(bad),null);
+ assert.equal(revisionView(data,"other"),null);assert.equal(revisionView(null),null);
+});
