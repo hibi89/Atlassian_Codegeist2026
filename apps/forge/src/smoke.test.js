@@ -41,7 +41,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 test("P2 preflight refuses unexpected untracked app inputs while allowing known generated inventory",()=>{
  for(const x of ["","dependency-inventory.json\0","third-party-notices-review.txt\0dependency-inventory.json\0"])assert.equal(untrackedAppClean(x),true);
- for(const x of ["src/new.js\0","src/ui/app.tsx\0","dependency-inventory.json\0src/x.js\0","sub/dependency-inventory.json\0","dependency-inventory.json",null,"\0"])assert.equal(untrackedAppClean(x),false);
+ for(const x of [" dependency-inventory.json\0","src/new.js\0","src/ui/app.tsx\0","dependency-inventory.json\0src/x.js\0","sub/dependency-inventory.json\0","dependency-inventory.json",null,"\0"])assert.equal(untrackedAppClean(x),false);
 });
 test("P2 preflight hashes complete known resource sets and rejects stale or missing outputs",()=>{
  const root=mkdtempSync(join(tmpdir(),"trustflow-resource-"));

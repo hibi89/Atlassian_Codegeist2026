@@ -27,10 +27,10 @@ export function untrackedAppClean(raw){
  const generated=new Set(["dependency-inventory.json","third-party-notices-review.txt"]);
  return raw.slice(0,-1).split("\0").every(p=>generated.has(p));
 }
-function command(executable,args,quiet=false){
+function command(executable,args,quiet=false,preserveWhitespace=false){
  const r=spawnSync(executable,args,{cwd:root,encoding:"utf8",stdio:quiet?["ignore","pipe","pipe"]:"inherit",windowsHide:true,shell:false,timeout:300000});
  if(r.error||r.status!==0)throw Error("COMMAND_FAILED");
- return quiet?r.stdout.trim():"";
+ return quiet?(preserveWhitespace?r.stdout:r.stdout.trim()):"";
 }
 export function validateArtifacts(base=root){
  const out=[];
@@ -70,7 +70,7 @@ export function main(args){
   if(process.versions.node.split(".")[0]!=="22")throw Error("NODE_22_REQUIRED");
   const head=command("git",["rev-parse","HEAD"],true),status=command("git",["status","--porcelain","--untracked-files=no"],true);
   if(!trackedClean(status,head,opts.sha))throw Error("SOURCE_HEAD_OR_TRACKED_FILES_MISMATCH");
-  if(!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true)))throw Error("UNTRACKED_APP_FILES_PRESENT");
+  if(!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true,true)))throw Error("UNTRACKED_APP_FILES_PRESENT");
   console.log("SOURCE_SHA="+head);
   console.log("NODE="+process.versions.node);
   if(!opts.outputsOnly){
@@ -83,7 +83,7 @@ export function main(args){
   }
   for(const item of validateArtifacts())console.log(JSON.stringify(item));
   const finalHead=command("git",["rev-parse","HEAD"],true),finalStatus=command("git",["status","--porcelain","--untracked-files=no"],true);
-  if(!trackedClean(finalStatus,finalHead,opts.sha)||!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true)))throw Error("SOURCE_CHANGED_DURING_CHECK");
+  if(!trackedClean(finalStatus,finalHead,opts.sha)||!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true,true)))throw Error("SOURCE_CHANGED_DURING_CHECK");
   console.log("LOCAL_PREFLIGHT="+(opts.outputsOnly?"OUTPUTS_ONLY_PASS":"TEST_AND_BUILD_PASS"));
   console.log("FORGE_LINT=NOT_RUN; LIVE_DEPLOY=NOT_RUN; BROWSER=NOT_RUN");
   return 0;
