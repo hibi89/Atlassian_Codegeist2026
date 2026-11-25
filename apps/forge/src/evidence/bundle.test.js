@@ -118,3 +118,15 @@ test("P2 release assessment exposes unmatched reported failure and does not hide
  labels=labels.map(x=>x==="tf-test-OTHER-7-fail"?"tf-test-OTHER-7-pass":x);result=await run();assert.equal(result.release_assessment.status,"MISSING_REPORTED_EVIDENCE");
  labels.push("tf-test-DEMO-1-FAIL");result=await run();assert.equal(result.policy.decision,"REVIEW");assert.equal(result.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");
 });
+
+test("coverage reasons expose bounded omissions and unknown versions without leaking hidden identities",async()=>{
+ const keys=Array.from({length:8},(_,i)=>"DEMO-"+(i+2));
+ const limited=await collectEvidence(ctx,{read:async k=>sample(k),links:async()=>boundedLinks(keys.map(key=>({outwardIssue:{key}})),"DEMO-1")},digest,clock);
+ assert.equal(limited.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");assert.equal(limited.evidence.unknown_count,1);assert.deepEqual(limited.evidence.coverage_reasons,["LINK_COVERAGE_INCOMPLETE"]);
+ assert.equal(JSON.stringify(limited.evidence).includes("/browse/DEMO-9"),false);
+ const noVersion=await collectEvidence(ctx,{read:async k=>sample(k,null),links:async()=>({ok:true,keys:[],complete:true})},digest,clock);
+ assert.equal(noVersion.evidence.unknown_count,1);assert.deepEqual(noVersion.evidence.coverage_reasons,["SOURCE_VERSION_UNKNOWN"]);assert.equal(noVersion.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");
+ const good=await collectEvidence(ctx,adapter,digest,clock);assert.deepEqual(good.evidence.coverage_reasons,[]);assert.equal(good.evidence.unknown_count,0);
+ const mixed=await collectEvidence(ctx,{read:async k=>k==="DEMO-2"?{ok:false,code:"SOURCE_ACCESS_UNKNOWN"}:sample(k,null),links:async()=>({ok:true,keys:["DEMO-2"],complete:false}),page:async()=>({ok:false,code:"CONFLUENCE_ACCESS_UNKNOWN"})},digest,clock);
+ assert.equal(mixed.evidence.unknown_count,4);assert.deepEqual(mixed.evidence.coverage_reasons,["DOCUMENT_OBSERVATION_UNKNOWN","LINKED_SOURCE_UNKNOWN","LINK_COVERAGE_INCOMPLETE","SOURCE_VERSION_UNKNOWN"]);assert.equal(JSON.stringify(mixed.evidence).includes("/browse/DEMO-2"),false);
+});

@@ -67,9 +67,13 @@ async function collectEvidence(context,adapter,digest,clock){
   if(!add(root,p.target))return {ok:false,code:"EVIDENCE_INVALID"};
   let links;
   try{links=await adapter.links(p.target,root.source.objectId)}catch{links={ok:false,code:"LINKS_UNKNOWN"}}
-  let unknown=root.snapshot?.reportedTags?.status==="UNKNOWN"?1:0;
+  let unknown=0;
+  const coverageReasons=new Set();
+  function markUnknown(reason){unknown++;coverageReasons.add(reason);}
+  if(root.snapshot?.reportedTags?.status==="UNKNOWN")markUnknown("REPORTED_LABELS_UNKNOWN");
+  if(sources[0].status!=="VERSION_OBSERVED")markUnknown("SOURCE_VERSION_UNKNOWN");
   if(links?.ok&&Array.isArray(links.keys)){
-    if(links.keys.length>6||new Set(links.keys).size!==links.keys.length)unknown++;
+    if(links.complete!==true||links.keys.length>6||new Set(links.keys).size!==links.keys.length)markUnknown("LINK_COVERAGE_INCOMPLETE");
     // Independent authorized link reads are bounded to three in flight.
     // Integrate results in original order; a failure never certifies coverage.
     const keys=links.keys.slice(0,6);
@@ -79,10 +83,14 @@ async function collectEvidence(context,adapter,digest,clock){
         try{return {key,result:await adapter.read(key)}}catch{return {key,failed:true}}
       }));
       for(const {key,result,failed} of batch){
-        try{if(failed||!add(result,key)||result.snapshot?.reportedTags?.status==="UNKNOWN")unknown++}catch{unknown++}
+        try{
+          if(failed||!add(result,key)){markUnknown("LINKED_SOURCE_UNKNOWN");continue;}
+          if(result.snapshot?.reportedTags?.status==="UNKNOWN")markUnknown("REPORTED_LABELS_UNKNOWN");
+          if(sources.at(-1).status!=="VERSION_OBSERVED")markUnknown("SOURCE_VERSION_UNKNOWN");
+        }catch{markUnknown("LINKED_SOURCE_UNKNOWN")}
       }
     }
-  }else unknown++;
+  }else markUnknown("LINK_LOOKUP_UNKNOWN");
   let document_status="NOT_CONFIGURED";
   if(typeof adapter.page==="function"){
    try{
@@ -90,13 +98,13 @@ async function collectEvidence(context,adapter,digest,clock){
     if(result!==null){
      const n=normalizedPage(result,p,digest,clock());
      if(n&&!seen.has(n.record.source_ref)){seen.add(n.record.source_ref);sources.push(n.record);claims.push(...n.claims);document_status="AUTHORIZED_PAGE_OBSERVED"}
-     else{unknown++;document_status=["CONFLUENCE_ACCESS_UNKNOWN","CONFLUENCE_NOT_VISIBLE_OR_MISSING","CONFLUENCE_RATE_LIMITED"].includes(result?.code)?result.code:"CONFLUENCE_UNKNOWN"}
+     else{markUnknown("DOCUMENT_OBSERVATION_UNKNOWN");document_status=["CONFLUENCE_ACCESS_UNKNOWN","CONFLUENCE_NOT_VISIBLE_OR_MISSING","CONFLUENCE_RATE_LIMITED"].includes(result?.code)?result.code:"CONFLUENCE_UNKNOWN"}
     }
-   }catch{unknown++;document_status="CONFLUENCE_UNKNOWN"}
+   }catch{markUnknown("DOCUMENT_OBSERVATION_UNKNOWN");document_status="CONFLUENCE_UNKNOWN"}
   }
   const complete=links?.ok===true&&links.complete===true&&unknown===0;
   const bundle_hash=digest(JSON.stringify(sources.map(x=>[x.source_ref,x.revision_key]).sort((a,b)=>a[0].localeCompare(b[0]))));
-  return {ok:true,snapshot:root.snapshot,source:root.source,evidence:{schema_version:"hae.evidence.bundle.v2",installation_ref:p.tenant,actor_ref:p.actor,target:p.target,sources,claims,bundle_hash,coverage:complete?"BOUNDED_READ_COMPLETE":"INCOMPLETE_OR_UNKNOWN",unknown_count:unknown,document_status,authorization:"NONE",status:"OBSERVED_NOT_VERIFIED"}};
+  return {ok:true,snapshot:root.snapshot,source:root.source,evidence:{schema_version:"hae.evidence.bundle.v2",installation_ref:p.tenant,actor_ref:p.actor,target:p.target,sources,claims,bundle_hash,coverage:complete?"BOUNDED_READ_COMPLETE":"INCOMPLETE_OR_UNKNOWN",unknown_count:unknown,coverage_reasons:[...coverageReasons].sort(),document_status,authorization:"NONE",status:"OBSERVED_NOT_VERIFIED"}};
 }
 
 function compareEvidence(before,after,now){
