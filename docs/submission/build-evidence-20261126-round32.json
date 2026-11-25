@@ -1,0 +1,76 @@
+{
+  "source": "GitHub Actions exact push CI log",
+  "job_id": 139473261910,
+  "artifact_id": 15058521554,
+  "artifact_expires_at": "2026-12-02T19:57:23Z",
+  "manifest_sha256": "9902e56803b1cd5e6c58fb5e40fb63001217e685e0a6448aa2c853070828d859",
+  "observed_verification": "CI_LOCAL_HASH_MATCH",
+  "external_digest_match": "NOT_CHECKED",
+  "downloaded_archive_verification": "NOT_RUN",
+  "manifest": {
+    "schema_version": "hae.build.evidence.v1",
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "run_id": 45690184303,
+    "run_attempt": 1,
+    "scope": "NATIVE_BUILD_OUTPUTS_ONLY",
+    "deployment": "NOT_RUN",
+    "signature": "NONE",
+    "files": [
+      {
+        "file": "dependency-inventory.json",
+        "bytes": 75992,
+        "sha256": "6d773ed2f39e11b8f1dc628824247cfb919cba9926550bddd9cf06223d30ba27"
+      },
+      {
+        "file": "package-lock.json",
+        "bytes": 77880,
+        "sha256": "a5a7d10bd1050ae5987e9044003f8547e6b975e32a36fb9e7c525ba461f273ca"
+      },
+      {
+        "file": "src/ui/dist/app.css",
+        "bytes": 19920,
+        "sha256": "43f8193d18d1ffcc1d1de12594b8689bf12b7c20ba461dadf3f64f7f2bc82532"
+      },
+      {
+        "file": "src/ui/dist/app.js",
+        "bytes": 328193,
+        "sha256": "eb1254b300c90cfe8f618c46cc64a767b18f3a653349c98c4ac64503cf1ba9d0"
+      },
+      {
+        "file": "src/ui/dist/app.js.LEGAL.txt",
+        "bytes": 1241,
+        "sha256": "c0c3d146fbeae282d92f7024daffdadb51ed00304f8ccc7a962f17e6d225c097"
+      },
+      {
+        "file": "src/ui/dist/index.html",
+        "bytes": 292,
+        "sha256": "301599bafc4dab0c06a5154172e0891006f6e1508a9c08f8e065ecdcff75adbc"
+      },
+      {
+        "file": "src/ui/project-dist/app.css",
+        "bytes": 19920,
+        "sha256": "43f8193d18d1ffcc1d1de12594b8689bf12b7c20ba461dadf3f64f7f2bc82532"
+      },
+      {
+        "file": "src/ui/project-dist/app.js",
+        "bytes": 247501,
+        "sha256": "65f12c05a9c6176a0a8b4308fdec17433435c4a72243f0d2ffc22df05aa13646"
+      },
+      {
+        "file": "src/ui/project-dist/app.js.LEGAL.txt",
+        "bytes": 1241,
+        "sha256": "c0c3d146fbeae282d92f7024daffdadb51ed00304f8ccc7a962f17e6d225c097"
+      },
+      {
+        "file": "src/ui/project-dist/index.html",
+        "bytes": 292,
+        "sha256": "301599bafc4dab0c06a5154172e0891006f6e1508a9c08f8e065ecdcff75adbc"
+      },
+      {
+        "file": "third-party-notices-review.txt",
+        "bytes": 175514,
+        "sha256": "557d6e1d412510c90cf53d7eab40b3d000c223cc798d6c7c0e034bc04bb46d9b"
+      }
+    ]
+  }
+}

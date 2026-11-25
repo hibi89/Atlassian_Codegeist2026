@@ -471,13 +471,13 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
     "date_kst": "2026-11-26",
-    "run_id": 45688420827,
-    "push_run_id": 45688420827,
-    "job_id": 139467085148,
-    "artifact_id": 15056719125,
-    "smoke_pass": 96,
+    "run_id": 45690184303,
+    "push_run_id": 45690184303,
+    "job_id": 139473261910,
+    "artifact_id": 15058521554,
+    "smoke_pass": 97,
     "p2_regression_pass": 60,
     "fail": 0,
     "skip": 0,
@@ -554,52 +554,63 @@
     },
     "submission_contract_pass": 4,
     "build_evidence": {
-      "manifest_sha256": "980158b6510ceac3162352767f695ce76fde78b4aa866ad5609e66815765b021",
+      "manifest_sha256": "9902e56803b1cd5e6c58fb5e40fb63001217e685e0a6448aa2c853070828d859",
       "files": 11,
       "verification": "CI_LOCAL_HASH_MATCH",
       "external_digest_check": "NOT_RUN",
       "artifact_download": "NOT_RUN",
-      "artifact_expires_at": "2026-12-02T19:46:14Z",
+      "artifact_expires_at": "2026-12-02T19:57:23Z",
       "signature": "NONE",
       "deployment": "NOT_RUN"
+    },
+    "dependency_inventory_details": {
+      "lock_entries": 164,
+      "installed": 139,
+      "manual_review": 10,
+      "optional_absent": 25,
+      "legal_status": "NOT_REVIEWED",
+      "path_identity": "NATIVE_PASS",
+      "windows_execution": "NOT_RUN",
+      "missing_license_paths": 10,
+      "upstream_esbuild_tag_text": "OBSERVED_NOT_PACKAGE_CLEARANCE"
     }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
-    "run_id": 45688420827,
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "run_id": 45690184303,
     "status": "completed",
     "conclusion": "success",
-    "pr_run_id": 45688431881,
+    "pr_run_id": 45690197095,
     "pr_status": "completed",
     "pr_conclusion": "success"
   },
   "submission_benchmark": {
-    "source_sha": "1097e11f90625bdc6a6ec4de376dd8a710f30fe3",
-    "run_id": 45688420827,
-    "job_id": 139467085148,
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "run_id": 45690184303,
+    "job_id": 139473261910,
     "scope": "NATIVE_SYNTHETIC_ADAPTER",
     "rows": [
       {
         "scenario": "unchanged",
         "pairs": 20,
-        "full_ms": 36.18,
-        "selective_ms": 59.101,
+        "full_ms": 27.582,
+        "selective_ms": 46.59,
         "reused_groups": 8,
         "decision_equal": true
       },
       {
         "scenario": "changed",
         "pairs": 20,
-        "full_ms": 22.168,
-        "selective_ms": 35.567,
+        "full_ms": 19.503,
+        "selective_ms": 31.725,
         "reused_groups": 4,
         "decision_equal": true
       },
       {
         "scenario": "denied",
         "pairs": 20,
-        "full_ms": 13.036,
-        "selective_ms": 12.881,
+        "full_ms": 10.787,
+        "selective_ms": 10.981,
         "reused_groups": 0,
         "decision_equal": true
       }
