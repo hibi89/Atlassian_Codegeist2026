@@ -48,3 +48,10 @@ export function savedReviewResponse(previousId,result,replacing=false){
  if(valid)return {ok:true,id,saved};
  return {ok:false,id:previousId,code:result?.ok===false&&typeof result.code==="string"?result.code:"REVIEW_RESPONSE_UNCONFIRMED"};
 }
+
+// Display gate only. Never infer an enabled environment from a visible Jira panel.
+export function environmentReadiness(safety){
+ if(safety?.ok!==true)return {ready:false,code:"ENVIRONMENT_NOT_CONFIRMED"};
+ if(safety.environment!=="DEVELOPMENT")return {ready:false,code:"DEVELOPMENT_ENVIRONMENT_REQUIRED"};
+ return {ready:true,code:"DEVELOPMENT_CONFIRMED"};
+}
