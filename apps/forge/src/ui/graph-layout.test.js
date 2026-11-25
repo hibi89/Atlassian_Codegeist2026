@@ -178,3 +178,14 @@ test("session report recovery guard is per review and retains unrelated ambiguou
  assert.deepEqual(unresolvedReports([a,b],"recoverSavedReport",a,receipt),[b]);
  assert.deepEqual(unresolvedReports([],"generateReadOnlyReport",a,{report_integrity:"SHA256_MATCH"}),[]);
 });
+
+
+test("P2 saved review reload restores only its exact unresolved report guard",()=>{
+ const a="a".repeat(64),b="b".repeat(64),r={ok:true,review_id:a,run_state:"REPORT_OUTCOME_REVIEW_REQUIRED",receipt_status:"UNCONFIRMED"};
+ assert.deepEqual(unresolvedReports([],"refreshSavedReview",a,r),[a]);
+ assert.deepEqual(unresolvedReports([b],"refreshSavedReview",a,r),[b,a]);
+ assert.deepEqual(unresolvedReports([a],"refreshSavedReview",a,r),[a]);
+ assert.deepEqual(unresolvedReports([],"refreshSavedReview",b,r),[]);
+ assert.deepEqual(unresolvedReports([],"refreshSavedReview",a,{...r,ok:false}),[]);
+ assert.deepEqual(unresolvedReports([a],"refreshSavedReview",a,{...r,run_state:"SUCCEEDED",receipt_status:"HISTORICAL_REPORT_RECEIPT_VERIFIED"}),[a]);
+});

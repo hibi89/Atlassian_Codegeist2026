@@ -86,6 +86,7 @@ export function draftRepairHint(result){
 const reportPreConsumptionDenials=new Set(["REPORT_CONTEXT_DENIED","REPORT_REVIEW_STALE_OR_EXPIRED","REPORT_CLAIM_PROVENANCE_UNKNOWN","APPROVAL_CONTEXT_DENIED","APPROVAL_STALE_OR_MISSING","APPROVAL_EXPIRED","DEVELOPMENT_DAILY_BUDGET_EXHAUSTED","DEVELOPMENT_BUDGET_DAY_CHANGED","SYNTHETIC_DEMO_SCOPE_REQUIRED"]);
 export function unresolvedReports(previous,operation,reviewId,result){
  if(!validRequestId(reviewId))return previous;
+ if(operation==="refreshSavedReview"&&result?.ok===true&&result.review_id===reviewId&&(result.receipt_status==="UNCONFIRMED"||result.run_state==="REPORT_OUTCOME_REVIEW_REQUIRED"))return previous.includes(reviewId)?previous:[...previous,reviewId];
  if(operation==="generateReadOnlyReport"&&result?.report_integrity!=="SHA256_MATCH"&&!reportPreConsumptionDenials.has(result?.code))return previous.includes(reviewId)?previous:[...previous,reviewId];
  if(operation==="recoverSavedReport"&&result?.ok===true&&result.review_id===reviewId&&result.status==="HISTORICAL_REPORT_RECEIPT_RECOVERED"&&result.run_state==="SUCCEEDED"&&result.authorization==="NONE"&&result.execution==="NO_JIRA_MUTATION"&&validRequestId(result.report_digest))return previous.filter(id=>id!==reviewId);
  return previous;

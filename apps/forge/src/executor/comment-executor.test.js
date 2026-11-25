@@ -266,7 +266,7 @@ test("preview explains the same reported evidence prerequisites enforced by actu
 test("P2 report corruption preserves independently scoped unresolved comment recovery reference",async()=>{
  const f=fixture(),r=await f.request();assert.equal(r.ok,true);
  assert.equal((await f.writes.approve(f.ctx,r.request_id,r.request_id)).ok,true);
- f.setMode("timeout");const uncertain=await f.writes.execute(f.ctx,r.request_id);assert.equal(uncertain.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
+ f.setMode("lost");const uncertain=await f.writes.execute(f.ctx,r.request_id);assert.equal(uncertain.status,"UNKNOWN_OUTCOME_REVIEW");assert.equal(f.posts(),1);
  const {createReportService}=await import("../security/approval/report-service.js"),reports=createReportService(f.deps);
  const q=await reports.prepare(f.ctx,r.review_id);assert.equal(q.ok,true);assert.equal((await reports.approve(f.ctx,q.request_id,q.request_id)).ok,true);
  assert.equal((await reports.generate(f.ctx,q.request_id)).ok,true);

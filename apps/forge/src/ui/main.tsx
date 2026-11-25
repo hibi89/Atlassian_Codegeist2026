@@ -177,7 +177,7 @@ function App(){
   }
   async function recheckReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);setIssue(null);
-    try{const result=await budgetedInvoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){const safe=savedLookupResponse(reviewId,result);setSavedStatus(safe);if(safe.ok){if(safe.comment_journal?.request_id)setCommentId(safe.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,safe.comment_journal))}}}
+    try{const result=await budgetedInvoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){const safe=savedLookupResponse(reviewId,result);setSavedStatus(safe);setUnresolvedReportIds(old=>unresolvedReports(old,"refreshSavedReview",reviewId,safe));if(safe.ok){if(safe.comment_journal?.request_id)setCommentId(safe.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,safe.comment_journal))}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
