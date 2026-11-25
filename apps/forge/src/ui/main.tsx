@@ -5,7 +5,7 @@ import "./styles.css";
 import {GraphExplorer} from "./GraphExplorer";
 import {describePreviewNodes} from "./graph-layout.js";
 import {overviewState,countBreakdown,requestMatches,requestStage} from "./overview-state.js";
-import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness,budgetRetryAt} from "./request-state.js";
+import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness,budgetRetryAt,preparedRequest,savedLookupResponse} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
 type TypedPlan = { plan_hash:string; steps:{step_id:string;op_id:string;side_effect:string;predecessor_ids:string[]}[] };
@@ -15,10 +15,10 @@ type SafetySettings={ok:boolean;synthetic_readiness?:string;synthetic_storage_re
 type Evidence = { claims?:{claim_id:string;source_ref:string;subject:string;predicate:string;value:string;status:string}[]; document_status?:string;coverage:string; coverage_reasons?:string[]; unknown_count:number; sources:{source_ref:string;uri:string;version:string|null;status:string;status_reason?:string;retrieved_at?:string;freshness_deadline?:string}[] };
 type Graph = {ok:boolean;code?:string;status?:string;coverage?:string;graph_revision?:string;nodes?:{id:string;kind:string;ref:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[]};
 type ReviewMetadata={classification:string;record_bytes:number;record_digest:string;graph_revision:string;source_count:number;node_count:number;edge_count:number;expires_at:number;raw_originals:string};
-type CommentResult={ok:boolean;observation_digest?:string;lineage?:{base_graph_revision:string;nodes:{kind:string;id:string}[];edges:{relation:string}[]};request_id?:string;target?:string;comment?:string;expires_at?:number;status?:string;code?:string;comment_id?:string;receipt_digest?:string;http_status?:number;execution?:string};
-type ReportResult={ok:boolean;run_state?:string;lineage?:{graph_revision:string;nodes:{kind:string;id:string}[];edges:{relation:string}[]};request_id?:string;status?:string;code?:string;effect?:string;expires_at?:number;operations?:{operation:string;effect:string}[];report?:{status:string;sources:{uri:string;version:string;status:string}[];checks:{subject?:string;predicate:string;values:string[];status:string;reason?:string;source_uris?:string[]}[];missing:string[];incident_assessment?:IncidentAssessment;release_assessment?:ReleaseAssessment};report_digest?:string};
+type CommentResult={ok:boolean;review_id?:string;authorization?:string;observation_digest?:string;lineage?:{base_graph_revision:string;nodes:{kind:string;id:string}[];edges:{relation:string}[]};request_id?:string;target?:string;comment?:string;expires_at?:number;status?:string;code?:string;comment_id?:string;receipt_digest?:string;http_status?:number;execution?:string};
+type ReportResult={ok:boolean;review_id?:string;authorization?:string;run_state?:string;lineage?:{graph_revision:string;nodes:{kind:string;id:string}[];edges:{relation:string}[]};request_id?:string;status?:string;code?:string;effect?:string;expires_at?:number;operations?:{operation:string;effect:string}[];report?:{status:string;sources:{uri:string;version:string;status:string}[];checks:{subject?:string;predicate:string;values:string[];status:string;reason?:string;source_uris?:string[]}[];missing:string[];incident_assessment?:IncidentAssessment;release_assessment?:ReleaseAssessment};report_digest?:string};
 type SourceComparison={status:string;rows:{uri:string;saved_version:string|null;current_version:string|null;state:string;content_changed:boolean|null;revision_changed:boolean|null}[]};
-type HistoricalGraph={source_comparison?:SourceComparison|null;ok:boolean;status?:string;code?:string;nodes?:{id:string;kind:string;label:string;state:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[];metadata?:{record_bytes:number;record_digest:string;graph_revision:string;expires_at:number;source_count:number;node_count:number;edge_count:number}};
+type HistoricalGraph={review_id?:string;source_comparison?:SourceComparison|null;ok:boolean;status?:string;code?:string;nodes?:{id:string;kind:string;label:string;state:string}[];edges?:{from_dependency:string;to_dependent:string;relation:string}[];metadata?:{record_bytes:number;record_digest:string;graph_revision:string;expires_at:number;source_count:number;node_count:number;edge_count:number}};
 type SavedReview = {ok:boolean;report_digest?:string;revalidation?:{reused:number;recomputed:number};comment_journal?:{status:string;request_id?:string};metadata?:ReviewMetadata;review_id?:string;expires_at?:number;run_state?:string;status?:string;code?:string;affected_count?:number|null;unaffected_count?:number|null;persisted_invalidation?:boolean};
 type Result = { incident_assessment?:IncidentAssessment; release_assessment?:ReleaseAssessment;provider?:{mode:string;reason:string;external_attempted:boolean;synthetic_only:boolean;model:string};revalidation?:{reused:number;recomputed:number};revalidated_from?:string;saved_review?:SavedReview;graph?:Graph; impact_summary?:{status:string;code?:string;affected_count?:number;unaffected_count?:number;stale_approval_count?:number}; claim_review?:{status:string;reason:string;missing_predicates?:string[];checks:{subject:string;predicate:string;values:string[];status:string;reason?:string;source_refs?:string[];claim_ids?:string[]}[]}; evidence?:Evidence|null; freshness?:{status:string;reason:string;changed:string[];unchanged?:string[];unknown?:string[];changed_count?:number;unchanged_count?:number;unknown_count?:number}; policy?:{decision:string;reason:string;execution:string;authorization?:string;policy_version?:string;graph_status?:string}; plan?:TypedPlan; ok: boolean; code?: string; key?: string; issueKey?: string; draft?: Draft; snapshot?: Issue; source?: { version: string | null; status: string } };
 const labels: Record<string,string> = {
@@ -151,7 +151,7 @@ function App(){
   }
   async function recheckReview(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportState(null);setReportRequest(null);setCommentRequest(null);setCommentState(null);setCommentId("");setPreview(null);setIssue(null);
-    try{const result=await budgetedInvoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){setSavedStatus(result);if(result.comment_journal?.request_id)setCommentId(result.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result.comment_journal))}}
+    try{const result=await budgetedInvoke<SavedReview>("refreshSavedReview",{review_id:reviewId});if(gate.current.current(token)){const safe=savedLookupResponse(reviewId,result);setSavedStatus(safe);if(safe.ok){if(safe.comment_journal?.request_id)setCommentId(safe.comment_journal.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,safe.comment_journal))}}}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -159,10 +159,11 @@ function App(){
     if(operation!=="prepareReadOnlyReport"&&!requestMatches(reportRequest,reportState))return;
     if((operation==="approveReadOnlyReport"||operation==="generateReadOnlyReport")&&!requestDeadline(reportRequest,reportState,"READ_ONLY_APPROVED",Date.now()).ready)return;
     const token=gate.current.begin();if(token===null)return;setBusy(true);
+    if(operation==="prepareReadOnlyReport"){setReportRequest(null);setReportState(null);}
     try{
       const requestId=reportRequest?.request_id;
       const result=await budgetedInvoke<ReportResult>(operation,operation==="prepareReadOnlyReport"?{review_id:reviewId}:{request_id:requestId,expected_digest:requestId});
-      if(gate.current.current(token)){const safeResult=operation!=="prepareReadOnlyReport"&&(result.ok===true||result.request_id!==undefined)&&!requestMatches(reportRequest,result)?{ok:false,code:"REQUEST_RESPONSE_MISMATCH"}:result;setReportState(safeResult);if(operation==="prepareReadOnlyReport")setReportRequest(result.ok?result:null);}
+      if(gate.current.current(token)){const safeResult=operation==="prepareReadOnlyReport"?preparedRequest("report",reviewId,context?.key,result):(result.ok===true||result.request_id!==undefined)&&!requestMatches(reportRequest,result)?{ok:false,code:"REQUEST_RESPONSE_MISMATCH"}:result;setReportState(safeResult);if(operation==="prepareReadOnlyReport")setReportRequest(safeResult.ok?safeResult:null);}
     }catch{if(gate.current.current(token))setReportState({ok:false,code:"BACKEND_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -176,7 +177,7 @@ function App(){
     const id=operation==="reconcileDemoComment"?commentId:commentRequest?.request_id;
     try{
       const result=await budgetedInvoke<CommentResult>(operation,operation==="prepareDemoComment"?{review_id:reviewId}:{request_id:id,expected_digest:id});
-      if(gate.current.current(token)){setCommentState(commentResponse(operation,id??"",result));setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",result));if(operation==="prepareDemoComment"){if(result.ok)setCommentRequest(result);if(result.request_id)setCommentId(result.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,result));}}
+      if(gate.current.current(token)){const safe=operation==="prepareDemoComment"?preparedRequest("comment",reviewId,context?.key,result):commentResponse(operation,id??"",result);setCommentState(safe);setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",result));if(operation==="prepareDemoComment"){if(safe.ok)setCommentRequest(safe);if(safe.request_id&&/^[a-f0-9]{64}$/.test(safe.request_id))setCommentId(safe.request_id);setUnresolvedId(old=>restoreUnresolvedComment(old,safe));}}
     }catch{if(gate.current.current(token)){setCommentState({ok:false,code:"BACKEND_UNAVAILABLE",status:operation==="executeDemoComment"?"UNKNOWN_OUTCOME_REVIEW":"REQUEST_UNAVAILABLE"});setUnresolvedId(old=>unresolvedCommentId(old,operation,id??"",null));}}
     finally{if(gate.current.end(token))setBusy(false)}
   }
@@ -188,13 +189,13 @@ function App(){
   }
   async function recoverReportReceipt(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setSavedStatus(null);setHistory(null);setReportRequest(null);setReportState(null);
-    try{const result=await budgetedInvoke<SavedReview>("recoverSavedReport",{review_id:reviewId});if(gate.current.current(token))setSavedStatus(result)}
+    try{const result=await budgetedInvoke<SavedReview>("recoverSavedReport",{review_id:reviewId});if(gate.current.current(token))setSavedStatus(savedLookupResponse(reviewId,result))}
     catch{if(gate.current.current(token))setSavedStatus({ok:false,code:"REPORT_RECOVERY_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }
   async function loadHistory(){
     const token=gate.current.begin();if(token===null)return;setBusy(true);setHistory(null);
-    try{const v=await budgetedInvoke<HistoricalGraph>("readSavedGraph",{review_id:reviewId});if(gate.current.current(token))setHistory(v)}
+    try{const v=await budgetedInvoke<HistoricalGraph>("readSavedGraph",{review_id:reviewId});if(gate.current.current(token))setHistory(savedLookupResponse(reviewId,v))}
     catch{if(gate.current.current(token))setHistory({ok:false,code:"HISTORY_UNAVAILABLE"})}
     finally{if(gate.current.end(token))setBusy(false)}
   }

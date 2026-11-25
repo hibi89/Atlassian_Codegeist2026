@@ -62,3 +62,16 @@ export function budgetRetryAt(result){
  const at=result?.retry_at;
  return result?.ok===false&&result.code==="DEVELOPMENT_DAILY_BUDGET_EXHAUSTED"&&Number.isSafeInteger(at)&&at>0&&at<=8640000000000000&&at%86400000===0?at:null;
 }
+
+// A prepare result must identify the exact review currently requested. A
+// well-formed request ID alone is insufficient to display an approval action.
+export function preparedRequest(kind,reviewId,target,result){
+ if(result?.ok!==true)return result??{ok:false,code:"REQUEST_RESPONSE_UNCONFIRMED"};
+ const common=validRequestId(reviewId)&&result.review_id===reviewId&&validRequestId(result.request_id)&&Number.isSafeInteger(result.expires_at)&&result.expires_at>0&&result.authorization==="NONE";
+ const valid=kind==="report"?result.status==="AWAITING_READ_ONLY_APPROVAL"&&result.effect==="READ_ONLY_REPORT"&&Array.isArray(result.operations)&&result.operations.length>0&&result.operations.every(o=>typeof o?.operation==="string"&&["READ","PURE","METADATA"].includes(o.effect)):kind==="comment"?result.status==="AWAITING_COMMENT_APPROVAL"&&typeof target==="string"&&result.target===target&&typeof result.comment==="string"&&result.comment.length>0:false;
+ return common&&valid?result:{ok:false,code:"PREPARED_REQUEST_UNCONFIRMED"};
+}
+export function savedLookupResponse(reviewId,result){
+ if(result?.ok!==true)return result??{ok:false,code:"REVIEW_RESPONSE_UNCONFIRMED"};
+ return validRequestId(reviewId)&&result.review_id===reviewId?result:{ok:false,code:"REVIEW_RESPONSE_UNCONFIRMED"};
+}

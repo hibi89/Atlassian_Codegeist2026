@@ -49,3 +49,14 @@ test("current proof graph shows exact claim/check provenance independent of node
  assert.equal(describePreviewNodes({nodes,edges:edges.slice(0,1)},evidence,review,policy)[0].state,"UNKNOWN_DETAILS");
  assert.equal(describePreviewNodes({nodes,edges},evidence,{checks:[...review.checks,...review.checks]},policy)[0].state,"UNKNOWN_DETAILS");
 });
+
+import {preparedRequest,savedLookupResponse} from "./request-state.js";
+test("prepared approval and saved lookup responses must belong to the exact selected review",()=>{
+ const a="a".repeat(64),b="b".repeat(64),q="c".repeat(64),base={ok:true,review_id:a,request_id:q,expires_at:10000,authorization:"NONE"};
+ const report={...base,status:"AWAITING_READ_ONLY_APPROVAL",effect:"READ_ONLY_REPORT",operations:[{operation:"report.evidence.generate",effect:"METADATA"}]},comment={...base,status:"AWAITING_COMMENT_APPROVAL",target:"HTF-2",comment:"Exact synthetic annotation"};
+ assert.equal(preparedRequest("report",a,"HTF-2",report),report);assert.equal(preparedRequest("comment",a,"HTF-2",comment),comment);
+ for(const patch of [{review_id:b},{review_id:undefined},{request_id:"bad"},{authorization:"APPROVED"},{expires_at:null},{status:"READ_ONLY_APPROVED"},{effect:"WRITE"},{operations:[]},{operations:[{operation:"unknown",effect:"WRITE"}]}])assert.equal(preparedRequest("report",a,"HTF-2",{...report,...patch}).ok,false);
+ for(const patch of [{review_id:b},{target:"OTHER-1"},{target:undefined},{comment:""},{request_id:undefined},{authorization:"APPROVED"}])assert.equal(preparedRequest("comment",a,"HTF-2",{...comment,...patch}).ok,false);
+ const recovery={ok:false,status:"UNKNOWN_OUTCOME_REVIEW",request_id:q};assert.equal(preparedRequest("comment",a,"HTF-2",recovery),recovery);
+ assert.equal(savedLookupResponse(a,{ok:true,review_id:b}).ok,false);assert.equal(savedLookupResponse(a,{ok:true}).ok,false);assert.equal(savedLookupResponse(a,{ok:true,review_id:a}).ok,true);assert.equal(savedLookupResponse(a,null).ok,false);
+});

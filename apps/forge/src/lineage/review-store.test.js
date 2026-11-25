@@ -187,3 +187,15 @@ test("daily exhaustion returns the next UTC midnight without allocating another 
  assert.deepEqual(result,{ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",retry_at:Date.parse("2026-11-26T00:00:00.000Z")});
  assert.equal(records.size,1);assert.equal((await reserveDailySlot(kvs,result.retry_at,1)).ok,true);assert.equal(records.size,2);
 });
+
+test("incident report includes the authorized ownership assessment and hashes the actual content",async()=>{
+ const map=new Map(),clock=()=>Date.parse("2026-11-24T12:00:00Z"),ctx={accountId:"synthetic",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,structuredClone(v))}};
+ const {typedTags}=await import("../evidence/typed-claims.js");
+ const tags=typedTags(["tf-req-DEMO-1","tf-owner-DEMO-1-OPS","tf-policy-DEMO-v1"]);
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task",reportedTags:tags},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version:"2026-11-24T11:00:00Z",retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+JSON.stringify(tags))}})};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("incident-nonce")},reviews=createReviewService(deps),reports=createReportService(deps);
+ const saved=await reviews.save(ctx,"coordinate incident");assert.equal(saved.ok,true);const q=await reports.prepare(ctx,saved.saved_review.review_id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);
+ const generated=await reports.generate(ctx,q.request_id);assert.equal(generated.ok,true);assert.equal(generated.report.incident_assessment.status,"HUMAN_COORDINATION_REVIEW_REQUIRED");assert.deepEqual(generated.report.incident_assessment.ownership[0].teams,["OPS"]);assert.deepEqual(generated.report.incident_assessment.ownership[0].source_uris,["/browse/DEMO-1"]);assert.equal(generated.report_digest,digest(canonical(generated.report)));assert.equal(generated.execution,"NO_JIRA_MUTATION");
+});
