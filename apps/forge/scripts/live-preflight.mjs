@@ -1,6 +1,6 @@
 // Local preflight: no network, credential reads, package installation, deploy or app writes.
 import {spawnSync} from "node:child_process";
-import {readFileSync,statSync} from "node:fs";
+import {readFileSync,lstatSync,readdirSync} from "node:fs";
 import {createHash} from "node:crypto";
 import {fileURLToPath} from "node:url";
 import path from "node:path";
@@ -18,6 +18,15 @@ export function nativeTestArgs(script){
 export function trackedClean(status,head,expected){
  return typeof status==="string"&&status.trim()===""&&typeof head==="string"&&head.trim()===expected;
 }
+// Exclude only the exact outputs of the existing dependency inventory script.
+// Other non-ignored untracked app files can change bundler resolution or packaging.
+export function untrackedAppClean(raw){
+ if(typeof raw!=="string")return false;
+ if(raw==="")return true;
+ if(!raw.endsWith("\0"))return false;
+ const generated=new Set(["dependency-inventory.json","third-party-notices-review.txt"]);
+ return raw.slice(0,-1).split("\0").every(p=>generated.has(p));
+}
 function command(executable,args,quiet=false){
  const r=spawnSync(executable,args,{cwd:root,encoding:"utf8",stdio:quiet?["ignore","pipe","pipe"]:"inherit",windowsHide:true,shell:false,timeout:300000});
  if(r.error||r.status!==0)throw Error("COMMAND_FAILED");
@@ -25,10 +34,32 @@ function command(executable,args,quiet=false){
 }
 export function validateArtifacts(base=root){
  const out=[];
- for(const file of ["package-lock.json","src/ui/dist/index.html","src/ui/dist/app.js","src/ui/dist/app.css","src/ui/project-dist/index.html","src/ui/project-dist/app.js","src/ui/project-dist/app.css"]){
-  const target=path.join(base,file),st=statSync(target);
-  if(!st.isFile()||st.size<=0||st.size>10*1024*1024)throw Error("ARTIFACT_MISSING_OR_SIZE_INVALID");
-  out.push({file,bytes:st.size,sha256:createHash("sha256").update(readFileSync(target)).digest("hex")});
+ function directory(relative){
+  const dir=path.join(base,relative),st=lstatSync(dir);
+  if(!st.isDirectory()||st.isSymbolicLink())throw Error("ARTIFACT_DIRECTORY_INVALID");
+  return dir;
+ }
+ function add(file){
+  const target=path.join(base,file),st=lstatSync(target);
+  if(!st.isFile()||st.isSymbolicLink()||st.size<=0||st.size>10*1024*1024)throw Error("ARTIFACT_MISSING_OR_SIZE_INVALID");
+  const bytes=readFileSync(target);
+  if(bytes.length!==st.size)throw Error("ARTIFACT_CHANGED_DURING_READ");
+  out.push({file,bytes:bytes.length,sha256:createHash("sha256").update(bytes).digest("hex")});
+  return bytes;
+ }
+ add("package-lock.json");
+ directory("src");directory("src/ui");
+ const required=["index.html","app.js","app.css"],optional=["app.js.LEGAL.txt","app.css.LEGAL.txt"];
+ const permitted=new Set([...required,...optional]);
+ for(const relative of ["src/ui/dist","src/ui/project-dist"]){
+  const dir=directory(relative),names=readdirSync(dir);
+  if(names.some(n=>!permitted.has(n)))throw Error("UNEXPECTED_RESOURCE_OUTPUT");
+  if(required.some(n=>!names.includes(n)))throw Error("ARTIFACT_MISSING_OR_SIZE_INVALID");
+  for(const name of required){
+   const bytes=add(relative+"/"+name);
+   if(name!=="index.html"&&bytes.toString("utf8").includes("For license information please see "+name+".LEGAL.txt")&&!names.includes(name+".LEGAL.txt"))throw Error("LINKED_LEGAL_OUTPUT_MISSING");
+  }
+  for(const name of optional)if(names.includes(name))add(relative+"/"+name);
  }
  return out;
 }
@@ -39,6 +70,7 @@ export function main(args){
   if(process.versions.node.split(".")[0]!=="22")throw Error("NODE_22_REQUIRED");
   const head=command("git",["rev-parse","HEAD"],true),status=command("git",["status","--porcelain","--untracked-files=no"],true);
   if(!trackedClean(status,head,opts.sha))throw Error("SOURCE_HEAD_OR_TRACKED_FILES_MISMATCH");
+  if(!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true)))throw Error("UNTRACKED_APP_FILES_PRESENT");
   console.log("SOURCE_SHA="+head);
   console.log("NODE="+process.versions.node);
   if(!opts.outputsOnly){
@@ -51,7 +83,7 @@ export function main(args){
   }
   for(const item of validateArtifacts())console.log(JSON.stringify(item));
   const finalHead=command("git",["rev-parse","HEAD"],true),finalStatus=command("git",["status","--porcelain","--untracked-files=no"],true);
-  if(!trackedClean(finalStatus,finalHead,opts.sha))throw Error("SOURCE_CHANGED_DURING_CHECK");
+  if(!trackedClean(finalStatus,finalHead,opts.sha)||!untrackedAppClean(command("git",["ls-files","--others","--exclude-standard","-z","--","."],true)))throw Error("SOURCE_CHANGED_DURING_CHECK");
   console.log("LOCAL_PREFLIGHT="+(opts.outputsOnly?"OUTPUTS_ONLY_PASS":"TEST_AND_BUILD_PASS"));
   console.log("FORGE_LINT=NOT_RUN; LIVE_DEPLOY=NOT_RUN; BROWSER=NOT_RUN");
   return 0;

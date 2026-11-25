@@ -33,3 +33,35 @@ test("P2 Jira byte limit applies to multibyte UTF-8 responses",async()=>{
  assert.ok(large.length<131072);assert.ok(Buffer.byteLength(large,"utf8")>131072);
  assert.equal((await readIssue(ctx,async()=>({status:200,text:async()=>large}),clock,digest)).code,"JIRA_RESPONSE_TOO_LARGE");
 });
+
+
+import {untrackedAppClean,validateArtifacts} from "../scripts/live-preflight.mjs";
+import {mkdtempSync,mkdirSync,writeFileSync,rmSync,symlinkSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {join} from "node:path";
+test("P2 preflight refuses unexpected untracked app inputs while allowing known generated inventory",()=>{
+ for(const x of ["","dependency-inventory.json\0","third-party-notices-review.txt\0dependency-inventory.json\0"])assert.equal(untrackedAppClean(x),true);
+ for(const x of ["src/new.js\0","src/ui/app.tsx\0","dependency-inventory.json\0src/x.js\0","sub/dependency-inventory.json\0","dependency-inventory.json",null,"\0"])assert.equal(untrackedAppClean(x),false);
+});
+test("P2 preflight hashes complete known resource sets and rejects stale or missing outputs",()=>{
+ const root=mkdtempSync(join(tmpdir(),"trustflow-resource-"));
+ try{
+  writeFileSync(join(root,"package-lock.json"),"{}");
+  const dirs=["src/ui/dist","src/ui/project-dist"];
+  for(const dir of dirs){mkdirSync(join(root,dir),{recursive:true});for(const file of ["index.html","app.js","app.css"])writeFileSync(join(root,dir,file),file);}
+  assert.equal(validateArtifacts(root).length,7);
+  const first=join(root,dirs[0]),second=join(root,dirs[1]);
+  writeFileSync(join(first,"app.js"),"/*! For license information please see app.js.LEGAL.txt */");
+  assert.throws(()=>validateArtifacts(root),/LINKED_LEGAL_OUTPUT_MISSING/);
+  writeFileSync(join(first,"app.js.LEGAL.txt"),"synthetic legal notice");
+  const complete=validateArtifacts(root);assert.equal(complete.length,8);assert.ok(complete.every(x=>/^[a-f0-9]{64}$/.test(x.sha256)));
+  writeFileSync(join(second,"stale.js"),"stale");assert.throws(()=>validateArtifacts(root),/UNEXPECTED_RESOURCE_OUTPUT/);rmSync(join(second,"stale.js"));
+  mkdirSync(join(second,"extra"));assert.throws(()=>validateArtifacts(root),/UNEXPECTED_RESOURCE_OUTPUT/);rmSync(join(second,"extra"),{recursive:true});
+  rmSync(join(second,"app.css"));assert.throws(()=>validateArtifacts(root),/ARTIFACT_MISSING_OR_SIZE_INVALID/);
+  writeFileSync(join(second,"app.css"),"");
+  assert.throws(()=>validateArtifacts(root),/ARTIFACT_MISSING_OR_SIZE_INVALID/);
+  if(process.platform!=="win32"){
+   rmSync(join(second,"app.css"));symlinkSync(join(first,"app.css"),join(second,"app.css"));assert.throws(()=>validateArtifacts(root),/ARTIFACT_MISSING_OR_SIZE_INVALID/);
+  }
+ }finally{rmSync(root,{recursive:true,force:true})}
+});
