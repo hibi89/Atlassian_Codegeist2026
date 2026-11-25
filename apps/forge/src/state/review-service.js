@@ -22,9 +22,9 @@ function createReviewService({store,clock,digest,preview,development}){
   const run=saved.review_id;
   // Do not report a completed save when journal initialization is partial.
   const created=await ledger.create(run,run);
-  if(!created.ok)return deny("REVIEW_JOURNAL_PARTIAL");
+  if(!created.ok)return {...deny("REVIEW_JOURNAL_PARTIAL"),repair_review_id:run};
   for(const [seq,state] of [[1,"EVIDENCE_PENDING"],[2,"POLICY_REVIEW"]]){
-   if(!(await ledger.transition(run,seq,state)).ok)return deny("REVIEW_JOURNAL_PARTIAL");
+   if(!(await ledger.transition(run,seq,state)).ok)return {...deny("REVIEW_JOURNAL_PARTIAL"),repair_review_id:run};
   }
   return {...result,saved_review:{...saved,run_state:"POLICY_REVIEW"}};
  }
@@ -67,6 +67,19 @@ function createReviewService({store,clock,digest,preview,development}){
   // Never copy approval, request ID, execution state or old receipt to new review.
   return {...result,revalidated_from:id,revalidation:old.current.claim_review?.revalidation,authorization:"NONE",execution:"DISABLED"};
  }
+ async function repairDraft(context,id){
+  const p=principal(context,digest);
+  if(!development()||!p||typeof id!=="string"||!/^[a-f0-9]{64}$/.test(id))return deny("REVIEW_DRAFT_REPAIR_DENIED");
+  try{
+   const m=await createReviewStore(store,p,clock,digest).authorizeReadOnly(id,(intent,record)=>preview(context,aliases[intent],record));
+   if(!m.ok)return m;
+   const deadline=Math.min(m.record.expires_at,Date.parse(m.record.plan.expires_at),...m.current.evidence.sources.map(s=>Date.parse(s.freshness_deadline)));
+   const canAppend=async()=>Number.isFinite(deadline)&&clock()<deadline&&await store.get("cg:review:"+p.tenant+":"+p.actor+":"+id+":invalidated")==null&&(await readCommentJournal(store,p,id,clock)).status==="NO_COMMENT_ATTEMPT";
+   const result=await createRunLedger(store,p,clock).repairInitialDraft(id,m.record.created_at,canAppend);
+   if(!result.ok)return {...deny(result.code),repair_review_id:id};
+   return {ok:true,review_id:id,status:"DRAFT_JOURNAL_CONFIRMED",run_state:"POLICY_REVIEW",authorization:"NONE",execution:"DISABLED"};
+  }catch{return {...deny("REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN"),repair_review_id:id}}
+ }
  async function recoverReport(context,id){
   const p=principal(context,digest);
   if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
@@ -88,6 +101,6 @@ function createReviewService({store,clock,digest,preview,development}){
    return {ok:true,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",review_id:id,run_state:"SUCCEEDED",report_digest:receipt.report_digest,authorization:"NONE",execution:"NO_JIRA_MUTATION"};
   }catch{return deny("REPORT_RECOVERY_STORAGE_UNKNOWN")}
  }
- return {save,refresh,history,revalidate,recoverReport};
+ return {save,refresh,history,revalidate,recoverReport,repairDraft};
 }
 export {createReviewService};

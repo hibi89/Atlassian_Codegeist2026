@@ -87,3 +87,10 @@ test("generated report display requires exact review, request and independently 
  for(const bad of [{...result,request_id:review},{...result,report:{...report,review_id:request}},{...result,report:{...report,missing:["tampered"]}},{...result,run_state:"RUNNING"},{...result,report_digest:"c".repeat(64)},{...result,ok:false}]){const rejected=await verifyGeneratedReport(review,request,bad,webcrypto.subtle);assert.equal(rejected.ok,false);assert.equal(rejected.report,undefined);assert.equal(rejected.canonical_report,undefined)}
  assert.equal((await verifyGeneratedReport(review,request,result,null)).code,"REPORT_CLIENT_DIGEST_UNAVAILABLE");assert.equal((await verifyGeneratedReport(review,request,result,{digest:async()=>{throw Error("unavailable")}})).code,"REPORT_CLIENT_DIGEST_UNKNOWN");
 });
+
+import {draftRepairHint} from "./request-state.js";
+test("draft repair lookup never accepts unrelated or malformed success references",()=>{
+ const id="a".repeat(64);assert.equal(draftRepairHint({ok:false,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:id}),id);
+ assert.equal(draftRepairHint({ok:false,code:"REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN",repair_review_id:id}),id);
+ for(const r of [null,{ok:true,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:id},{ok:false,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:"bad"},{ok:false,code:"OTHER",repair_review_id:id}])assert.equal(draftRepairHint(r),"");
+});

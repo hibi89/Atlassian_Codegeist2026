@@ -65,7 +65,7 @@ async function call(context,input,operation,confirmation){
    const service=createCommentService({...services,allowedInstall:allowedDemoInstall,transport:createForgeCommentTransport(),canDispatch});
    return await service[operation.slice(8)](context,input,confirmation);
   }
-  const service=["save","refresh","history","revalidate","recoverReport"].includes(operation)?createReviewService(services):createReportService(services);
+  const service=["save","refresh","history","revalidate","recoverReport","repairDraft"].includes(operation)?createReviewService(services):createReportService(services);
   return await service[operation](context,input,confirmation);
  }catch{return {ok:false,code:"REVIEW_STORAGE_UNKNOWN",authorization:"NONE",execution:"DISABLED"}}
 }
@@ -81,6 +81,7 @@ export const executeDemoComment=(context,id)=>call(context,id,"comment:execute")
 export const revokeDemoComment=(context,id)=>call(context,id,"comment:revoke");
 export const reconcileDemoComment=(context,id)=>call(context,id,"comment:reconcile");
 export const revalidateSavedReview=(context,id)=>call(context,id,"revalidate");
+export const repairSavedDraft=(context,id)=>call(context,id,"repairDraft");
 export const recoverSavedReport=(context,id)=>call(context,id,"recoverReport");
 export const readSavedGraph=(context,id)=>call(context,id,"history");
 export const budgetedRead=(context)=>call(context,null,"read");

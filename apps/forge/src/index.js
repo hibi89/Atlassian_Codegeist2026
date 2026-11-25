@@ -1,7 +1,7 @@
 import ResolverModule from "@forge/resolver";
 import { resolveResolver } from "./forge-interop.js";
 import { issueHint } from "./security-context.js";
-import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph, revalidateSavedReview, budgetedRead, budgetedPreview, runSyntheticProvider, getSafetySettings, recoverSavedReport } from "./state/forge-review.js";
+import { saveCurrentReview, refreshSavedReview, prepareReadOnlyReport, approveReadOnlyReport, generateReadOnlyReport, revokeReadOnlyReport, prepareDemoComment, approveDemoComment, executeDemoComment, revokeDemoComment, reconcileDemoComment, readSavedGraph, revalidateSavedReview, budgetedRead, budgetedPreview, runSyntheticProvider, getSafetySettings, recoverSavedReport, repairSavedDraft } from "./state/forge-review.js";
 import {projectDashboard} from "./dashboard/forge-project.js";
 const Resolver = resolveResolver(ResolverModule);
 const resolver = new Resolver();
@@ -26,6 +26,7 @@ resolver.define("revalidateSavedReview",({context,payload})=>revalidateSavedRevi
 resolver.define("getSafetySettings",({context})=>getSafetySettings(context));
 resolver.define("runSyntheticProvider",({context,payload})=>runSyntheticProvider(context,payload));
 resolver.define("recoverSavedReport",({context,payload})=>recoverSavedReport(context,payload?.review_id));
+resolver.define("repairSavedDraft",({context,payload})=>repairSavedDraft(context,payload?.review_id));
 export const handler = resolver.getDefinitions();
 const projectResolver=new Resolver();
 projectResolver.define("readProjectDashboard",({context})=>projectDashboard(context));

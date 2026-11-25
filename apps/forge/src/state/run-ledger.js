@@ -112,7 +112,38 @@ function createRunLedger(store,p,clock){
       return {ok:true,state:"SUCCEEDED"};
     }catch{return bad("REPORT_RUN_FINISH_CONFLICT_OR_UNKNOWN")}
   }
-  return {read,create,transition,startReadOnlyReport,finishReadOnlyReport};
+  // Only the three pre-approval events may be repaired. The product's report
+  // path uses positions 3..7; any such event or a gap denies this repair.
+  async function repairInitialDraft(runId,createdAt,canAppend){
+    if(!/^[a-f0-9]{64}$/.test(runId)||!Number.isSafeInteger(createdAt)||typeof canAppend!=="function")return bad("REVIEW_DRAFT_REPAIR_DENIED");
+    const initial=["DRAFT","EVIDENCE_PENDING","POLICY_REVIEW"];
+    async function inspect(){
+      const records=await Promise.all(Array.from({length:8},(_,seq)=>store.get(ledgerKey(p,runId,seq))));
+      const prefix=[];
+      for(let seq=0;seq<records.length;seq++){
+        const event=records[seq];if(event==null)continue;
+        if(seq>=3||prefix.length!==seq||!scopedEvent(event,p,runId,seq)||event.plan_hash!==runId||event.state!==initial[seq]||event.receipt!==null||event.execution_kind!==undefined||event.report_request_id!==undefined||Date.parse(event.at)<createdAt||Date.parse(event.at)>clock()||seq&&Date.parse(event.at)<Date.parse(prefix[seq-1].at))return null;
+        prefix.push(event);
+      }
+      return prefix;
+    }
+    try{
+      const before=await inspect();if(!before)return bad("REVIEW_DRAFT_REPAIR_DENIED");
+      if(!await canAppend())return bad("REVIEW_DRAFT_REPAIR_STALE");
+      for(let seq=before.length;seq<3;seq++){
+        if(!await canAppend())return bad("REVIEW_DRAFT_REPAIR_STALE");
+        const at=clock();
+        if(!Number.isSafeInteger(at)||at<createdAt||seq&&at<Date.parse(before[seq-1].at))return bad("REVIEW_DRAFT_REPAIR_DENIED");
+        const event={schema_version:"hae.run.event.v1",tenant:p.tenant,actor:p.actor,target:p.target,run_id:runId,seq,plan_hash:runId,state:initial[seq],at:new Date(at).toISOString(),receipt:null};
+        try{await store.create(ledgerKey(p,runId,seq),event)}catch{return bad("REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN")}
+        before.push(event);
+      }
+      const after=await inspect();
+      if(after?.length!==3||!await canAppend())return bad("REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN");
+      return {ok:true,state:"POLICY_REVIEW"};
+    }catch{return bad("REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN")}
+  }
+  return {read,create,transition,startReadOnlyReport,finishReadOnlyReport,repairInitialDraft};
 }
 
 export { makeForgeLedgerStore,createRunLedger,allowedTransition,verifyReportReceipt };

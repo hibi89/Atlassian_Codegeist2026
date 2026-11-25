@@ -75,3 +75,8 @@ export function savedLookupResponse(reviewId,result){
  if(result?.ok!==true)return result??{ok:false,code:"REVIEW_RESPONSE_UNCONFIRMED"};
  return validRequestId(reviewId)&&result.review_id===reviewId?result:{ok:false,code:"REVIEW_RESPONSE_UNCONFIRMED"};
 }
+
+// Only a known partial initial journal may provide a repair lookup hint.
+export function draftRepairHint(result){
+ return result?.ok===false&&["REVIEW_JOURNAL_PARTIAL","REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN","REVIEW_DRAFT_REPAIR_STALE","REVIEW_DRAFT_REPAIR_DENIED"].includes(result.code)&&validRequestId(result.repair_review_id)?result.repair_review_id:"";
+}

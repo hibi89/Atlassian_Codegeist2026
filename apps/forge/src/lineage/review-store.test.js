@@ -238,3 +238,32 @@ test("dashboard verifies historical report receipts within bounded point reads a
  const size=map.size;let result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].journal_state,"REPORT_RECEIPT_VERIFIED");assert.equal(result.rows[0].comment_state,"NO_COMMENT_ATTEMPT");assert.ok(reads<=17);assert.equal(map.size,size);
  const receipt=[...map.values()].find(v=>v.schema_version==="hae.report.receipt.v2");receipt.report_digest="bad";reads=0;result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].journal_state,"NOT_ESTABLISHED");assert.ok(reads<=17);assert.equal(map.size,size);
 });
+
+test("partial draft initialization repairs only the original scoped unexpired pre-approval journal",async()=>{
+ for(const fault of [0,1,2])for(const lostAck of [false,true]){
+  let now=Date.parse("2026-11-24T12:00:00Z"),version="2026-11-24T11:00:00Z",inject=true;
+  const clock=()=>now,map=new Map(),ctx={accountId:"actor",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};
+  const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");const fail=inject&&v.schema_version==="hae.run.event.v1"&&v.seq===fault;if(fail&&!lostAck)throw Error("before insert");map.set(k,structuredClone(v));if(fail)throw Error("lost ack")}};
+  const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(clock()).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}})};
+  const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+  const deps={store,clock,digest,preview,development:()=>true,nonce:()=>digest("repair")},reviews=createReviewService(deps),reports=createReportService(deps);
+  const partial=await reviews.save(ctx,"review change"),id=partial.repair_review_id;assert.equal(partial.code,"REVIEW_JOURNAL_PARTIAL");assert.match(id,/^[a-f0-9]{64}$/);
+  inject=false;const size=map.size;
+  assert.equal((await reviews.repairDraft({...ctx,accountId:"other"},id)).ok,false);assert.equal(map.size,size);
+  assert.equal((await createReviewService({...deps,development:()=>false}).repairDraft(ctx,id)).ok,false);
+  const result=await reviews.repairDraft(ctx,id);assert.equal(result.status,"DRAFT_JOURNAL_CONFIRMED");assert.equal(result.authorization,"NONE");assert.equal(result.review_id,id);assert.equal(map.size,4);
+  assert.equal((await reviews.repairDraft(ctx,id)).ok,true);assert.equal(map.size,4);
+  const q=await reports.prepare(ctx,id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);assert.equal((await reports.generate(ctx,q.request_id)).ok,true);
+  const finishedSize=map.size;assert.equal((await reviews.repairDraft(ctx,id)).ok,false);assert.equal(map.size,finishedSize);
+ }
+});
+test("draft repair cannot revive stale or corrupt partial snapshots",async()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z"),clock=()=>now,map=new Map(),ctx={accountId:"actor",installContext:"ari:cloud:jira::site/test-a",extension:{issue:{key:"DEMO-1"}}};let version="2026-11-24T11:00:00Z",inject=true;
+ const store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k)||inject&&v.schema_version==="hae.run.event.v1"&&v.seq===1)throw Error("conflict");map.set(k,structuredClone(v))}};
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"1",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"1",uri:"/browse/"+k,version,retrievedAt:new Date(now).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}})};
+ const preview=(c,i,saved)=>guardedPreview(c,i,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const reviews=createReviewService({store,clock,digest,preview,development:()=>true}),partial=await reviews.save(ctx,"review change"),id=partial.repair_review_id;inject=false;
+ const entry=[...map.entries()].find(([k,v])=>v.schema_version==="hae.run.event.v1"),[key,event]=entry;
+ map.set(key.slice(0,-1)+"3",{...event,seq:3,state:"AWAITING_APPROVAL"});assert.equal((await reviews.repairDraft(ctx,id)).ok,false);map.delete(key.slice(0,-1)+"3");
+ version="2026-11-24T11:05:00Z";assert.equal((await reviews.repairDraft(ctx,id)).ok,false);version="2026-11-24T11:00:00Z";assert.equal((await reviews.repairDraft(ctx,id)).ok,false);assert.equal([...map.values()].filter(v=>v.schema_version==="hae.run.event.v1").length,1);
+});
