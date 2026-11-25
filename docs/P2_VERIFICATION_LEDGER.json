@@ -471,14 +471,14 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "4e75926a05cc24046173e024e8ecb16418c5f83a",
+    "source_sha": "9060b7f77793e5c326ac3c82308c0ccec459cfca",
     "date_kst": "2026-11-26",
-    "run_id": 45669586683,
-    "push_run_id": 45669586683,
-    "job_id": 139400914169,
-    "artifact_id": 15048662599,
+    "run_id": 45672030176,
+    "push_run_id": 45672030176,
+    "job_id": 139409573691,
+    "artifact_id": 15049602749,
     "smoke_pass": 89,
-    "p2_regression_pass": 57,
+    "p2_regression_pass": 59,
     "fail": 0,
     "skip": 0,
     "cancelled": 0,
@@ -529,11 +529,17 @@
       "claim_explorer": "IMPLEMENTED_NATIVE_PASS",
       "revision_filters": "IMPLEMENTED_NATIVE_PASS",
       "node_lookup": "IMPLEMENTED_NATIVE_PASS"
+    },
+    "report_ui_integrity": {
+      "schema_and_hash": "IMPLEMENTED_NATIVE_PASS",
+      "session_recovery": "IMPLEMENTED_NATIVE_PASS",
+      "scope": "PER_REVIEW_SESSION_ONLY",
+      "browser": "NOT_RUN"
     }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "4e75926a05cc24046173e024e8ecb16418c5f83a",
-    "run_id": 45669586683,
+    "source_sha": "9060b7f77793e5c326ac3c82308c0ccec459cfca",
+    "run_id": 45672030176,
     "status": "completed",
     "conclusion": "success"
   }
