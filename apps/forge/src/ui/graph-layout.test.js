@@ -76,3 +76,14 @@ test("dashboard does not turn malformed responses into observed sample counts",(
  for(const x of [{...base,rows:undefined},{...base,project_key:"OTHER"},{...base,rows:[row,row]},{...base,rows:[{...row,journal_state:"SUCCEEDED"}]},{...base,rows:[{...row,expires_at:now}]},{...base,authorization:"APPROVED"},{...base,withheld_count:12},{...base,observed_at:Infinity}]){assert.equal(projectResponse(x).ok,false);assert.equal(projectSampleCounts(x),null)}
  assert.deepEqual(projectSampleCounts({...base,rows:[]}),{total:0,changed_or_invalidated:0,report_receipts:0,comment_observations:0,unconfirmed:0});
 });
+
+import {verifyGeneratedReport} from "./report-integrity.js";
+import {webcrypto,createHash as reportHash} from "node:crypto";
+import {canonical as canonicalReport} from "../core/ir/plan.js";
+test("generated report display requires exact review, request and independently computed content digest",async()=>{
+ const review="a".repeat(64),request="b".repeat(64),report={schema_version:"hae.readonly.report.v1",review_id:review,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",generated_at:Date.parse("2026-11-24T12:00:00Z"),sources:[{uri:"/browse/HTF-2",version:"2026-11-24T11:00:00Z",status:"VERSION_OBSERVED"}],checks:[],missing:[],policy:"cg-readonly-report-v1"};
+ const result={ok:true,request_id:request,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",authorization:"CONSUMED",execution:"NO_JIRA_MUTATION",report,report_digest:reportHash("sha256").update(canonicalReport(report)).digest("hex")};
+ const verified=await verifyGeneratedReport(review,request,result,webcrypto.subtle);assert.equal(verified.report_integrity,"SHA256_MATCH");assert.equal(verified.canonical_report,canonicalReport(report));
+ for(const bad of [{...result,request_id:review},{...result,report:{...report,review_id:request}},{...result,report:{...report,missing:["tampered"]}},{...result,run_state:"RUNNING"},{...result,report_digest:"c".repeat(64)},{...result,ok:false}]){const rejected=await verifyGeneratedReport(review,request,bad,webcrypto.subtle);assert.equal(rejected.ok,false);assert.equal(rejected.report,undefined);assert.equal(rejected.canonical_report,undefined)}
+ assert.equal((await verifyGeneratedReport(review,request,result,null)).code,"REPORT_CLIENT_DIGEST_UNAVAILABLE");assert.equal((await verifyGeneratedReport(review,request,result,{digest:async()=>{throw Error("unavailable")}})).code,"REPORT_CLIENT_DIGEST_UNKNOWN");
+});
