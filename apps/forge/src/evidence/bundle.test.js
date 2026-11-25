@@ -72,7 +72,9 @@ test("release assessment distinguishes missing, stale, contradictory and unknown
  let r=await run();assert.equal(r.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal(r.release_assessment.requirements.find(x=>x.requirement==="DEMO-2").state,"MISSING_REPORTED_TEST");
  linked=["tf-test-DEMO-1-fail"];r=await run();assert.equal(r.release_assessment.status,"CONFLICT_REVIEW");assert.equal(r.release_assessment.conflicts[0].sources.length,2);
  denied=true;r=await run();assert.equal(r.release_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(r.policy.decision,"REVIEW");
- denied=false;linked=["tf-req-DEMO-2","tf-test-DEMO-2-pass"];r=await run();assert.equal(r.release_assessment.status,"HUMAN_RELEASE_REVIEW_REQUIRED");assert.equal(r.release_assessment.authorization,"NONE");
+ denied=false;linked=["tf-req-DEMO-2","tf-test-DEMO-2-pass"];r=await run();assert.equal(r.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal(r.release_assessment.requirements.find(x=>x.requirement==="DEMO-2").ownership_state,"MISSING_REPORTED_OWNER");
+ linked.push("tf-owner-DEMO-2-SEC","tf-owner-OTHER-7-OPS");r=await run();assert.equal(r.release_assessment.status,"MISSING_REPORTED_EVIDENCE");assert.equal(r.release_assessment.unmatched_owners[0].subject,"OTHER-7");assert.deepEqual(r.release_assessment.unmatched_owners[0].source_refs,["/browse/DEMO-2"]);
+ linked.pop();r=await run();assert.equal(r.release_assessment.status,"HUMAN_RELEASE_REVIEW_REQUIRED");assert.deepEqual(r.release_assessment.requirements.find(x=>x.requirement==="DEMO-2").reported_teams,["SEC"]);assert.deepEqual(r.release_assessment.requirements.find(x=>x.requirement==="DEMO-2").ownership_source_refs,["/browse/DEMO-2"]);assert.equal(r.release_assessment.authorization,"NONE");
 });
 
 test("release source version changes and root access failures never imply release readiness",async()=>{
