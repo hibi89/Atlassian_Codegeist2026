@@ -96,10 +96,11 @@ function createReviewStore(store,p,clock,digest){
    const priorProjection=persisted?.projection;
    const counts=stale?(priorProjection&&Array.isArray(priorProjection.affected)&&Array.isArray(priorProjection.unaffected)?{affected_count:priorProjection.affected.length,unaffected_count:priorProjection.unaffected.length}:{affected_count:null,unaffected_count:null}):{affected_count:impact.affected.length,unaffected_count:impact.unaffected.length};
    if(internal==="history")return {ok:true,record:r,current,projection:priorProjection??null,stale};
-   if(internal){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
-   return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
+   if(internal&&internal!=="refresh"){if(stale||!validatePlan(r.plan,now).ok)return bad("REPORT_REVIEW_STALE_OR_EXPIRED");return {ok:true,record:r,current};}
+   const view={ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
+   return internal==="refresh"?{ok:true,view,record:r,current,projection:priorProjection??null,stale}:view;
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
- return {validRecord,save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true),history:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"history")};
+ return {validRecord,save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),refreshWithRecord:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"refresh"),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true),history:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"history")};
 }
 export {createReviewStore};

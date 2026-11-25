@@ -31,10 +31,18 @@ function createReviewService({store,clock,digest,preview,development}){
  async function refresh(context,id){
   const p=principal(context,digest);
   if(!development()||!p)return deny("DEVELOPMENT_STORAGE_ONLY");
-  const review=await createReviewStore(store,p,clock,digest).refresh(id,async (intent,record)=>preview(context,aliases[intent],record));
-  if(!review.ok)return review;
+  const inspected=await createReviewStore(store,p,clock,digest).refreshWithRecord(id,async (intent,record)=>preview(context,aliases[intent],record));
+  if(!inspected.ok)return inspected;
+  const {view:review,...internal}=inspected;
   const run=await createRunLedger(store,p,clock).read(id);
   if(!run.ok||run.events[0].plan_hash!==id||!["POLICY_REVIEW","AWAITING_APPROVAL","READY","RUNNING","RECONCILING","SUCCEEDED"].includes(run.state))return deny("REVIEW_JOURNAL_PARTIAL");
+  // A terminal journal state alone is not a verified report receipt.
+  // Reuse the same scoped, current-access and lineage checks as history.
+  if(run.state==="SUCCEEDED"){
+   const checked=await historicalGraph({store,p,...internal,run,digest,clock});
+   if(!checked.ok)return {...review,comment_journal:{status:"JOURNAL_UNKNOWN"},run_state:"REPORT_OUTCOME_REVIEW_REQUIRED",receipt_status:"UNCONFIRMED",receipt_code:checked.code};
+   return {...review,comment_journal:checked.comment_journal,run_state:"SUCCEEDED",receipt_status:"HISTORICAL_REPORT_RECEIPT_VERIFIED"};
+  }
   const comment_journal=await readCommentJournal(store,p,id,clock);
   return {...review,comment_journal,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
