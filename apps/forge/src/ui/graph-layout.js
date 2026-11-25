@@ -26,3 +26,31 @@ export function inspectNeighbors(nodes,edges,id){
  }
  return {incoming,outgoing};
 }
+
+// Labels are display-only projections of the CURRENT authorized preview.
+// Match check nodes by their exact incoming claim IDs, not order or guessed names.
+export function describePreviewNodes(graph,evidence,review,policy){
+ const nodes=Array.isArray(graph?.nodes)?graph.nodes:[],edges=Array.isArray(graph?.edges)?graph.edges:[];
+ const sources=new Map((evidence?.sources??[]).map(s=>[s.source_ref,s.uri]));
+ const claims=new Map((evidence?.claims??[]).filter(c=>sources.has(c.source_ref)).map(c=>[c.claim_id,c]));
+ const byId=new Map(nodes.map(n=>[n.id,n])),incoming=new Map();
+ for(const e of edges)if(e.relation==="COMPARE_CLAIM"&&byId.get(e.from_dependency)?.kind==="CLAIM"&&byId.get(e.to_dependent)?.kind==="CHECK"){
+  if(!incoming.has(e.to_dependent))incoming.set(e.to_dependent,[]);
+  incoming.get(e.to_dependent).push(byId.get(e.from_dependency).ref);
+ }
+ const key=ids=>JSON.stringify([...ids].sort());
+ const checks=new Map();
+ for(const c of review?.checks??[])if(Array.isArray(c.claim_ids)&&c.claim_ids.length&&new Set(c.claim_ids).size===c.claim_ids.length&&c.claim_ids.every(id=>claims.has(id))){
+  const k=key(c.claim_ids);checks.set(k,checks.has(k)?null:c);
+ }
+ const subject=c=>sources.get(c.subject)??((c.predicate?.startsWith("jira.")||c.predicate==="confluence.page_version")?"Observed source":c.subject);
+ return nodes.map((n,i)=>{
+  let label=n.kind+" "+(i+1),detail="Observed preview only",state="OBSERVED_PREVIEW";
+  if(n.kind==="SOURCE"){label=sources.get(n.ref)??"Source details unavailable";}
+  if(n.kind==="CLAIM"){const c=claims.get(n.ref);if(c){label=c.predicate+" · "+subject(c);detail="Reported value: "+c.value+" · "+c.status;}else{label="Claim details unavailable";state="UNKNOWN_DETAILS";}}
+  if(n.kind==="CHECK"){const ids=incoming.get(n.id),c=ids&&new Set(ids).size===ids.length?checks.get(key(ids)):null;if(c){label=c.predicate+" · "+subject(c);detail=c.status+" · "+(c.reason??"Reason unavailable");state=c.status==="CONFLICT_FOUND"?"CONFLICT_FOUND":"OBSERVED_PREVIEW";}else{label="Check details unavailable";state="UNKNOWN_DETAILS";}}
+  if(n.kind==="POLICY"){label="Policy · "+(policy?.decision??"Not assessed");detail=policy?.reason??"Reason unavailable";state=policy?.decision==="DENY"||policy?.decision==="REVIEW"?"POLICY_REVIEW":"OBSERVED_PREVIEW";}
+  if(n.kind==="PLAN"){label="Typed review plan";detail="Draft only · no execution authorization";}
+  return {id:n.id,kind:n.kind,label,detail,state};
+ });
+}

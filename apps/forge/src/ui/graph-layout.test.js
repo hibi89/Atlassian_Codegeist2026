@@ -37,3 +37,15 @@ test("UI displays only a confirmed valid UTC admission reset",()=>{
  const at=Date.parse("2026-11-26T00:00:00.000Z"),r={ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",retry_at:at};
  assert.equal(budgetRetryAt(r),at);for(const bad of [null,{...r,ok:true},{...r,code:"BACKEND_UNAVAILABLE"},{...r,retry_at:at+1},{...r,retry_at:0},{...r,retry_at:String(at)},{...r,retry_at:Infinity}])assert.equal(budgetRetryAt(bad),null);
 });
+
+import {describePreviewNodes} from "./graph-layout.js";
+test("current proof graph shows exact claim/check provenance independent of node ordering",()=>{
+ const nodes=[{id:"k",kind:"CHECK",ref:"hashed-check"},{id:"c2",kind:"CLAIM",ref:"claim2"},{id:"s",kind:"SOURCE",ref:"s1"},{id:"c1",kind:"CLAIM",ref:"claim1"},{id:"p",kind:"POLICY",ref:"plan"}],edges=[{from_dependency:"c1",to_dependent:"k",relation:"COMPARE_CLAIM"},{from_dependency:"c2",to_dependent:"k",relation:"COMPARE_CLAIM"}];
+ const evidence={sources:[{source_ref:"s1",uri:"/browse/DEMO-1"},{source_ref:"s2",uri:"/browse/DEMO-2"}],claims:[{claim_id:"claim1",source_ref:"s1",subject:"REQ-1",predicate:"test.reported_result",value:"pass",status:"UNVERIFIED_CLAIM"},{claim_id:"claim2",source_ref:"s2",subject:"REQ-1",predicate:"test.reported_result",value:"fail",status:"UNVERIFIED_CLAIM"}]};
+ const review={checks:[{claim_ids:["claim2","claim1"],subject:"REQ-1",predicate:"test.reported_result",status:"CONFLICT_FOUND",reason:"COMPARABLE_VALUES_DIFFER"}]},policy={decision:"REVIEW",reason:"CLAIM_CONFLICT"};
+ const view=describePreviewNodes({nodes,edges},evidence,review,policy),byId=id=>view.find(n=>n.id===id);
+ assert.equal(byId("k").state,"CONFLICT_FOUND");assert.equal(byId("k").label,"test.reported_result · REQ-1");assert.match(byId("c2").detail,/fail/);assert.equal(byId("s").label,"/browse/DEMO-1");assert.equal(byId("p").state,"POLICY_REVIEW");
+ const denied=describePreviewNodes({nodes,edges},{...evidence,sources:evidence.sources.slice(0,1)},review,policy);assert.equal(denied.find(n=>n.id==="c2").state,"UNKNOWN_DETAILS");assert.equal(denied.find(n=>n.id==="k").state,"UNKNOWN_DETAILS");assert.equal(JSON.stringify(denied).includes("Reported value: fail"),false);
+ assert.equal(describePreviewNodes({nodes,edges:edges.slice(0,1)},evidence,review,policy)[0].state,"UNKNOWN_DETAILS");
+ assert.equal(describePreviewNodes({nodes,edges},evidence,{checks:[...review.checks,...review.checks]},policy)[0].state,"UNKNOWN_DETAILS");
+});
