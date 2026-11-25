@@ -469,5 +469,35 @@
     ],
     "decision_equal_pairs": 60,
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
+  },
+  "latest_candidate_ci": {
+    "source_sha": "3cb6182b8a3d0fe0dd92726974c7e26457e9694b",
+    "date_kst": "2026-11-26",
+    "run_id": 45643300086,
+    "push_run_id": 45643286209,
+    "job_id": 139307429105,
+    "artifact_id": 15034894277,
+    "smoke_pass": 75,
+    "p2_regression_pass": 44,
+    "fail": 0,
+    "skip": 0,
+    "cancelled": 0,
+    "locked_install": "PASS",
+    "syntax": "PASS",
+    "dependency_inventory": "PASS_NOT_LEGAL_REVIEW",
+    "ui_build": "PASS",
+    "ui_output": "PASS",
+    "live_forge": "NOT_RUN",
+    "independent_review": "NOT_RUN",
+    "comment_storage_peak": {
+      "reads": 21,
+      "writes": 7
+    },
+    "report_storage_peak": {
+      "reads": 46,
+      "writes": 9
+    },
+    "prior_live_evidence_source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+    "gate_counts_unchanged": true
   }
 }
