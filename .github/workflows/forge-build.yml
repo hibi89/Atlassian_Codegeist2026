@@ -58,6 +58,8 @@ jobs:
           test -s src/ui/project-dist/app.css
           sha256sum src/ui/project-dist/index.html src/ui/project-dist/app.js src/ui/project-dist/app.css
           sha256sum package-lock.json src/ui/dist/index.html src/ui/dist/app.js src/ui/dist/app.css
+      - name: Exact source local preflight artifact contract
+        run: node scripts/live-preflight.mjs --expected-sha "$(git rev-parse HEAD)" --outputs-only
       - name: Lockfile and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
