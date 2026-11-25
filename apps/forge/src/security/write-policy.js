@@ -21,16 +21,30 @@ export function validateCommentPlan(p,plan,now,{allowExpired=false}={}){
  if(!p||!hex(p.tenant)||!hex(p.actor)||p.target!==DEMO_ISSUE||!exactKeys(plan,fields)||plan.schema_version!=="hae.forge.comment-plan.v1"||plan.tenant!==p.tenant||plan.actor!==p.actor||plan.target!==p.target||!["change-review","incident-coordinate"].includes(plan.intent)||plan.capability_lock!==WRITE_CAPABILITY||plan.policy_version!==WRITE_POLICY||plan.operation!=="jira.issue.comment.create"||plan.scope!=="write:jira-work"||![plan.review_id,plan.nonce,plan.evidence_bundle_hash,plan.dependency_digest,plan.policy_node_id].every(hex)||!Number.isSafeInteger(now)||!Number.isSafeInteger(plan.created_at)||!Number.isSafeInteger(plan.expires_at)||plan.created_at>now||plan.expires_at<=plan.created_at||plan.expires_at-plan.created_at>120000||(!allowExpired&&plan.expires_at<=now)||!validateArgs(plan.operation,plan.typed_args,p.target)||plan.typed_args.comment!==demoComment(p.target,plan.evidence_bundle_hash,plan.nonce))return denyWrite("WRITE_PLAN_INVALID_OR_EXPIRED");
  return {ok:true};
 }
+// Shared evidence-only preflight; not a grant and not a replacement for
+// live permissions, immutable plan, approval, quota or dispatch interlocks.
+export function reportedWriteEvidence(intent,review){
+ const checks=review?.checks;
+ if(!Array.isArray(checks))return {ok:false,code:"WRITE_CRITICAL_EVIDENCE_UNKNOWN",missing_predicates:[]};
+ const required=["requirement.id","test.reported_result","policy.reported_version",...(intent==="incident-coordinate"?["ownership.reported_team"]:[])];
+ const missing=required.filter(predicate=>!checks.some(c=>c.predicate===predicate&&c.status==="UNVERIFIED_CLAIM"&&Array.isArray(c.values)&&c.values.length===1));
+ if(missing.length)return {ok:false,code:"WRITE_CRITICAL_EVIDENCE_MISSING",missing_predicates:missing};
+ const reqs=new Set(checks.filter(c=>c.predicate==="requirement.id").map(c=>c.subject));
+ if(!checks.some(c=>c.predicate==="test.reported_result"&&reqs.has(c.subject)))return {ok:false,code:"WRITE_REQUIREMENT_TEST_LINK_MISSING",missing_predicates:[]};
+ return {ok:true,code:"REPORTED_EVIDENCE_PRESENT",missing_predicates:[]};
+}
+export function previewCommentReadiness(target,intent,policy,graph,review){
+ const result=(status,code,missing_predicates=[])=>({status,code,missing_predicates,authorization:"NONE",execution:"DISABLED"});
+ if(target!==DEMO_ISSUE||!["change-review","incident-coordinate"].includes(intent))return result("NOT_APPLICABLE","COMMENT_TARGET_OR_INTENT_UNSUPPORTED");
+ if(policy?.decision!=="ALLOW_PREVIEW"||graph?.ok!==true||review?.status!=="HUMAN_REVIEW_REQUIRED")return result("BLOCKED","WRITE_DEPENDENCY_OR_POLICY_DENIED");
+ const evidence=reportedWriteEvidence(intent,review);
+ return evidence.ok?result("EVIDENCE_PREREQUISITES_PRESENT",evidence.code):result("BLOCKED",evidence.code,evidence.missing_predicates);
+}
+
 export function writeBinding(p,plan,record,current,id,digest,now){
  if(!validateCommentPlan(p,plan,now).ok||record?.id!==plan.review_id||record.intent!==plan.intent||record.evidence?.bundle_hash!==plan.evidence_bundle_hash||record.graph?.graph_revision!==plan.dependency_digest||!record.graph.nodes.some(n=>n.kind==="POLICY"&&n.id===plan.policy_node_id&&n.ref===record.id)||current?.policy?.decision!=="ALLOW_PREVIEW"||current?.freshness?.status!=="CURRENT_OBSERVED"||current?.claim_review?.status==="CONFLICT_FOUND"||!["HUMAN_REVIEW_REQUIRED","CONFLICT_FOUND"].includes(current?.claim_review?.status)||!Array.isArray(current.evidence?.sources)||!current.evidence.sources.length||current.evidence.coverage!=="BOUNDED_READ_COMPLETE")return denyWrite("WRITE_DEPENDENCY_OR_POLICY_DENIED");
- // Required reported evidence must be present and internally consistent.
- // Reported PASS labels are not independent proof; annotation never certifies.
- const checks=current.claim_review.checks;
- if(!Array.isArray(checks))return denyWrite("WRITE_CRITICAL_EVIDENCE_UNKNOWN");
- const required=["requirement.id","test.reported_result","policy.reported_version",...(plan.intent==="incident-coordinate"?["ownership.reported_team"]:[])];
- if(required.some(predicate=>!checks.some(c=>c.predicate===predicate&&c.status==="UNVERIFIED_CLAIM"&&Array.isArray(c.values)&&c.values.length===1)))return denyWrite("WRITE_CRITICAL_EVIDENCE_MISSING");
- const reqs=new Set(checks.filter(c=>c.predicate==="requirement.id").map(c=>c.subject));
- if(!checks.some(c=>c.predicate==="test.reported_result"&&reqs.has(c.subject)))return denyWrite("WRITE_REQUIREMENT_TEST_LINK_MISSING");
+ const evidenceGate=reportedWriteEvidence(plan.intent,current.claim_review);
+ if(!evidenceGate.ok)return denyWrite(evidenceGate.code);
  const freshUntil=Math.min(...current.evidence.sources.map(s=>Date.parse(s.freshness_deadline)));
  if(!Number.isFinite(freshUntil)||freshUntil<=now||plan.expires_at>freshUntil)return denyWrite("WRITE_EVIDENCE_EXPIRED");
  const plan_hash=digest(canonical(plan));

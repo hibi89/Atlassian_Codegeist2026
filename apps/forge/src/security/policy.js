@@ -1,5 +1,6 @@
 import { assessRelease } from "../evidence/release-assessment.js";
 import { assessIncident } from "../evidence/incident-assessment.js";
+import { previewCommentReadiness } from "./write-policy.js";
 import { selectiveChecks } from "../lineage/selective-checks.js";
 import { analyzeImpact } from "../lineage/impact.js";
 import { buildObservedGraph } from "../lineage/observed-graph.js";
@@ -19,7 +20,7 @@ function evaluatePolicy(p,planResult,evidence,freshness,now,checkPlan,digest){
   if(!Array.isArray(evidence.sources)||!evidence.sources.length||evidence.sources.some(s=>s.installation_ref!==p.tenant))return deny("EVIDENCE_SCOPE_MISMATCH");
   if(evidence.coverage!=="BOUNDED_READ_COMPLETE"||evidence.sources.some(s=>s.status!=="VERSION_OBSERVED")||freshness?.status!=="CURRENT_OBSERVED")return review("EVIDENCE_FRESHNESS_OR_COVERAGE_UNKNOWN");
   // Only preview, never a capability grant. Real write/graph/approval gates not present.
-  return {decision:"ALLOW_PREVIEW",reason:"SCOPED_READ_ONLY_DRAFT",policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED",graph_status:"NOT_IMPLEMENTED"};
+  return {decision:"ALLOW_PREVIEW",reason:"SCOPED_READ_ONLY_DRAFT",policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED",graph_status:"PENDING_GRAPH_OBSERVATION"};
 }
 
 async function guardedPreview(context,input,services,savedRecord){
@@ -28,7 +29,7 @@ async function guardedPreview(context,input,services,savedRecord){
   const draft=services.preview(context,input,services.clock());
   if(!draft.ok)return draft;
   const observed=await refreshEvidence(context,services.adapter,services.digest,services.clock);
-  if(!observed.ok)return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(null,null,null)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(null,null,null)}:{}),policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},evidence:null};
+  if(!observed.ok)return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(null,null,null)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(null,null,null)}:{}),policy:{decision:"REVIEW",reason:observed.code,policy_version:"cg-policy-v1",authorization:"NONE",execution:"DISABLED"},comment_readiness:previewCommentReadiness(p.target,draft.plan.intent,null,null,null),evidence:null};
   const reuse=savedRecord?selectiveChecks(p,savedRecord,observed.evidence,services.digest,services.clock()):undefined;
   const claim_review=reviewClaims(observed.evidence,reuse);
   let policy=evaluatePolicy(p,draft,observed.evidence,observed.freshness,services.clock(),services.checkPlan,services.planDigest);
@@ -52,7 +53,7 @@ async function guardedPreview(context,input,services,savedRecord){
     freshness[k]=refs.filter(ref=>visibleRefs.has(ref));
     freshness[k+"_count"]=refs.length;
   }
-  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary};
+  return {...draft,...(draft.plan.intent==="release-review"?{release_assessment:assessRelease(observed.evidence,claim_review,observed.freshness)}:draft.plan.intent==="incident-coordinate"?{incident_assessment:assessIncident(observed.evidence,claim_review,observed.freshness)}:{}),evidence:observed.evidence,freshness,claim_review,policy:{...policy,graph_status:visibleGraph.ok?"OBSERVED_PREVIEW_ONLY":"UNKNOWN"},graph:visibleGraph,impact_summary,comment_readiness:previewCommentReadiness(p.target,draft.plan.intent,policy,visibleGraph,claim_review)};
 }
 
 export { evaluatePolicy, guardedPreview };

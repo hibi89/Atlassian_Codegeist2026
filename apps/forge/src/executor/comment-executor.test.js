@@ -249,3 +249,15 @@ test("project dashboard bounded sample verifies real comment receipt chain witho
  const size=f.map.size;let result=await loadProjectDashboard(context,input);assert.equal(result.ok,true);assert.equal(result.rows.length,3);assert.equal(result.scan_truncated,true);assert.equal(result.rows_truncated,true);assert.equal(result.rows[0].review_id,prepared.review_id);assert.equal(result.rows[0].comment_state,"HISTORICAL_OBSERVED_SUCCESS");assert.equal(result.rows[0].journal_state,"POLICY_REVIEW");assert.ok(pointReads<=60);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
  const receipt=[...f.map.values()].find(v=>v.schema_version==="hae.comment.receipt.v1");receipt.observation_digest="bad";pointReads=0;result=await loadProjectDashboard(context,input);assert.equal(result.rows[0].comment_state,"NOT_ESTABLISHED");assert.ok(pointReads<=60);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
 });
+
+test("preview explains the same reported evidence prerequisites enforced by actual comment preparation",async()=>{
+ const cases=[
+  [fixture([]),"review change","WRITE_CRITICAL_EVIDENCE_MISSING"],
+  [fixture(["tf-req-DEMO-1","tf-test-DEMO-2-pass","tf-policy-DEMO-v1"]),"review change","WRITE_REQUIREMENT_TEST_LINK_MISSING"],
+  [fixture(["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1"]),"coordinate incident","WRITE_CRITICAL_EVIDENCE_MISSING"]
+ ];
+ for(const [f,intent,code] of cases){const preview=await f.preview(f.ctx,intent);assert.equal(preview.comment_readiness.status,"BLOCKED");assert.equal(preview.comment_readiness.code,code);assert.equal(preview.comment_readiness.authorization,"NONE");assert.equal((await f.request(intent)).code,code);assert.equal(f.posts(),0)}
+ const f=fixture(),good=await f.preview(f.ctx,"review change");assert.equal(good.comment_readiness.status,"EVIDENCE_PREREQUISITES_PRESENT");assert.equal(good.comment_readiness.execution,"DISABLED");assert.equal((await f.request()).ok,true);assert.equal(f.posts(),0);
+ assert.equal((await f.preview(f.ctx,"review release")).comment_readiness.status,"NOT_APPLICABLE");
+ const conflict=fixture(undefined,["tf-owner-DEMO-1-SEC"]);assert.equal((await conflict.preview(conflict.ctx,"coordinate incident")).comment_readiness.code,"WRITE_DEPENDENCY_OR_POLICY_DENIED");assert.equal(conflict.posts(),0);
+});
