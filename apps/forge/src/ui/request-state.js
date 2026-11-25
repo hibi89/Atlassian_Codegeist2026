@@ -81,10 +81,12 @@ export function draftRepairHint(result){
  return result?.ok===false&&["REVIEW_JOURNAL_PARTIAL","REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED","REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN","REVIEW_DRAFT_REPAIR_STALE","REVIEW_DRAFT_REPAIR_DENIED"].includes(result.code)&&validRequestId(result.repair_review_id)?result.repair_review_id:"";
 }
 
-// Session-only report recovery guard. Unknown outcomes cannot be regenerated for
-// the same review until an explicitly recovered verified receipt is observed.
-export function unresolvedReport(previous,operation,reviewId,result){
- if(operation==="generateReadOnlyReport"&&validRequestId(reviewId)&&result?.report_integrity!=="SHA256_MATCH")return previous||reviewId;
- if(operation==="recoverSavedReport"&&previous===reviewId&&result?.ok===true&&result.review_id===reviewId&&result.status==="HISTORICAL_REPORT_RECEIPT_RECOVERED"&&result.run_state==="SUCCEEDED"&&result.authorization==="NONE"&&result.execution==="NO_JIRA_MUTATION"&&validRequestId(result.report_digest))return "";
+// Session-only, per-review recovery guard; never interpret a new review as
+// resolving an old outcome. Known pre-consumption denials are not new ambiguity.
+const reportPreConsumptionDenials=new Set(["REPORT_CONTEXT_DENIED","REPORT_REVIEW_STALE_OR_EXPIRED","REPORT_CLAIM_PROVENANCE_UNKNOWN","APPROVAL_CONTEXT_DENIED","APPROVAL_STALE_OR_MISSING","APPROVAL_EXPIRED","DEVELOPMENT_DAILY_BUDGET_EXHAUSTED","DEVELOPMENT_BUDGET_DAY_CHANGED","SYNTHETIC_DEMO_SCOPE_REQUIRED"]);
+export function unresolvedReports(previous,operation,reviewId,result){
+ if(!validRequestId(reviewId))return previous;
+ if(operation==="generateReadOnlyReport"&&result?.report_integrity!=="SHA256_MATCH"&&!reportPreConsumptionDenials.has(result?.code))return previous.includes(reviewId)?previous:[...previous,reviewId];
+ if(operation==="recoverSavedReport"&&result?.ok===true&&result.review_id===reviewId&&result.status==="HISTORICAL_REPORT_RECEIPT_RECOVERED"&&result.run_state==="SUCCEEDED"&&result.authorization==="NONE"&&result.execution==="NO_JIRA_MUTATION"&&validRequestId(result.report_digest))return previous.filter(id=>id!==reviewId);
  return previous;
 }

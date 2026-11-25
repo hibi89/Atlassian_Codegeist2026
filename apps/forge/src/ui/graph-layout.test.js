@@ -159,7 +159,7 @@ test("graph node lookup retains original topology and supports large recorded gr
 });
 
 import {reportContentShape} from "./report-integrity.js";
-import {unresolvedReport} from "./request-state.js";
+import {unresolvedReports} from "./request-state.js";
 test("matching report hash is insufficient when report citations or rendered schema are malformed",async()=>{
  const review="a".repeat(64),request="b".repeat(64),uri="/browse/HTF-2",report={schema_version:"hae.readonly.report.v1",review_id:review,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",generated_at:Date.parse("2026-11-24T12:00:00Z"),sources:[{uri,version:"2026-11-24T11:00:00Z",status:"VERSION_OBSERVED"}],checks:[{subject:uri,predicate:"jira.status",values:["Open"],status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD",source_uris:[uri]}],missing:[],policy:"cg-readonly-report-v1"};
  assert.equal(reportContentShape(report),true);
@@ -168,7 +168,13 @@ test("matching report hash is insufficient when report citations or rendered sch
   assert.equal((await verifyGeneratedReport(review,request,result,webcrypto.subtle)).code,"REPORT_CONTENT_SCHEMA_UNCONFIRMED");
  }
 });
-test("session report recovery guard retains exact review across unrelated responses",()=>{
+test("session report recovery guard is per review and retains unrelated ambiguous references",()=>{
  const a="a".repeat(64),b="b".repeat(64),receipt={ok:true,review_id:a,status:"HISTORICAL_REPORT_RECEIPT_RECOVERED",run_state:"SUCCEEDED",authorization:"NONE",execution:"NO_JIRA_MUTATION",report_digest:b};
- assert.equal(unresolvedReport("","generateReadOnlyReport",a,null),a);assert.equal(unresolvedReport(a,"recoverSavedReport",b,receipt),a);assert.equal(unresolvedReport(a,"recoverSavedReport",a,{...receipt,report_digest:"bad"}),a);assert.equal(unresolvedReport(a,"recoverSavedReport",a,receipt),"");assert.equal(unresolvedReport("","generateReadOnlyReport",a,{report_integrity:"SHA256_MATCH"}),"");
+ assert.deepEqual(unresolvedReports([],"generateReadOnlyReport",a,null),[a]);
+ assert.deepEqual(unresolvedReports([a],"generateReadOnlyReport",b,{code:"REPORT_REVIEW_STALE_OR_EXPIRED"}),[a]);
+ assert.deepEqual(unresolvedReports([a],"generateReadOnlyReport",b,null),[a,b]);
+ assert.deepEqual(unresolvedReports([a,b],"recoverSavedReport",b,receipt),[a,b]);
+ assert.deepEqual(unresolvedReports([a,b],"recoverSavedReport",a,{...receipt,report_digest:"bad"}),[a,b]);
+ assert.deepEqual(unresolvedReports([a,b],"recoverSavedReport",a,receipt),[b]);
+ assert.deepEqual(unresolvedReports([],"generateReadOnlyReport",a,{report_integrity:"SHA256_MATCH"}),[]);
 });
