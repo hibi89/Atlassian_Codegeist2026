@@ -2,7 +2,7 @@ import apiModule,{route,getAppContext} from "@forge/api";
 import kvsModule,{WhereConditions} from "@forge/kvs";
 import {resolveForgeApi} from "../forge-interop.js";
 import {digest,readCurrentEvidence} from "../evidence/forge-evidence.js";
-import {getKvs} from "../state/forge-review.js";
+import {getKvs,createDevelopmentStore} from "../state/forge-review.js";
 import {reserveDailySlot} from "../state/daily-budget.js";
 import {loadProjectDashboard} from "./project-dashboard.js";
 const api=resolveForgeApi(apiModule);
@@ -15,9 +15,11 @@ async function readProjectIssue(){
 }
 export async function projectDashboard(context){
  let development=false;try{development=String(getAppContext().environmentType).toUpperCase()==="DEVELOPMENT"}catch{}
+ let store;
  return loadProjectDashboard(context,{development,cloudId:process.env.TRUSTFLOW_DEMO_CLOUD_ID,digest,clock:Date.now,
   admit:()=>reserveDailySlot(getKvs(kvsModule),Date.now(),24,Date.now),
   readProjectIssue,readEvidence:readCurrentEvidence,
+  readStored:key=>(store??=createDevelopmentStore(getKvs(kvsModule))).get(key),
   queryReviews:(prefix,limit)=>getKvs(kvsModule).query({metadataFields:["EXPIRE_TIME"]}).where("key",WhereConditions.beginsWith(prefix)).limit(limit).getMany()
  });
 }

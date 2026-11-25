@@ -24,6 +24,11 @@ function validProjection(g,projection){
  const all=[...projection.affected,...projection.unaffected,...projection.preserved_receipts],nodes=new Map(g.nodes.map(n=>[n.id,n.kind]));
  return all.length===nodes.size&&new Set(all).size===all.length&&all.every(id=>nodes.has(id))&&projection.preserved_receipts.every(id=>nodes.get(id)==="RECEIPT")&&[...projection.affected,...projection.unaffected].every(id=>nodes.get(id)!=="RECEIPT");
 }
+export function validInvalidationMarker(r,id,m,now,digest){
+ if(!m||m.schema_version!=="hae.review.invalidation.v2"||m.snapshot_digest!==r.record_digest||m.review_id!==id||!Number.isSafeInteger(m.at)||m.at<r.created_at||m.at>now||!validProjection(r.graph,m.projection))return false;
+ const {marker_digest,...body}=m;return hex(marker_digest)&&digest(canonical(body))===marker_digest;
+}
+
 function createReviewStore(store,p,clock,digest){
  const key=(id,kind)=>"cg:review:"+p.tenant+":"+p.actor+":"+id+":"+kind;
  function validRecord(r,id){
@@ -52,10 +57,7 @@ function createReviewStore(store,p,clock,digest){
   try{
    const r=await store.get(key(id,"snapshot"));
    if(!validRecord(r,id))return bad("REVIEW_UNAVAILABLE");
-   function validMarker(m){
-    if(!m||m.schema_version!=="hae.review.invalidation.v2"||m.snapshot_digest!==r.record_digest||m.review_id!==id||!Number.isSafeInteger(m.at)||m.at<r.created_at||m.at>clock()||!validProjection(r.graph,m.projection))return false;
-    const {marker_digest,...body}=m;return hex(marker_digest)&&digest(canonical(body))===marker_digest;
-   }
+   const validMarker=m=>validInvalidationMarker(r,id,m,clock(),digest);
    // Current source access is required for returning any historical status.
    // Unknown access or topology changes permanently invalidate this snapshot.
    async function invalidate(reason,projection=null){
