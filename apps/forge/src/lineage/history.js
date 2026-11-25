@@ -29,7 +29,7 @@ export async function historicalGraph({store,p,record,current,projection,stale,r
    for(const e of lineage.edges){if(!seen.has(e.from_dependency)||!seen.has(e.to_dependent)||typeof e.relation!=="string"||e.relation.length>60)return false;edges.push({...e})}
    return true;
   }
-  const journal=await readCommentJournal(store,p,record.id);
+  const journal=await readCommentJournal(store,p,record.id,clock);
   if(journal.status==="JOURNAL_UNKNOWN")return fail("HISTORY_JOURNAL_UNKNOWN");
   if(journal.status==="HISTORICAL_OBSERVED_SUCCESS"){
    const id=journal.request_id;

@@ -35,7 +35,7 @@ function createReviewService({store,clock,digest,preview,development}){
   if(!review.ok)return review;
   const run=await createRunLedger(store,p,clock).read(id);
   if(!run.ok||run.events[0].plan_hash!==id||!["POLICY_REVIEW","AWAITING_APPROVAL","READY","RUNNING","RECONCILING","SUCCEEDED"].includes(run.state))return deny("REVIEW_JOURNAL_PARTIAL");
-  const comment_journal=await readCommentJournal(store,p,id);
+  const comment_journal=await readCommentJournal(store,p,id,clock);
   return {...review,comment_journal,run_state:["RUNNING","RECONCILING","AWAITING_APPROVAL","READY"].includes(run.state)?"REPORT_OUTCOME_REVIEW_REQUIRED":run.state};
  }
  async function history(context,id){

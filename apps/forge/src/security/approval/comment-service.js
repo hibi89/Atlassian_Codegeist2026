@@ -48,7 +48,7 @@ export function createCommentService({store,clock,digest,preview,development,non
   try{
    if(!await permissions(p))return denyWrite("WRITE_PERMISSION_DENIED");
    const m=await material(p,context,reviewId);if(!m.ok)return m;
-   const journal=await readCommentJournal(store,p,reviewId);
+   const journal=await readCommentJournal(store,p,reviewId,clock);
    if(journal.status!=="NO_COMMENT_ATTEMPT")return {...denyWrite("WRITE_REVIEW_ALREADY_ATTEMPTED_OR_UNKNOWN"),status:journal.status,...(hex(journal.request_id)?{request_id:journal.request_id}:{})};
    const plan=makeCommentPlan(p,m.record,nonce(),clock(),Math.min(...m.current.evidence.sources.map(s=>Date.parse(s.freshness_deadline))));if(!plan)return denyWrite("WRITE_PLAN_UNAVAILABLE");
    const id=digest(canonical(plan)),checked=writeBinding(p,plan,m.record,m.current,id,digest,clock());if(!checked.ok)return checked;

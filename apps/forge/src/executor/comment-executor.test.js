@@ -223,3 +223,17 @@ test("P2 guarded comment and recovery fit the production storage adapter budget 
  await call((r,s)=>s.approve(f.ctx,id,id));const observed=await call((r,s)=>s.execute(f.ctx,id));assert.equal(observed.status,"OBSERVED_SUCCESS");await call((r,s)=>s.reconcile(f.ctx,id));await call(r=>r.history(f.ctx,reviewId));await call(r=>r.refresh(f.ctx,reviewId));
  assert.equal(f.posts(),1);assert.ok(maxReads<=64);assert.ok(maxWrites<=12);console.log("CG_P2_COMMENT_STORAGE_PEAK:"+JSON.stringify({reads:maxReads,writes:maxWrites}));
 });
+
+test("P2 receipt chronology and conflicting remote identity cannot imply historical success or no effect",async()=>{
+ const f=fixture(),q=await f.request();await f.writes.approve(f.ctx,q.request_id,q.request_id);assert.equal((await f.writes.execute(f.ctx,q.request_id)).ok,true);
+ const p=principal(f.ctx,digest),receipt=[...f.map.values()].find(v=>v.schema_version==="hae.comment.receipt.v1"),original=structuredClone(receipt);
+ for(const patch of [{at:original.at-1},{observed_at:original.at-1},{observed_at:f.deps.clock()+1},{state:"BLOCKED_BEFORE_DISPATCH"},{state:"DEFINITE_REJECTION"}]){
+  Object.assign(receipt,original,patch);
+  assert.equal((await readCommentJournal(f.store,p,q.review_id,f.deps.clock)).status,"JOURNAL_UNKNOWN");
+  assert.equal((await f.reviews.history(f.ctx,q.review_id)).ok,false);
+  assert.equal((await f.writes.reconcile(f.ctx,q.request_id)).status,"UNKNOWN_OUTCOME_REVIEW");
+ }
+ Object.assign(receipt,original);
+ assert.equal((await readCommentJournal(f.store,p,q.review_id,f.deps.clock)).status,"HISTORICAL_OBSERVED_SUCCESS");
+ assert.equal((await f.writes.reconcile(f.ctx,q.request_id)).ok,true);assert.equal(f.posts(),1);
+});
