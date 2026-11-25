@@ -113,3 +113,16 @@ test("project worklist filters use exactly the same observed sample as indicator
  for(const [filter,count] of [["all",counts.total],["changed",counts.changed_or_invalidated],["reports",counts.report_receipts],["comments",counts.comment_observations],["unresolved",counts.unconfirmed]])assert.equal(projectSampleRows(base,filter).length,count);
  assert.deepEqual(projectSampleRows(base,"changed").map(x=>x.review_id),[row.review_id]);assert.equal(projectSampleRows(base,"constructor"),null);assert.equal(projectSampleRows({...base,rows:undefined},"all"),null);assert.equal(JSON.stringify(base),before);
 });
+
+import {workbenchGuide} from "./overview-state.js";
+test("workbench navigation prioritizes unresolved outcomes and stale reviews without claiming completion",()=>{
+ const id="a".repeat(64),request="b".repeat(64),context={ok:true,key:"HTF-2"},savedStatus={ok:true,review_id:id,run_state:"POLICY_REVIEW"},base={context,reviewId:id,savedStatus};
+ assert.equal(workbenchGuide({context}).next,"issue");assert.equal(workbenchGuide({context,reviewId:id}).next,"saved");assert.equal(workbenchGuide(base).next,"report");
+ assert.equal(workbenchGuide({...base,savedStatus:{...savedStatus,persisted_invalidation:true}}).next,"saved");
+ assert.equal(workbenchGuide({...base,savedStatus:{...savedStatus,receipt_status:"UNCONFIRMED"}}).next,"history");
+ assert.equal(workbenchGuide({...base,unresolvedId:request,savedStatus:{...savedStatus,persisted_invalidation:true}}).next,"comment");
+ const reportRequest={review_id:id,request_id:request},reportState={ok:true,request_id:request,status:"READ_ONLY_APPROVED"};
+ assert.equal(workbenchGuide({...base,reportRequest,reportState,reportDeadline:{ready:true}}).steps.find(s=>s.key==="report").label,"Approved · not executed");
+ assert.equal(workbenchGuide({...base,reportRequest:{...reportRequest,review_id:"c".repeat(64)},reportState}).steps.find(s=>s.key==="report").label,"Not prepared");
+ assert.equal(workbenchGuide({context:{key:"OTHER-1"}}).steps.some(s=>s.key==="comment"),false);
+});

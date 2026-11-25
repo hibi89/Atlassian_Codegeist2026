@@ -5,7 +5,7 @@ import "./styles.css";
 import {verifyGeneratedReport} from "./report-integrity.js";
 import {GraphExplorer} from "./GraphExplorer";
 import {describePreviewNodes} from "./graph-layout.js";
-import {overviewState,countBreakdown,requestMatches,requestStage,evidenceDistribution} from "./overview-state.js";
+import {overviewState,countBreakdown,requestMatches,requestStage,evidenceDistribution,workbenchGuide} from "./overview-state.js";
 import {createRequestGate,unresolvedCommentId,commentResponse,requestDeadline,restoreUnresolvedComment,savedReviewResponse,environmentReadiness,budgetRetryAt,preparedRequest,savedLookupResponse,draftRepairHint} from "./request-state.js";
 type Draft = { title: string; steps: string[]; status: string; authorization: string };
 type Issue = { key: string; summary: string; status: string; issueType: string; updatedAt: string | null };
@@ -116,6 +116,9 @@ function Overview({state}:{state:ReturnType<typeof overviewState>}){
   <div className="overview-tile"><span className="metric-label">Policy</span><StatusChip tone={state.policyTone}>{state.policy}</StatusChip><span className="metric-detail">Server decides authority</span></div>
   <div className="overview-tile"><span className="metric-label">Observed outcome</span><StatusChip tone={state.outcome.tone}>{state.outcome.label}</StatusChip><span className="metric-detail">Current session only</span></div>
  </div>;
+}
+function WorkbenchGuide({guide}:{guide:ReturnType<typeof workbenchGuide>}){
+ return <section className="journey-guide" aria-label="Workspace navigation and observed state"><div className="section-head"><div><div className="workspace-kicker">WORKFLOW NAVIGATOR</div><h2>Review workspace</h2></div><span className="metric-detail">Independent observations · not a completion score</span></div><nav aria-label="Observed workflow stages" className="journey-rail">{guide.steps.map((step,i)=><a key={step.key} href={step.href} className={guide.next===step.key?"journey-step suggested":"journey-step"}><span className="journey-index">{String(i+1).padStart(2,"0")}</span><span className="journey-copy"><strong>{step.title}</strong><small>{step.label}</small></span><span className={"journey-dot tone-"+step.tone} aria-hidden="true"/></a>)}</nav><p className="journey-hint"><strong>Suggested workspace:</strong> {guide.reason} Navigation only. Server checks remain authoritative.</p></section>;
 }
 function App(){
   const [context,setContext]=useState<Result|null>(null);
@@ -230,8 +233,9 @@ function App(){
     finally{if(gate.current.end(token))setBusy(false)}
   }
   const overview=overviewState({context,issue,preview,savedStatus,commentState,reportState,unresolvedId,busy});
+  const guide=workbenchGuide({context,issue,preview,savedStatus,reviewId,reportRequest,reportState,reportDeadline,commentRequest,commentState,commentDeadline,unresolvedId,safety});
   return <main className="shell" aria-busy={busy}><header className="hero"><div className="hero-top"><div className="brand"><span className="brand-mark" aria-hidden="true"><svg viewBox="0 0 40 40" width="30" height="30"><path d="M20 4 34 11v10c0 8-7 13-14 16C13 34 6 29 6 21V11z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="m12 20 5 5 11-12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/></svg></span><div><div className="eyebrow">HAE / LA · TRUSTFLOW</div><h1>Decision assurance</h1></div></div><span className="environment-tag">{safety?.ok?safety.environment:"Environment unknown"}</span></div><p>Know why. Approve what. Revalidate what changes.</p><div className="hero-flow" aria-label="Workflow concept"><span>01 Evidence</span><span>02 Policy</span><span>03 Approval</span><span>04 Read-back</span></div></header>
-    {context?.ok&&<><Overview state={overview}/><nav className="section-nav" aria-label="Review workspace"><a href="#issue-heading">Issue</a><a href="#review-workspace">Review</a><a href="#saved-workspace">Saved review</a><a href="#lineage-workspace">ProofGraph</a><a href="#report-workspace">Report</a>{context.key==="HTF-2"&&<a href="#comment-workspace">Execution</a>}<a href="#settings-workspace">Settings</a></nav></>}
+    {context?.ok&&<><Overview state={overview}/><WorkbenchGuide guide={guide}/><nav className="section-nav" aria-label="Review workspace"><a href="#issue-heading">Issue</a><a href="#review-workspace">Review</a><a href="#saved-workspace">Saved review</a><a href="#lineage-workspace">ProofGraph</a><a href="#report-workspace">Report</a>{context.key==="HTF-2"&&<a href="#comment-workspace">Execution</a>}<a href="#settings-workspace">Settings</a></nav></>}
     <div className="notice" role="status">{environment.ready?"Development environment. Drafts are not verified or approved. Only a configured synthetic demo issue may receive an explicitly approved comment. External AI is off by default; only an explicitly qualified synthetic fixture can be sent.":msg(environment.code)}</div>
     {quotaResetAt!==null&&<div className="notice" role="status"><strong>Daily admission limit reached.</strong> The next UTC reset is {new Date(quotaResetAt).toLocaleString()} (local time), {new Date(quotaResetAt).toISOString()} UTC. No automatic retry. The server will check admission again on your next request.</div>}
     {!context?<p role="status">Loading issue context…</p>:!context.ok?<p role="alert">{msg(context.code)}</p>:<>
