@@ -11,7 +11,18 @@ export function projectResponse(x){
  if(x.rows.some(r=>!hex(r?.review_id)||!intents.has(r.intent)||!Number.isSafeInteger(r.created_at)||!Number.isSafeInteger(r.expires_at)||r.created_at<=0||r.created_at>x.observed_at||r.expires_at<=x.observed_at||r.expires_at-r.created_at!==86400000||r.expires_at>8640000000000000||!Number.isSafeInteger(r.source_count)||r.source_count<1||r.source_count>8||!["CURRENT_OBSERVED","STALE_VERSION"].includes(r.comparison)||!states.has(r.journal_state)||!comments.has(r.comment_state)||!markers.has(r.invalidation)))return bad();
  return x;
 }
+const filters={
+ all:()=>true,
+ changed:r=>r.comparison==="STALE_VERSION"||r.invalidation==="PERSISTED_INVALIDATION",
+ reports:r=>r.journal_state==="REPORT_RECEIPT_VERIFIED",
+ comments:r=>r.comment_state==="HISTORICAL_OBSERVED_SUCCESS",
+ unresolved:r=>["RUNNING","RECONCILING","UNKNOWN_OUTCOME_REVIEW","NOT_ESTABLISHED"].includes(r.journal_state)||["UNKNOWN_OUTCOME_REVIEW","NOT_ESTABLISHED"].includes(r.comment_state)||r.invalidation==="NOT_ESTABLISHED"
+};
+export function projectSampleRows(x,filter){
+ const safe=projectResponse(x);if(!safe.ok||!Object.hasOwn(filters,filter))return null;
+ return safe.rows.filter(filters[filter]);
+}
 export function projectSampleCounts(x){
  const safe=projectResponse(x);if(!safe.ok)return null;
- return {total:safe.rows.length,changed_or_invalidated:safe.rows.filter(r=>r.comparison==="STALE_VERSION"||r.invalidation==="PERSISTED_INVALIDATION").length,report_receipts:safe.rows.filter(r=>r.journal_state==="REPORT_RECEIPT_VERIFIED").length,comment_observations:safe.rows.filter(r=>r.comment_state==="HISTORICAL_OBSERVED_SUCCESS").length,unconfirmed:safe.rows.filter(r=>["RUNNING","RECONCILING","UNKNOWN_OUTCOME_REVIEW","NOT_ESTABLISHED"].includes(r.journal_state)||["UNKNOWN_OUTCOME_REVIEW","NOT_ESTABLISHED"].includes(r.comment_state)||r.invalidation==="NOT_ESTABLISHED").length};
+ return {total:safe.rows.length,changed_or_invalidated:safe.rows.filter(filters.changed).length,report_receipts:safe.rows.filter(filters.reports).length,comment_observations:safe.rows.filter(filters.comments).length,unconfirmed:safe.rows.filter(filters.unresolved).length};
 }

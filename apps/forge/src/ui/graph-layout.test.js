@@ -104,3 +104,12 @@ test("visible path explorer traces a diamond without treating unrelated branches
  assert.equal(traceVisibleGraph(nodes,edges,"missing","upstream"),null);assert.equal(traceVisibleGraph(nodes,edges,"a","both"),null);
  const large=Array.from({length:620},(_,i)=>({id:String(i)})),chain=large.slice(1).map((n,i)=>({from_dependency:String(i),to_dependent:n.id,relation:"LINK"}));assert.equal(traceVisibleGraph(large,chain,"0","downstream").nodeIds.length,620);assert.equal(traceVisibleGraph([...large,{id:"extra"}],chain,"0","downstream"),null);
 });
+
+import {projectSampleRows} from "./project-state.js";
+test("project worklist filters use exactly the same observed sample as indicators",()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z"),row={review_id:"a".repeat(64),intent:"release-review",created_at:now-100,expires_at:now-100+86400000,source_count:2,comparison:"STALE_VERSION",journal_state:"REPORT_RECEIPT_VERIFIED",comment_state:"NO_COMMENT_ATTEMPT",invalidation:"PERSISTED_INVALIDATION"};
+ const base={ok:true,scope:"CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",project_key:"HTF",target:"HTF-2",observed_at:now,scan_limit:12,row_limit:3,scan_truncated:true,rows_truncated:false,withheld_count:1,rows:[row,{...row,review_id:"b".repeat(64),comparison:"CURRENT_OBSERVED",journal_state:"POLICY_REVIEW",comment_state:"HISTORICAL_OBSERVED_SUCCESS",invalidation:"NO_MARKER_OBSERVED"},{...row,review_id:"c".repeat(64),comparison:"CURRENT_OBSERVED",journal_state:"RUNNING",invalidation:"NOT_ESTABLISHED"}],authorization:"NONE",execution:"NO_JIRA_MUTATION"};
+ const before=JSON.stringify(base),counts=projectSampleCounts(base);
+ for(const [filter,count] of [["all",counts.total],["changed",counts.changed_or_invalidated],["reports",counts.report_receipts],["comments",counts.comment_observations],["unresolved",counts.unconfirmed]])assert.equal(projectSampleRows(base,filter).length,count);
+ assert.deepEqual(projectSampleRows(base,"changed").map(x=>x.review_id),[row.review_id]);assert.equal(projectSampleRows(base,"constructor"),null);assert.equal(projectSampleRows({...base,rows:undefined},"all"),null);assert.equal(JSON.stringify(base),before);
+});
