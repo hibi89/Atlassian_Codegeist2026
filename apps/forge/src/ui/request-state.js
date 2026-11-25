@@ -39,3 +39,12 @@ export function requestDeadline(request,state,approvedStatus,now){
 export function restoreUnresolvedComment(previous,journal){
  return previous||(journal?.status==="UNKNOWN_OUTCOME_REVIEW"&&typeof journal.request_id==="string"&&/^[a-f0-9]{64}$/.test(journal.request_id)?journal.request_id:"");
 }
+
+// A saved review is only established by the exact server plan identity.
+// Keep the previous lookup ID on failure; do not retain stale approval or evidence.
+export function savedReviewResponse(previousId,result,replacing=false){
+ const saved=result?.saved_review,id=saved?.review_id;
+ const valid=result?.ok===true&&saved?.ok===true&&validRequestId(id)&&result?.plan?.plan_hash===id&&saved.run_state==="POLICY_REVIEW"&&(!replacing||(result.revalidated_from===previousId&&id!==previousId));
+ if(valid)return {ok:true,id,saved};
+ return {ok:false,id:previousId,code:result?.ok===false&&typeof result.code==="string"?result.code:"REVIEW_RESPONSE_UNCONFIRMED"};
+}
