@@ -471,14 +471,14 @@
     "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
   },
   "latest_candidate_ci": {
-    "source_sha": "9060b7f77793e5c326ac3c82308c0ccec459cfca",
+    "source_sha": "45bd439390b839fe42596eac7694523612ee7953",
     "date_kst": "2026-11-26",
-    "run_id": 45672030176,
-    "push_run_id": 45672030176,
-    "job_id": 139409573691,
-    "artifact_id": 15049602749,
-    "smoke_pass": 89,
-    "p2_regression_pass": 59,
+    "run_id": 45681884565,
+    "push_run_id": 45681884565,
+    "job_id": 139444274688,
+    "artifact_id": 15055026070,
+    "smoke_pass": 93,
+    "p2_regression_pass": 60,
     "fail": 0,
     "skip": 0,
     "cancelled": 0,
@@ -505,7 +505,12 @@
       "row_limit": 3,
       "point_read_limit": 60,
       "synthetic_integration": "PASS",
-      "live": "NOT_RUN"
+      "live": "NOT_RUN",
+      "detail_per_row_max": 24,
+      "shared_detail_read_limit": 48,
+      "later_row_reserve": 8,
+      "combined_receipt_regression": "PASS",
+      "budget_limited_rows": "EXPLICIT_UNCONFIRMED"
     },
     "draft_repair": {
       "synthetic_integration": "PASS",
@@ -534,13 +539,23 @@
       "schema_and_hash": "IMPLEMENTED_NATIVE_PASS",
       "session_recovery": "IMPLEMENTED_NATIVE_PASS",
       "scope": "PER_REVIEW_SESSION_ONLY",
-      "browser": "NOT_RUN"
+      "browser": "NOT_RUN",
+      "refresh_recovery": "IMPLEMENTED_NATIVE_PASS"
+    },
+    "access_expiry": {
+      "review_refresh": "PASS",
+      "receipt_recovery": "PASS",
+      "report_output": "PASS",
+      "live": "NOT_RUN"
     }
   },
   "latest_candidate_ci_followup": {
-    "source_sha": "9060b7f77793e5c326ac3c82308c0ccec459cfca",
-    "run_id": 45672030176,
+    "source_sha": "45bd439390b839fe42596eac7694523612ee7953",
+    "run_id": 45681884565,
     "status": "completed",
-    "conclusion": "success"
+    "conclusion": "success",
+    "pr_run_id": 45681893868,
+    "pr_status": "completed",
+    "pr_conclusion": "success"
   }
 }
