@@ -94,3 +94,13 @@ test("draft repair lookup never accepts unrelated or malformed success reference
  assert.equal(draftRepairHint({ok:false,code:"REVIEW_DRAFT_REPAIR_OUTCOME_UNKNOWN",repair_review_id:id}),id);assert.equal(draftRepairHint({ok:false,code:"REVIEW_SNAPSHOT_CONFIRMED_JOURNAL_UNCHECKED",repair_review_id:id}),id);
  for(const r of [null,{ok:true,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:id},{ok:false,code:"REVIEW_JOURNAL_PARTIAL",repair_review_id:"bad"},{ok:false,code:"OTHER",repair_review_id:id}])assert.equal(draftRepairHint(r),"");
 });
+
+import {traceVisibleGraph} from "./graph-layout.js";
+test("visible path explorer traces a diamond without treating unrelated branches as affected",()=>{
+ const nodes=["a","b","c","d","e","f"].map(id=>({id})),edges=[["a","b"],["a","c"],["b","d"],["c","d"],["e","f"]].map(([from_dependency,to_dependent])=>({from_dependency,to_dependent,relation:"TEST"}));
+ const before=JSON.stringify({nodes,edges}),up=traceVisibleGraph(nodes,edges,"d","upstream"),down=traceVisibleGraph(nodes,edges,"a","downstream");
+ assert.deepEqual(up.nodeIds.sort(),["a","b","c","d"]);assert.deepEqual(down.nodeIds.sort(),["a","b","c","d"]);assert.deepEqual(down.edgeIndices.sort(),[0,1,2,3]);assert.deepEqual(traceVisibleGraph(nodes,edges,"e","upstream"),{nodeIds:["e"],edgeIndices:[]});assert.equal(JSON.stringify({nodes,edges}),before);
+ for(const malformed of [[...edges,{from_dependency:"d",to_dependent:"a"}],[...edges,edges[0]],[...edges,{from_dependency:"a",to_dependent:"missing"}]])assert.equal(traceVisibleGraph(nodes,malformed,"a","downstream"),null);
+ assert.equal(traceVisibleGraph(nodes,edges,"missing","upstream"),null);assert.equal(traceVisibleGraph(nodes,edges,"a","both"),null);
+ const large=Array.from({length:620},(_,i)=>({id:String(i)})),chain=large.slice(1).map((n,i)=>({from_dependency:String(i),to_dependent:n.id,relation:"LINK"}));assert.equal(traceVisibleGraph(large,chain,"0","downstream").nodeIds.length,620);assert.equal(traceVisibleGraph([...large,{id:"extra"}],chain,"0","downstream"),null);
+});

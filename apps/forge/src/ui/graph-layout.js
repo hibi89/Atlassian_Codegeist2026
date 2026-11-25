@@ -54,3 +54,23 @@ export function describePreviewNodes(graph,evidence,review,policy){
   return {id:n.id,kind:n.kind,label,detail,state};
  });
 }
+
+// Inspect the returned topology only; not the server's invalidation closure.
+export function traceVisibleGraph(nodes,edges,selected,direction){
+ if(!Array.isArray(nodes)||!Array.isArray(edges)||nodes.length>620||edges.length>1524||!["upstream","downstream"].includes(direction))return null;
+ const ids=new Set(),links=new Map(),degree=new Map(),out=new Map(),pairs=new Set();
+ for(const n of nodes){if(typeof n?.id!=="string"||ids.has(n.id))return null;ids.add(n.id);links.set(n.id,[]);out.set(n.id,[]);degree.set(n.id,0)}
+ if(!ids.has(selected))return null;
+ for(const [i,e] of edges.entries()){
+  if(!ids.has(e?.from_dependency)||!ids.has(e?.to_dependent))return null;
+  const key=JSON.stringify([e.from_dependency,e.to_dependent,e.relation]);if(pairs.has(key))return null;pairs.add(key);
+  const from=e.from_dependency,to=e.to_dependent;out.get(from).push(to);degree.set(to,degree.get(to)+1);
+  links.get(direction==="upstream"?to:from).push({id:direction==="upstream"?from:to,index:i});
+ }
+ const queue=[...ids].filter(id=>degree.get(id)===0);
+ for(let i=0;i<queue.length;i++)for(const id of out.get(queue[i])){degree.set(id,degree.get(id)-1);if(degree.get(id)===0)queue.push(id)}
+ if(queue.length!==ids.size)return null;
+ const visited=new Set([selected]),edgeIndices=new Set(),pending=[selected];
+ for(let i=0;i<pending.length;i++)for(const link of links.get(pending[i])){edgeIndices.add(link.index);if(!visited.has(link.id)){visited.add(link.id);pending.push(link.id)}}
+ return {nodeIds:[...visited],edgeIndices:[...edgeIndices]};
+}
