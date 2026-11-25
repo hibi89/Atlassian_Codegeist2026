@@ -53,6 +53,10 @@ jobs:
           test -s src/ui/dist/index.html
           test -s src/ui/dist/app.js
           test -s src/ui/dist/app.css
+          test -s src/ui/project-dist/index.html
+          test -s src/ui/project-dist/app.js
+          test -s src/ui/project-dist/app.css
+          sha256sum src/ui/project-dist/index.html src/ui/project-dist/app.js src/ui/project-dist/app.css
           sha256sum package-lock.json src/ui/dist/index.html src/ui/dist/app.js src/ui/dist/app.css
       - name: Lockfile and build evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -63,5 +67,6 @@ jobs:
             apps/forge/dependency-inventory.json
             apps/forge/third-party-notices-review.txt
             apps/forge/src/ui/dist/
+            apps/forge/src/ui/project-dist/
           if-no-files-found: error
           retention-days: 7

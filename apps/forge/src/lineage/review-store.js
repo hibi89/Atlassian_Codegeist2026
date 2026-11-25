@@ -98,6 +98,6 @@ function createReviewStore(store,p,clock,digest){
    return {ok:true,review_id:id,status:stale?"STALE_REVIEW_REQUIRED":"NO_CHANGE_OBSERVED",...counts,persisted_invalidation:stale,metadata:stale?undefined:inspectMetadata(r),revalidation:current.claim_review?.revalidation??{reused:0,recomputed:0},authorization:"NONE",execution:"DISABLED"};
   }catch{return bad("REVIEW_STORAGE_UNKNOWN")}
  }
- return {save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true),history:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"history")};
+ return {validRecord,save,refresh:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,false),authorizeReadOnly:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,true),history:(id,loadCurrent)=>inspectCurrent(id,loadCurrent,"history")};
 }
 export {createReviewStore};

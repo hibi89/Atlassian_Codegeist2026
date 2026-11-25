@@ -199,3 +199,27 @@ test("incident report includes the authorized ownership assessment and hashes th
  const saved=await reviews.save(ctx,"coordinate incident");assert.equal(saved.ok,true);const q=await reports.prepare(ctx,saved.saved_review.review_id);assert.equal(q.ok,true);assert.equal((await reports.approve(ctx,q.request_id,q.request_id)).ok,true);
  const generated=await reports.generate(ctx,q.request_id);assert.equal(generated.ok,true);assert.equal(generated.report.incident_assessment.status,"HUMAN_COORDINATION_REVIEW_REQUIRED");assert.deepEqual(generated.report.incident_assessment.ownership[0].teams,["OPS"]);assert.deepEqual(generated.report.incident_assessment.ownership[0].source_uris,["/browse/DEMO-1"]);assert.equal(generated.report_digest,digest(canonical(generated.report)));assert.equal(generated.execution,"NO_JIRA_MUTATION");
 });
+
+import {loadProjectDashboard,projectScope} from "../dashboard/project-dashboard.js";
+import {projectDashboard} from "../dashboard/forge-project.js";
+test("project dashboard is current-actor synthetic only and filters inaccessible or expired snapshots",async()=>{
+ const now=Date.parse("2026-11-24T12:00:00Z"),clock=()=>now,cloud="00000000-0000-4000-8000-000000000001",context={accountId:"actor",installContext:"ari:cloud:jira::site/"+cloud,extension:{type:"jira:projectPage",project:{id:"10001",key:"HTF"}}};
+ const scope=projectScope(context,true,cloud,digest),p=scope.p,map=new Map(),store={get:async k=>map.get(k),create:async(k,v)=>{if(map.has(k))throw Error("conflict");map.set(k,structuredClone(v))}};
+ let version="2026-11-24T11:00:00Z";
+ const adapter={links:async()=>({ok:true,keys:[],complete:true}),read:async k=>({ok:true,snapshot:{objectId:"2",key:k,status:"Open",issueType:"Task"},source:{provider:"jira",objectId:"2",uri:"/browse/"+k,version,retrievedAt:new Date(now).toISOString(),visibility:"OBSERVED_AS_USER",contentHash:digest(k+version)}})};
+ const preview=(c,intent,saved)=>guardedPreview(c,intent,{adapter,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))},saved);
+ const saved=await createReviewService({store,clock,digest,preview,development:()=>true}).save(scope.issueContext,"review change");assert.equal(saved.ok,true);
+ const prefix="cg:review:"+p.tenant+":"+p.actor+":",id=saved.saved_review.review_id,k=prefix+id+":snapshot",record=map.get(k);
+ let admitted=0,queries=0,reads=0,page={results:[{key:k,value:record,expireTime:new Date(now+86400000).toISOString()}]};
+ const deps={development:true,cloudId:cloud,digest,clock,admit:async()=>{admitted++;return {ok:true}},readProjectIssue:async()=>({key:"HTF-2",id:"2",project_id:"10001",project_key:"HTF"}),readEvidence:async c=>{reads++;return {ok:true,snapshot:{objectId:"2"},evidence:(await preview(c,"review change")).evidence}},queryReviews:async (pr,limit)=>{queries++;assert.equal(pr,prefix);assert.equal(limit,12);return page}};
+ let result=await loadProjectDashboard(context,deps);assert.equal(result.ok,true);assert.equal(result.rows[0].review_id,id);assert.equal(result.rows[0].comparison,"CURRENT_OBSERVED");assert.equal(result.authorization,"NONE");assert.equal(result.execution,"NO_JIRA_MUTATION");assert.equal(JSON.stringify(result).includes(p.actor),false);
+ for(const c of [{...context,extension:{type:"jira:projectPage",project:{id:"10001",key:"OTHER"}}},{...context,accountType:"anonymous"},{...context,installContext:"ari:cloud:jira::site/other"}])assert.equal((await loadProjectDashboard(c,deps)).ok,false);
+ assert.equal((await loadProjectDashboard(context,{...deps,development:false})).ok,false);assert.equal(admitted,1);assert.equal(queries,1);
+ assert.equal((await loadProjectDashboard(context,{...deps,readProjectIssue:async()=>({key:"HTF-2",id:"2",project_id:"999",project_key:"HTF"})})).ok,false);assert.equal(reads,1);
+ version="2026-11-24T11:05:00Z";result=await loadProjectDashboard(context,deps);assert.equal(result.rows[0].comparison,"STALE_VERSION");
+ page={results:[{key:k,value:record,expireTime:new Date(now-1).toISOString()}]};result=await loadProjectDashboard(context,deps);assert.equal(result.rows.length,0);assert.equal(result.withheld_count,1);
+ page={results:[{key:"cg:review:other:other:"+id+":snapshot",value:record,expireTime:new Date(now+86400000).toISOString()}]};assert.equal((await loadProjectDashboard(context,deps)).ok,false);
+ page={results:[{key:k,value:record,expireTime:new Date(now+86400000).toISOString()}]};assert.equal((await loadProjectDashboard(context,{...deps,readEvidence:async()=>({ok:false})})).ok,false);
+ const exhausted={ok:false,code:"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED",retry_at:now+86400000};assert.deepEqual(await loadProjectDashboard(context,{...deps,admit:async()=>exhausted}),exhausted);
+ assert.equal(map.size,4);assert.equal((await projectDashboard({})).ok,false);
+});

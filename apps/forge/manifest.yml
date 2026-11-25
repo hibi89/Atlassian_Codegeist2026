@@ -6,12 +6,22 @@ modules:
         function: trustflow-resolver
       title: HAE TrustFlow
       icon: https://developer.atlassian.com/platform/forge/images/issue-panel-icon.svg
+  jira:projectPage:
+    - key: hae-trustflow-project
+      resource: trustflow-project-ui
+      resolver:
+        function: trustflow-project-resolver
+      title: HAE TrustFlow Overview
   function:
     - key: trustflow-resolver
       handler: index.handler
+    - key: trustflow-project-resolver
+      handler: index.projectHandler
 resources:
   - key: trustflow-ui
     path: src/ui/dist
+  - key: trustflow-project-ui
+    path: src/ui/project-dist
 permissions:
   scopes:
     - read:jira-work
