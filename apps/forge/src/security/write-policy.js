@@ -29,8 +29,13 @@ export function reportedWriteEvidence(intent,review){
  const required=["requirement.id","test.reported_result","policy.reported_version",...(intent==="incident-coordinate"?["ownership.reported_team"]:[])];
  const missing=required.filter(predicate=>!checks.some(c=>c.predicate===predicate&&c.status==="UNVERIFIED_CLAIM"&&Array.isArray(c.values)&&c.values.length===1));
  if(missing.length)return {ok:false,code:"WRITE_CRITICAL_EVIDENCE_MISSING",missing_predicates:missing};
- const reqs=new Set(checks.filter(c=>c.predicate==="requirement.id").map(c=>c.subject));
- if(!checks.some(c=>c.predicate==="test.reported_result"&&reqs.has(c.subject)))return {ok:false,code:"WRITE_REQUIREMENT_TEST_LINK_MISSING",missing_predicates:[]};
+ const usable=c=>c?.status==="UNVERIFIED_CLAIM"&&Array.isArray(c.values)&&c.values.length===1&&typeof c.subject==="string";
+ const reqs=new Set(checks.filter(c=>usable(c)&&c.predicate==="requirement.id").map(c=>c.subject));
+ const tested=new Set(checks.filter(c=>usable(c)&&c.predicate==="test.reported_result"&&reqs.has(c.subject)).map(c=>c.subject));
+ if(!tested.size)return {ok:false,code:"WRITE_REQUIREMENT_TEST_LINK_MISSING",missing_predicates:[]};
+ // Incident ownership must describe a requirement with reported test evidence,
+ // not an unrelated subject or a different, untested requirement.
+ if(intent==="incident-coordinate"&&!checks.some(c=>usable(c)&&c.predicate==="ownership.reported_team"&&tested.has(c.subject)))return {ok:false,code:"WRITE_INCIDENT_OWNER_LINK_MISSING",missing_predicates:[]};
  return {ok:true,code:"REPORTED_EVIDENCE_PRESENT",missing_predicates:[]};
 }
 export function previewCommentReadiness(target,intent,policy,graph,review){

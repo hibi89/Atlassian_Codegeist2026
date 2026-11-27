@@ -293,3 +293,25 @@ test("P2 dashboard verifies combined comment and report history within shared re
  const {projectResponse,projectSampleCounts}=await import("../ui/project-state.js");assert.equal(projectResponse(v).ok,true);assert.equal(projectSampleCounts(v).report_receipts,2);assert.equal(projectSampleCounts(v).unconfirmed,1);
  const receipt=[...f.map.values()].find(x=>x.schema_version==="hae.report.receipt.v2"&&x.review_id===r.review_id);receipt.lineage.edges[0].relation="FORGED";reads=0;const bad=await loadProjectDashboard(context,input);assert.equal(bad.rows[0].journal_state,"NOT_ESTABLISHED");assert.equal(bad.rows[0].detail_read_limit_reached,false);assert.ok(reads<=page.results.length+48);assert.equal(f.posts(),1);assert.equal(f.map.size,size);
 });
+
+
+test("incident comment gate requires a reported owner of the same tested requirement",async()=>{
+ const common=["tf-req-DEMO-1","tf-test-DEMO-1-pass","tf-policy-DEMO-v1"];
+ for(const labels of [[...common,"tf-owner-OTHER-7-OPS"],[...common,"tf-req-DEMO-2","tf-owner-DEMO-2-OPS"]]){
+  const f=fixture(labels);
+  const preview=await f.preview(f.ctx,"coordinate incident");
+  assert.equal(preview.comment_readiness.status,"BLOCKED");
+  assert.equal(preview.comment_readiness.code,"WRITE_INCIDENT_OWNER_LINK_MISSING");
+  const request=await f.request("coordinate incident");
+  assert.equal(request.code,"WRITE_INCIDENT_OWNER_LINK_MISSING");
+  assert.equal(f.posts(),0);
+  assert.equal((await f.request("review change")).ok,true);
+ }
+ const valid=fixture(common,["tf-owner-DEMO-1-OPS"]);
+ assert.equal((await valid.preview(valid.ctx,"coordinate incident")).comment_readiness.status,"EVIDENCE_PREREQUISITES_PRESENT");
+ const request=await valid.request("coordinate incident");
+ assert.equal(request.ok,true);
+ assert.equal((await valid.writes.approve(valid.ctx,request.request_id,request.request_id)).ok,true);
+ assert.equal((await valid.writes.execute(valid.ctx,request.request_id)).status,"OBSERVED_SUCCESS");
+ assert.equal(valid.posts(),1);
+});
