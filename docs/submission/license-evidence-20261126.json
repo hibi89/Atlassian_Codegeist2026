@@ -1,0 +1,134 @@
+{
+  "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+  "run_id": 45690184303,
+  "job_id": 139473261910,
+  "scope": "INSTALLED_PACKAGE_EVIDENCE_NOT_LEGAL_REVIEW",
+  "summary": {
+    "lock_entries": 164,
+    "installed": 139,
+    "manual_review": 10,
+    "optional_absent": 25,
+    "legal_status": "NOT_REVIEWED"
+  },
+  "manual_entries": [
+    {
+      "path": "node_modules/@atlaskit/adf-schema-generator",
+      "name": "@atlaskit/adf-schema-generator",
+      "version": "4.0.4",
+      "license": "Apache-2.0",
+      "installed_license": "Apache-2.0",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/@atlaskit/ds-lib/node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "0.3.0",
+      "license": "Apache-2.0",
+      "installed_license": "Apache-2.0",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "2.2.2",
+      "license": "Apache-2.0",
+      "installed_license": "Apache-2.0",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/@atlaskit/tokens/node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "0.3.0",
+      "license": "Apache-2.0",
+      "installed_license": "Apache-2.0",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/@esbuild/linux-x64",
+      "name": "@esbuild/linux-x64",
+      "version": "0.25.12",
+      "license": "MIT",
+      "installed_license": "MIT",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/@statsig/client-core",
+      "name": "@statsig/client-core",
+      "version": "3.30.2",
+      "license": "ISC",
+      "installed_license": "ISC",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/boolbase",
+      "name": "boolbase",
+      "version": "1.0.0",
+      "license": "ISC",
+      "installed_license": "ISC",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/css-color-names",
+      "name": "css-color-names",
+      "version": "0.0.4",
+      "license": "MIT",
+      "installed_license": "MIT",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/headers-utils",
+      "name": "headers-utils",
+      "version": "3.0.2",
+      "license": "MIT",
+      "installed_license": "MIT",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    },
+    {
+      "path": "node_modules/iframe-resizer",
+      "name": "iframe-resizer",
+      "version": "4.4.5",
+      "license": "MIT",
+      "installed_license": "MIT",
+      "review_reasons": [
+        "LICENSE_FILE_MISSING"
+      ]
+    }
+  ],
+  "upstream_review": [
+    {
+      "package": "@esbuild/linux-x64",
+      "version": "0.25.12",
+      "source_url": "https://github.com/evanw/esbuild/blob/v0.25.12/LICENSE.md",
+      "blob_sha": "2027e8dcf3787f5aac9fcd835e2b80cb75a39211",
+      "observed": "MIT upstream tag text",
+      "status": "UPSTREAM_TEXT_OBSERVED_PACKAGE_NOTICE_UNVERIFIED"
+    },
+    {
+      "package": "@statsig/client-core",
+      "version": "3.30.2",
+      "source_url": "https://github.com/statsig-io/js-client-monorepo",
+      "status": "EXACT_TAG_NOT_FOUND"
+    }
+  ],
+  "exact_registry_and_unpkg": "ACCESS_UNAVAILABLE",
+  "legal_review": "NOT_RUN",
+  "distribution": "HOLD"
+}

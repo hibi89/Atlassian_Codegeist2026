@@ -1,0 +1,86 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { createRunLedger,makeForgeLedgerStore } from "./run-ledger.js";
+test("immutable append, contention, re-open, scope and write gate",async()=>{
+ const backing=new Map(),kvs={get:async k=>backing.get(k),set:async(k,v,o)=>{if(o.keyPolicy!=="FAIL_IF_EXISTS"||backing.has(k))throw Error("conflict");backing.set(k,JSON.parse(JSON.stringify(v)))}};
+ const p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"},clock=()=>Date.parse("2026-11-24T12:00:00Z"),store=makeForgeLedgerStore(kvs),ledger=createRunLedger(store,p,clock),run="run1",ph="c".repeat(64);
+ assert.equal((await ledger.create(run,ph)).ok,true);assert.equal((await ledger.create(run,ph)).ok,false);
+ const both=await Promise.all([ledger.transition(run,1,"EVIDENCE_PENDING"),ledger.transition(run,1,"EVIDENCE_PENDING")]);assert.equal(both.filter(x=>x.ok).length,1);
+ const reopened=createRunLedger(store,p,clock);assert.equal((await reopened.read(run)).state,"EVIDENCE_PENDING");
+ assert.equal((await reopened.transition(run,1,"POLICY_REVIEW")).ok,false);
+ assert.equal((await reopened.transition(run,2,"POLICY_REVIEW")).ok,true);
+ assert.equal((await reopened.transition(run,3,"AWAITING_APPROVAL")).ok,true);
+ assert.equal((await reopened.transition(run,4,"READY")).code,"RUN_EXECUTION_NOT_ENABLED");
+ assert.equal((await createRunLedger(store,{...p,tenant:"d".repeat(64)},clock).read(run)).ok,false);
+ assert.equal((await createRunLedger(store,{...p,actor:"d".repeat(64)},clock).read(run)).ok,false);
+ assert.equal((await createRunLedger(store,{...p,target:"DEMO-2"},clock).read(run)).code,"RUN_JOURNAL_INVALID");
+ assert.equal((await createRunLedger({get:async()=>{throw Error("network")}},p,clock).read(run)).code,"RUN_STORAGE_UNKNOWN");
+});
+
+import { createApprovalBroker } from "../security/approval/broker.js";
+test("approval broker binds exact context and dependency, rejects replay and concurrent terminal changes",async()=>{
+ const backing=new Map(),store=makeForgeLedgerStore({get:async k=>backing.get(k),set:async(k,v,o)=>{if(o.keyPolicy!=="FAIL_IF_EXISTS"||backing.has(k))throw Error("conflict");backing.set(k,JSON.parse(JSON.stringify(v)))}});
+ let now=1000; const p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"};
+ const b={plan_hash:"c".repeat(64),evidence_bundle_hash:"d".repeat(64),dependency_digest:"e".repeat(64),request_digest:"f".repeat(64),policy_version:"cg-policy-v2",capability_lock:"cg-registry-v1",expires_at:600000,graph_status:"VALID",policy_decision:"ALLOW"};
+ const broker=createApprovalBroker(store,()=>now);
+ assert.equal((await broker.issue(p,b,true)).ok,false);
+ assert.equal((await broker.issue(p,{...b,policy_decision:"ALLOW_PREVIEW"},b.request_digest)).ok,false);
+ const a=await broker.issue(p,b,b.request_digest);assert.equal(a.ok,true);
+ assert.equal((await broker.issue(p,b,b.request_digest)).ok,false);
+ for(const k of ["tenant","actor","target"])assert.equal((await broker.inspect({...p,[k]:k==="target"?"DEMO-2":"1".repeat(64)},a.approval_id,b)).ok,false);
+ for(const k of ["plan_hash","evidence_bundle_hash","dependency_digest","policy_version","capability_lock","request_digest"])assert.equal((await broker.inspect(p,a.approval_id,{...b,[k]:k.endsWith("hash")||k.endsWith("digest")?"1".repeat(64):"changed"})).ok,false);
+ assert.equal((await broker.inspect(p,a.approval_id,{...b,graph_status:"UNKNOWN"})).ok,false);
+ assert.equal((await Promise.all([broker.consume(p,a.approval_id,b),broker.consume(p,a.approval_id,b),broker.revoke(p,a.approval_id)])).filter(x=>x.ok).length,1);
+ assert.equal((await broker.consume(p,a.approval_id,b)).ok,false);
+ const b2={...b,request_digest:"2".repeat(64)};const a2=await broker.issue(p,b2,b2.request_digest);
+ assert.equal((await broker.revoke(p,a2.approval_id)).ok,true);
+ assert.equal((await broker.consume(p,a2.approval_id,b2)).ok,false);
+ const b3={...b,request_digest:"3".repeat(64)};const a3=await broker.issue(p,b3,b3.request_digest);now=301000;
+ assert.equal((await broker.consume(p,a3.approval_id,b3)).ok,false);
+});
+
+import {createStepLedger} from "./step-ledger.js";
+test("step reservations are exclusive and missing receipt means unknown outcome",async()=>{
+ const backing=new Map(),store=makeForgeLedgerStore({get:async k=>backing.get(k),set:async(k,v,o)=>{if(o.keyPolicy!=="FAIL_IF_EXISTS"||backing.has(k))throw Error("conflict");backing.set(k,JSON.parse(JSON.stringify(v)))}});
+ const p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"},b={plan_hash:"c".repeat(64),payload_digest:"d".repeat(64),approval_id:"e".repeat(64)};
+ let state="AWAITING_APPROVAL";const runLedger={read:async()=>({ok:true,state,events:[{plan_hash:b.plan_hash},...(state==="RUNNING"?[{state:"RUNNING",execution_kind:"READ_ONLY_REPORT",report_request_id:b.approval_id,at:new Date(1000).toISOString()}]:[])]})};
+ const steps=createStepLedger(store,runLedger,p,()=>1000);
+ assert.equal((await steps.reserve("r1","s1",b)).ok,false);
+ state="RUNNING";assert.equal((await steps.reserve("r1","s1",{...b,plan_hash:"0".repeat(64)})).ok,false);assert.equal((await steps.reserve("r1","s1",{...b,approval_id:"0".repeat(64)})).ok,false);
+ assert.equal((await Promise.all([steps.reserve("r1","s1",b),steps.reserve("r1","s1",b)])).filter(x=>x.ok).length,1);
+ assert.equal((await steps.read("r1","s1")).state,"UNKNOWN_OUTCOME_REVIEW");
+ const outcome={state:"OBSERVED_SUCCESS",observation_digest:"f".repeat(64),payload_digest:b.payload_digest};
+ assert.equal((await steps.record("r1","s1",{...outcome,payload_digest:"0".repeat(64)})).ok,false);
+ assert.equal((await Promise.all([steps.record("r1","s1",outcome),steps.record("r1","s1",outcome)])).filter(x=>x.ok).length,1);
+ assert.equal((await createStepLedger(store,runLedger,p,()=>1000).read("r1","s1")).state,"OBSERVED_SUCCESS");
+ assert.equal((await steps.reserve("r1","s1",b)).ok,false);
+ assert.equal((await createStepLedger(store,runLedger,{...p,target:"DEMO-2"},()=>1000).read("r1","s1")).ok,false);
+});
+
+test("P2 journal rejects future timestamps, reverse clock and forged execution transitions",async()=>{
+ const m=new Map(),store={get:async k=>m.get(k),create:async(k,v)=>{if(m.has(k))throw Error("conflict");m.set(k,JSON.parse(JSON.stringify(v)))}},p={tenant:"a".repeat(64),actor:"b".repeat(64),target:"DEMO-1"},now=2000,ledger=createRunLedger(store,p,()=>now);
+ await ledger.create("r","c".repeat(64));await ledger.transition("r",1,"EVIDENCE_PENDING");await ledger.transition("r",2,"POLICY_REVIEW");await ledger.transition("r",3,"AWAITING_APPROVAL");
+ const last=[...m.values()].at(-1),prefix=[...m.keys()].at(-1).slice(0,-1);
+ m.set(prefix+"4",{...last,seq:4,state:"READY"});assert.equal((await ledger.read("r")).code,"RUN_JOURNAL_AUTHORITY_INVALID");
+ m.delete(prefix+"4");last.at=new Date(now-1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
+ last.at=new Date(now+1000).toISOString();assert.equal((await ledger.read("r")).ok,false);
+});
+
+
+import {reserveDailySlot as reserveRolloverSlot} from "./daily-budget.js";
+test("P2 admission UTC rollover before reservation or after acknowledgement fails closed",async()=>{
+ const start=Date.parse("2026-11-24T23:59:59.900Z");
+ for(const phase of ["get","set","none"]){let now=start,writes=0;
+ const kvs={get:async()=>{if(phase==="get")now+=200},set:async()=>{writes++;if(phase==="set")now+=200}};
+ const r=await reserveRolloverSlot(kvs,start,24,()=>now);
+ assert.equal(r.ok,phase==="none");if(phase!=="none")assert.equal(r.code,"DEVELOPMENT_BUDGET_DAY_CHANGED");assert.equal(writes,phase==="get"?0:1);
+ }
+});
+
+ test("P2 admission uses at most five KVS reads per action, preserves exact 24-slot cap",async()=>{
+ const slots=new Map();let reads=0,writes=0;const kvs={get:async k=>{reads++;return slots.get(k)},set:async(k,v,o)=>{writes++;assert.equal(o.keyPolicy,"FAIL_IF_EXISTS");assert.equal(o.ttl.value,2);if(slots.has(k))throw Error("conflict");slots.set(k,v)}};
+ for(let i=0;i<24;i++){reads=0;assert.equal((await reserveRolloverSlot(kvs,1000)).ok,true);assert.ok(reads<=5);assert.ok(slots.has("cg:dev-budget:1970-01-01:"+i))}
+ reads=0;assert.equal((await reserveRolloverSlot(kvs,1000)).code,"DEVELOPMENT_DAILY_BUDGET_EXHAUSTED");assert.ok(reads<=5);assert.equal(writes,24);
+ // A hole caused by external corruption must never extend the key range.
+ slots.delete("cg:dev-budget:1970-01-01:0");const result=await reserveRolloverSlot(kvs,1000);assert.equal(result.ok,false);assert.equal(writes,24);
+ });

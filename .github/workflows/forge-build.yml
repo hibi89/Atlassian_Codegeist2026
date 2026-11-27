@@ -1,0 +1,83 @@
+name: Forge development build
+on:
+  push:
+    branches: ['feature/forge-p1']
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml', 'docs/submission/build-evidence*.mjs']
+  pull_request:
+    branches: ['develop']
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['apps/forge/**', '.github/workflows/forge-build.yml', 'docs/submission/build-evidence*.mjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: forge-build-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/forge-p1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/forge
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Node 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Record source and tools
+        run: |
+          git rev-parse HEAD
+          node --version
+          npm --version
+      - name: Submission evidence source contract
+        run: |
+          node --test ../../docs/submission/build-evidence.test.mjs
+          node ../../docs/submission/build-evidence.mjs --check
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=1
+      - name: Source syntax
+        run: find src -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -r -n1 node --check
+      - name: Native Node smoke
+        run: npm run test:smoke
+      - name: P2 oracle and security regression
+        run: npm run test:p2
+      - name: Installed dependency license inventory
+        run: node scripts/dependency-inventory.mjs
+      - name: Custom UI build
+        run: npm run build
+      - name: Check build outputs
+        run: |
+          test -s src/ui/dist/index.html
+          test -s src/ui/dist/app.js
+          test -s src/ui/dist/app.css
+          test -s src/ui/project-dist/index.html
+          test -s src/ui/project-dist/app.js
+          test -s src/ui/project-dist/app.css
+          sha256sum src/ui/project-dist/index.html src/ui/project-dist/app.js src/ui/project-dist/app.css
+          sha256sum package-lock.json src/ui/dist/index.html src/ui/dist/app.js src/ui/dist/app.css
+      - name: Exact source local preflight artifact contract
+        run: node scripts/live-preflight.mjs --expected-sha "$(git rev-parse HEAD)" --outputs-only
+      - name: Create and verify local build evidence manifest
+        run: |
+          node scripts/build-evidence-manifest.mjs --create . "$(git rev-parse HEAD)" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+          node scripts/build-evidence-manifest.mjs --verify . "$(git rev-parse HEAD)" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
+      - name: Lockfile and build evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: forge-build-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            apps/forge/build-evidence-manifest.json
+            apps/forge/package-lock.json
+            apps/forge/dependency-inventory.json
+            apps/forge/third-party-notices-review.txt
+            apps/forge/src/ui/dist/
+            apps/forge/src/ui/project-dist/
+          if-no-files-found: error
+          retention-days: 7

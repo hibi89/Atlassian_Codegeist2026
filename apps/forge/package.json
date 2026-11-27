@@ -1,0 +1,26 @@
+{
+  "name": "hae-trustflow-forge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "build": "node src/ui/build.mjs",
+    "test:smoke": "node --test src/smoke.test.js src/core/ir/plan.test.js src/evidence/bundle.test.js src/evidence/typed-claims.test.js src/state/run-ledger.test.js src/forge-interop.test.js src/lineage/review-store.test.js src/executor/comment-executor.test.js src/planner/provider.test.js",
+    "test:p2": "node --test src/lineage/p2-impact.test.js src/security/p2-regression.test.js src/ui/graph-layout.test.js",
+    "preflight:local": "node scripts/live-preflight.mjs"
+  },
+  "dependencies": {
+    "@forge/api": "8.4.0",
+    "@forge/bridge": "7.4.0",
+    "@forge/resolver": "2.0.2",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@forge/kvs": "2.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

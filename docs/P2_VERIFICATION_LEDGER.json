@@ -1,0 +1,619 @@
+{
+  "schema_version": "hae.codegen.p2.ledger.v1",
+  "project": "HAE TrustFlow",
+  "date_kst": "2026-11-25",
+  "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+  "p1_candidates": 25,
+  "p1_total": 25,
+  "p2_total": 15,
+  "p2_pass": 2,
+  "p2_partial": 10,
+  "p2_not_run": 3,
+  "weighted_implementation": "UNASSESSED",
+  "weighted_verification": "UNASSESSED",
+  "records": [
+    {
+      "gate_id": "P2-01",
+      "req_ids": [
+        "CG-01",
+        "CG-19"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-01",
+      "observed": "Locked npm install, native syntax and Custom UI build PASS. Exact Forge CLI lint with real configuration NOT_RUN. Latest exact CI locked install, source syntax and UI build PASS; Forge CLI lint still pending. Exact final CI locked install, source syntax, UI build PASS; real Forge lint remains NOT_RUN. Latest locked dependencies, source syntax and UI build passed. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Owner PC checkout HEAD c92aafd3e85289afab107907debb290b4747e4a5, clean git status, unchanged product source 6006fe1d3d4210e90ff3a4101e17b4724f00d3cb; UI build completed; Forge lint 0 errors, deprecated egress warning and explicit major approval. Approved deployment 3.0.0 and existing Jira upgrade succeeded. Exact-source CI 45629146398 success. Baseline build/manifest gate PASS with disclosed warnings/approval, not independent audit.",
+      "status": "PASS",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Lint warning and major version approval disclosed; owner evidence not independent",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-02",
+      "req_ids": [
+        "CG-01",
+        "CG-19",
+        "CG-20"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-02",
+      "observed": "Existing development v2.1.0 not changed; fresh judge installation not performed.\nOwner live session 2026-11-25 KST: Existing demo installation upgraded from major 2 to 3 and connected to Jira and Confluence. Not a fresh judge installation; no judge install link.",
+      "status": "NOT_RUN",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Owner approved test-site setup",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45"
+    },
+    {
+      "gate_id": "P2-03",
+      "req_ids": [
+        "CG-03",
+        "CG-14"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-03",
+      "observed": "Native authorized Jira/Confluence transport fixtures, denial and bounds passed. Actual new Forge API/scopes/optional product install NOT_RUN. Actual Jira adapter enforces UTF-8 byte size (multibyte native regression); real endpoint NOT_RUN. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Actual owner screenshots: HTF-2 and configured synthetic Confluence page 4620305, AUTHORIZED_PAGE_OBSERVED, BOUNDED_READ_COMPLETE, 2 sources / 0 unknown. Real negative access and pagination remain untested.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Real synthetic Jira/Confluence permissions and API",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-04",
+      "req_ids": [
+        "CG-02",
+        "CG-04",
+        "CG-05",
+        "CG-17"
+      ],
+      "source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-04",
+      "observed": "Native exact source rejects malformed values, malformed JSON, unknown/hostile ops, invalid scopes/target, duplicate IDs, cycles, stale/future timestamps and unsafe intents; typed claim conflict, no-certification and unknown cases passed. Prior adversarial IR suite rerun PASS at latest exact source. All prior native typed IR tests rerun PASS. All typed IR checks rerun PASS. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.",
+      "status": "PASS",
+      "artifact_ref": "Actions 45421049909 job 138540336310",
+      "risk": "No remaining local intent/IR acceptance; live journey gates separate",
+      "timestamp_kst": "2026-11-25T00:03:45+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "eda458d87c87fad09cd8f1bb37cb570a95026d4a"
+    },
+    {
+      "gate_id": "P2-05",
+      "req_ids": [
+        "CG-03",
+        "CG-04",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-05",
+      "observed": "Native stale/conflict/missing/denied and unknown/duplicate/future source cases; selective equal-decision and same-result-new-version invalidation. Actual Forge visibility not verified. Linked-source limit/duplicate and source-version invalidity fail closed in native fixtures. Native fresh source and stale/denied recovery tests rerun. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Real missing critical reported labels and source changes observed; Jira label change invalidated 7/7 nodes; Confluence-only change invalidated 5/18, 13 unaffected, 1/7 recomputed and 6/7 reused. No-change two-source run 0/18 affected and 7/7 reused. Linked Jira conflict and denied document access still NOT_RUN; Confluence body semantics not interpreted.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Live source version/access change and UI",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-06",
+      "req_ids": [
+        "CG-06",
+        "CG-07",
+        "CG-12",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-06",
+      "observed": "Native actor/tenant/target, invalid graph/index, corrupted marker, forged/legacy/expired approval and direct writer without consumed approval blocked. Not independent or live security audit. Forged journal execution/receipt and wrong synthetic scope denied; external classifier rejects arbitrary lower-level inputs. KVS metadata reads deny malformed or expired returned records rather than treating them as absent; invalid keys denied. Historical receipt graph is reconstructed from scoped canonical plan and expected digest; altered edges and mismatched observation/payload digest rejected. This is consistency checking, not an independent tamper-proof store. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Real exact-request approval and missing-evidence denial observed; tenant isolation, live forgery/IDOR and independent security review remain NOT_RUN.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Forge trusted identity, live permission, independent security review",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-07",
+      "req_ids": [
+        "CG-07",
+        "CG-08",
+        "CG-09",
+        "CG-22"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-07",
+      "observed": "Synthetic transport duplicate/timeout/changed-source denial/reapproval/readback and strict ADF mismatch unknown, no replay. No real mutation executed. Three added storage-fault cases: latch acknowledgement lost -> no POST; outcome acknowledgement lost or write rejected -> one POST and read-only reconciliation, no replay. Runtime pre-dispatch guard reserves 10s of documented 25s invocation budget; insufficient time before consumption, after final check, or after latch causes zero synthetic POST. Actual network latency NOT_RUN. Known remote Jira ID cannot be substituted by a different matching comment after GET failure. Persisted response ID survives missing final outcome; lost ID-record acknowledgement checked against exact stored value. No additional POST in regressions. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Actual synthetic HTF-2 comment approved and executed once, OBSERVED_SUCCESS, comment ID 84900; reconciliation returned same ID and read-back digest, Jira native comment visible matching evidence snapshot. Duplicate/ambiguous timeout and changed-after-approval live negative cases pending. No second write authorized by this record.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Approved synthetic comment write/read-back and live retry controls",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-08",
+      "req_ids": [
+        "CG-09",
+        "CG-10",
+        "CG-18",
+        "CG-21"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-08",
+      "observed": "Native conditional in-memory storage, immutable receipts, history, invalidation marker integrity, reverse-index fixtures and corrupted receipt denial. Actual KVS atomic/TTL not verified. Run journal timestamps/authority checked; synthetic storage faults and receipt recovery tested; 600-node traversal fixture passed (not a stored 600-node snapshot). Real KVS adapter now requests EXPIRE_TIME; native SDK-shape fixture passes expiry, wrong key, missing metadata cases. Read-only report receipt recovery handles lost receipt acknowledgement and interrupted final state without regeneration; mismatched/missing reservation/receipt and denied access fail closed. Recovery binds step reservation/receipt payload to original review, canonical historical lineage and remote comment ID; malformed records fail closed. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Real KVS saved review, 24h expiry displayed, recheck, history, report SUCCEEDED and persisted approval/step/receipt, comment receipt and reconciliation observed. Actual TTL expiry, conditional creation under concurrent faults, integrity adversarial cases remain pending.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Real KVS storage/expiry/conditional semantics",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-09",
+      "req_ids": [
+        "CG-06",
+        "CG-12",
+        "CG-22"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-09",
+      "observed": "Native final reread and policy deny, direct writer missing/unconsumed approval blocked, stale/revoked/foreign and malformed inputs. Live writer security not verified. Latest scope/approval/journal regression PASS in native tests; real Jira enforcement NOT_RUN. Pre-dispatch time guard added without weakening existing approval, source and permission checks. All prior writer and approval gate regressions passed at exact SHA. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Real WRITE_CRITICAL_EVIDENCE_MISSING refusal on fresh review, completed report review not reused for comment (WRITE_REVIEW_JOURNAL_UNAVAILABLE), explicit approval before bounded comment, source mutation invalidates saved review. Stale already-approved execution, permission loss and direct bypass tests remain pending.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Actual Forge prewrite deny, runtime permissions",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-10",
+      "req_ids": [
+        "CG-13",
+        "CG-17"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45418283729",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-10",
+      "observed": "Native deterministic no-key fallback and synthetic-only body, consent/quota and malformed provider output tests; actual free-project billing and egress not verified. Exact lower-level fixed fixture gate, qualification expiry after reservation, full 24-action daily cap and concurrency/ambiguous admission rejection tested; no external calls. Existing fixed-fixture, quota and consent tests rerun; no real external calls. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged.\nOwner live session 2026-11-25 KST: Actual deterministic template used throughout, external model OFF/not qualified, paid fallback disabled. Daily admission cap 24 hit with DEVELOPMENT_DAILY_BUDGET_EXHAUSTED; no new action admitted. No real external model call, secret-log review or provider qualification established.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Owner console and optional real free synthetic provider",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "319be063f81077a02ac5ed4987105926b16f8dcd"
+    },
+    {
+      "gate_id": "P2-11",
+      "req_ids": [
+        "CG-11"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-11",
+      "observed": "UI build PASS, stale previous review/history/approval display cleared; actual Chrome/Edge keyboard, focus, responsiveness and live accessible UI NOT_RUN. Actual observed and historical DAG diagram + node selector, inspector, table fallback, focus CSS and narrow layout implemented; native layout test/build PASS, real browser/independent review NOT_RUN. Report receipt recovery connected to actual resolver/UI; no live browser run. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Owner Chrome actual issue panel, evidence cards, graph, approval and readback, historical comparison, error and impact/reuse charts observed. Keyboard/focus, mobile, Edge, accessibility and independent UX remain pending.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Browser and independent design audit",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-12",
+      "req_ids": [
+        "CG-04",
+        "CG-19",
+        "CG-21",
+        "CG-22"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-12",
+      "observed": "61/61 native tests, 60 paired selective/full synthetic observations with identical decisions/checks/graph. Timing: unchanged 27.712/47.177 ms, changed 18.892/32.059 ms, denied 10.737/9.100 ms, total per 20 pairs; no speed benefit established. Not real network benchmark. Latest 72/72 native tests, 600-node traversal and 60 paired comparisons; no selective speed gain (latest measurements below). 77/77 native PASS; 60 paired revalidation decisions equal; no measured speed gain. 83/83 native PASS; latest 60 paired decisions equivalent; no measured speed gain. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Real two-source unchanged 18 unaffected, 7 checks reused; Confluence-only change 5 affected/13 unaffected and 1 recomputed/6 reused, 85.71% fewer recomputations than recomputing all 7; no speed/cost improvement established. New draft creation was blocked by daily admission limit. Complete paired live benchmark and remaining scenario tests pending.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Repeatable real Forge timing and complete P2 scenario coverage",
+      "timestamp_kst": "2026-11-25T23:34:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    },
+    {
+      "gate_id": "P2-13",
+      "req_ids": [
+        "CG-11",
+        "CG-12",
+        "CG-19"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-13",
+      "observed": "Same-author local checks only. Codex/Astra independent model review NOT_RUN.",
+      "status": "NOT_RUN",
+      "artifact_ref": null,
+      "risk": "Separate authorized reviewers",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-14",
+      "req_ids": [
+        "CG-01",
+        "CG-20"
+      ],
+      "source_sha": "9ccbb4d898662a94bbd74738c83b4c7a0697de45",
+      "env": "GitHub Actions Linux Node 22, native synthetic fixtures; no live Forge",
+      "actor": "same-author web GPT-6.2",
+      "test_command_or_url": null,
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-14",
+      "observed": "Fresh install/demo/video/submission acceptance not performed.",
+      "status": "NOT_RUN",
+      "artifact_ref": null,
+      "risk": "Judge-style E2E and final assets",
+      "timestamp_kst": "2026-11-24T22:35:19+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns"
+    },
+    {
+      "gate_id": "P2-15",
+      "req_ids": [
+        "CG-12",
+        "CG-13",
+        "CG-20"
+      ],
+      "source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+      "env": "GitHub Actions Linux Node 22; owner Windows PowerShell/Chrome, Forge development synthetic demo (owner-provided CLI/screenshots)",
+      "actor": "Owner executed live checks; web GPT-6.2 reviewed evidence",
+      "test_command_or_url": "https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45421049909",
+      "expected": "docs/ACCEPTANCE_MATRIX.md P2-15",
+      "observed": "Installed dependency inventory: 164 lock entries, 139 installed, 25 optional absent, 10 installed packages need manual license-file review. Actual legal rights, usage/billing and distribution approval NOT_RUN. Identified exact ten installed package entries without recognized license files; metadata declaration only, legal review pending. Actual recognized installed license and NOTICE file contents collected as third-party-notices-review.txt in CI artifact. Ten missing-file entries still require exact-version source text/NOTICE review. Upstream license family metadata corroborates several entries, not legal clearance. Installed inventory unchanged (10 entries require review); license and billing acceptance not complete. Round 5 native 89/89 PASS, including UTC rollover, post-latch expiry, exact prior reconciliation identity and conflicting receipt denial; no additional live gate acceptance. Round 6 native 92/92 PASS; revoked source reference redaction, root object ID linkage, new invalid source uncertainty and report deadline at durable reservation; actual Forge access and independent review remain NOT_RUN. Round 7 native 98/98 PASS; synchronous UI guard, unresolved execution recovery, durable dispatch proof, bounded linked reads, local request deadlines; live acceptance and independent audit not established. Round 8 native 102/102 PASS; durable report receipt chronology, malformed/unmatched evidence and scoped existing-comment recovery; live gates remain unchanged. Round 9 native 107/107 PASS; admission worst-case 5 reads, real adapter on synthetic journeys (comment 21/7, report 46/9 peak), configuration reason and UI gating; actual live acceptance unchanged. Round 10 native 110/110 PASS; actual UI overview, graph direct-neighbor inspection and workflow/evidence cards built. Real browser/independent UX acceptance NOT_RUN. Round 11 native 112/112 PASS; authorized saved/current source comparison, actual impact count charts, exact-request UI state; live browser and independent acceptance NOT_RUN.\nOwner live session 2026-11-25 KST: Owner console screenshot 2026-11-25 current month extra charges $0 and forecast $0; functions 2.772/200000 GB-seconds before live tests; KVS usage 0 shown before activation. Usage may lag; post-test costs and license/distribution approval pending. Forge 3.0.0 reported not Runs on Atlassian eligible; do not claim badge or certification.\n## Owner post-test cost/log observation — 2026-11-25 23:36 KST\nOwner Developer Console screenshot after live tests: current-month extra and forecast charges both USD 0; functions 22.9705/200000 GB-seconds, KVS reads 0.0002/0.1 GB, writes 0.0001/0.1 GB, LLM input/output zero. Console warns usage may lag by up to one hour. Owner executed `forge logs --environment development --limit 50`; command returned to prompt without output. No error displayed in that query; this does not establish complete log coverage or zero errors. No additional Forge invocation, deployment, billing or permission change. P2-15 remains PARTIAL; license/distribution and subsequent cost review pending. Daily admission stop remains in effect until 2026-11-26 09:00 KST UTC rollover. No gate status changed.",
+      "status": "PARTIAL",
+      "artifact_ref": "Owner CLI/screenshots in 2026-11-25 conversation; https://github.com/hibi89/Atlassian_Codegeist2026/actions/runs/45629146398",
+      "risk": "Review license/NOTICE terms and owner consoles; production/submission HOLD",
+      "timestamp_kst": "2026-11-25T23:36:00+09:00",
+      "independent_reviewer": "NOT_RUN",
+      "approval_ref": "Owner development-only source/approved synthetic testing; actual live activation deferred until owner returns",
+      "prior_evidence_source_sha": "2519cd1695169871d226f9cd0e80f2755b9a11b9"
+    }
+  ],
+  "benchmark": {
+    "scope": "native synthetic adapter, 20 pairs per scenario, total ms (full vs selective)",
+    "rows": [
+      {
+        "scenario": "unchanged",
+        "pairs": 20,
+        "full_ms": 43.795,
+        "selective_ms": 63.656,
+        "reused": 8
+      },
+      {
+        "scenario": "changed",
+        "pairs": 20,
+        "full_ms": 21.02,
+        "selective_ms": 36.37,
+        "reused": 4
+      },
+      {
+        "scenario": "denied",
+        "pairs": 20,
+        "full_ms": 12.328,
+        "selective_ms": 14.432,
+        "reused": 0
+      }
+    ],
+    "decision_equal_pairs": 60,
+    "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
+  },
+  "dependency_inventory": {
+    "lock_entries": 164,
+    "installed": 139,
+    "manual_review": 10,
+    "optional_absent": 25,
+    "legal_status": "NOT_REVIEWED",
+    "manual_entries": [
+      {
+        "name": "@atlaskit/adf-schema-generator",
+        "version": "4.0.4",
+        "declared_license": "Apache-2.0",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "@atlaskit/platform-feature-flags",
+        "version": "0.3.0",
+        "declared_license": "Apache-2.0",
+        "installed_entries": 2,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "@atlaskit/platform-feature-flags",
+        "version": "2.2.2",
+        "declared_license": "Apache-2.0",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "@esbuild/linux-x64",
+        "version": "0.25.12",
+        "declared_license": "MIT",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "@statsig/client-core",
+        "version": "3.30.2",
+        "declared_license": "ISC",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "boolbase",
+        "version": "1.0.0",
+        "declared_license": "ISC",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "css-color-names",
+        "version": "0.0.4",
+        "declared_license": "MIT",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "headers-utils",
+        "version": "3.0.2",
+        "declared_license": "MIT",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      },
+      {
+        "name": "iframe-resizer",
+        "version": "4.4.5",
+        "declared_license": "MIT",
+        "installed_entries": 1,
+        "status": "LICENSE_TEXT_OR_NOTICE_REVIEW_REQUIRED"
+      }
+    ],
+    "review_artifact": "Actions 45408712671 / forge-build-753bcc3dc2b593376625dc41f024ae298f6a0b3d / third-party-notices-review.txt",
+    "upstream_reference_review": {
+      "scope": "License-family corroboration, not exact-version legal clearance; preserve 10 missing installed file entries",
+      "references": [
+        "https://www.npmjs.com/package/@atlaskit/adf-schema-generator?activeTab=versions",
+        "https://security.snyk.io/package/npm/%40atlaskit%2Fplatform-feature-flags",
+        "https://github.com/bahamas10/css-color-names",
+        "https://github.com/fb55/boolbase/blob/master/LICENSE",
+        "https://www.npmjs.com/package/headers-utils?activeTab=versions",
+        "https://www.npmjs.com/package/@statsig/client-core",
+        "https://secure.software/npm/packages/iframe-resizer/4.4.5",
+        "https://iframe-resizer.com/licenses/"
+      ],
+      "caution": "iframe-resizer locked 4.4.5 declares MIT; current v5 licensing differs. Exact version license text not retrieved, do not assume current licensing applies or update dependency without review."
+    }
+  },
+  "benchmark_previous": {
+    "scope": "native synthetic adapter, 20 pairs per scenario, total ms (full vs selective)",
+    "rows": [
+      {
+        "scenario": "unchanged",
+        "pairs": 20,
+        "full_ms": 20.474,
+        "selective_ms": 36.869,
+        "reused": 8
+      },
+      {
+        "scenario": "changed",
+        "pairs": 20,
+        "full_ms": 12.741,
+        "selective_ms": 22.036,
+        "reused": 4
+      },
+      {
+        "scenario": "denied",
+        "pairs": 20,
+        "full_ms": 7.547,
+        "selective_ms": 7.923,
+        "reused": 0
+      }
+    ],
+    "decision_equal_pairs": 60,
+    "conclusion": "NO_MEASURED_SPEED_GAIN; real network NOT_RUN"
+  },
+  "latest_candidate_ci": {
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "date_kst": "2026-11-26",
+    "run_id": 45690184303,
+    "push_run_id": 45690184303,
+    "job_id": 139473261910,
+    "artifact_id": 15058521554,
+    "smoke_pass": 97,
+    "p2_regression_pass": 60,
+    "fail": 0,
+    "skip": 0,
+    "cancelled": 0,
+    "locked_install": "PASS",
+    "syntax": "PASS",
+    "dependency_inventory": "PASS_NOT_LEGAL_REVIEW",
+    "ui_build": "PASS",
+    "ui_output": "PASS",
+    "live_forge": "NOT_RUN",
+    "independent_review": "NOT_RUN",
+    "comment_storage_peak": {
+      "reads": 21,
+      "writes": 7
+    },
+    "report_storage_peak": {
+      "reads": 46,
+      "writes": 9
+    },
+    "prior_live_evidence_source_sha": "6006fe1d3d4210e90ff3a4101e17b4724f00d3cb",
+    "gate_counts_unchanged": true,
+    "project_dashboard": {
+      "scope": "CURRENT_ACTOR_SYNTHETIC_PROJECT_SAMPLE",
+      "scan_limit": 12,
+      "row_limit": 3,
+      "point_read_limit": 60,
+      "synthetic_integration": "PASS",
+      "live": "NOT_RUN",
+      "detail_per_row_max": 24,
+      "shared_detail_read_limit": 48,
+      "later_row_reserve": 8,
+      "combined_receipt_regression": "PASS",
+      "budget_limited_rows": "EXPLICIT_UNCONFIRMED"
+    },
+    "draft_repair": {
+      "synthetic_integration": "PASS",
+      "live": "NOT_RUN",
+      "authority": "NONE",
+      "scope": "INITIAL_JOURNAL_ONLY"
+    },
+    "local_preflight": {
+      "ci_outputs_only": "PASS",
+      "windows_full": "NOT_RUN",
+      "forge_lint": "NOT_RUN",
+      "deployment": "NOT_RUN",
+      "untracked_input_guard": "NATIVE_PASS",
+      "resource_allowlist": "NATIVE_PASS",
+      "linked_legal_output_check": "NATIVE_PASS",
+      "symlink_rejection": "LINUX_NATIVE_PASS"
+    },
+    "ui_advance": {
+      "roadmap": "2026-12-04..08",
+      "path_explorer": "IMPLEMENTED_NATIVE_PASS",
+      "project_filters": "IMPLEMENTED_NATIVE_PASS",
+      "workbench_navigator": "IMPLEMENTED_NATIVE_PASS",
+      "source_navigation": "IMPLEMENTED_NATIVE_PASS",
+      "browser": "NOT_RUN",
+      "claim_explorer": "IMPLEMENTED_NATIVE_PASS",
+      "revision_filters": "IMPLEMENTED_NATIVE_PASS",
+      "node_lookup": "IMPLEMENTED_NATIVE_PASS"
+    },
+    "report_ui_integrity": {
+      "schema_and_hash": "IMPLEMENTED_NATIVE_PASS",
+      "session_recovery": "IMPLEMENTED_NATIVE_PASS",
+      "scope": "PER_REVIEW_SESSION_ONLY",
+      "browser": "NOT_RUN",
+      "refresh_recovery": "IMPLEMENTED_NATIVE_PASS"
+    },
+    "access_expiry": {
+      "review_refresh": "PASS",
+      "receipt_recovery": "PASS",
+      "report_output": "PASS",
+      "live": "NOT_RUN"
+    },
+    "submission_contract_pass": 4,
+    "build_evidence": {
+      "manifest_sha256": "9902e56803b1cd5e6c58fb5e40fb63001217e685e0a6448aa2c853070828d859",
+      "files": 11,
+      "verification": "CI_LOCAL_HASH_MATCH",
+      "external_digest_check": "NOT_RUN",
+      "artifact_download": "NOT_RUN",
+      "artifact_expires_at": "2026-12-02T19:57:23Z",
+      "signature": "NONE",
+      "deployment": "NOT_RUN"
+    },
+    "dependency_inventory_details": {
+      "lock_entries": 164,
+      "installed": 139,
+      "manual_review": 10,
+      "optional_absent": 25,
+      "legal_status": "NOT_REVIEWED",
+      "path_identity": "NATIVE_PASS",
+      "windows_execution": "NOT_RUN",
+      "missing_license_paths": 10,
+      "upstream_esbuild_tag_text": "OBSERVED_NOT_PACKAGE_CLEARANCE"
+    }
+  },
+  "latest_candidate_ci_followup": {
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "run_id": 45690184303,
+    "status": "completed",
+    "conclusion": "success",
+    "pr_run_id": 45690197095,
+    "pr_status": "completed",
+    "pr_conclusion": "success"
+  },
+  "submission_benchmark": {
+    "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+    "run_id": 45690184303,
+    "job_id": 139473261910,
+    "scope": "NATIVE_SYNTHETIC_ADAPTER",
+    "rows": [
+      {
+        "scenario": "unchanged",
+        "pairs": 20,
+        "full_ms": 27.582,
+        "selective_ms": 46.59,
+        "reused_groups": 8,
+        "decision_equal": true
+      },
+      {
+        "scenario": "changed",
+        "pairs": 20,
+        "full_ms": 19.503,
+        "selective_ms": 31.725,
+        "reused_groups": 4,
+        "decision_equal": true
+      },
+      {
+        "scenario": "denied",
+        "pairs": 20,
+        "full_ms": 10.787,
+        "selective_ms": 10.981,
+        "reused_groups": 0,
+        "decision_equal": true
+      }
+    ]
+  }
+}

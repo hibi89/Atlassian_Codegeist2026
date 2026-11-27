@@ -1,0 +1,31 @@
+name: Submission evidence consistency
+on:
+  push:
+    branches: ['feature/forge-p1']
+    paths: ['docs/P2_VERIFICATION_LEDGER.json', 'docs/submission/**', '.github/workflows/submission-evidence.yml']
+  pull_request:
+    branches: ['develop']
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths: ['docs/P2_VERIFICATION_LEDGER.json', 'docs/submission/**', '.github/workflows/submission-evidence.yml']
+permissions:
+  contents: read
+concurrency:
+  group: submission-evidence-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  consistency:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'feature/forge-p1')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Check evidence snapshot only (not product acceptance)
+        run: |
+          node --test docs/submission/build-evidence.test.mjs
+          node docs/submission/build-evidence.mjs --check
