@@ -1,13 +1,14 @@
 // Display state only; never grants authority.
-export function overviewState({context,issue,preview,savedStatus,commentState,reportState,unresolvedId,busy}){
+export function overviewState({context,issue,preview,savedStatus,commentState,reportState,unresolvedId,busy,selectedReportUnresolved=false}){
  const count=v=>Number.isSafeInteger(v)&&v>=0?v:null;
  const observed=preview!=null?(preview.ok?preview.evidence:null):issue?.ok?issue.evidence:null;
  const stale=savedStatus?.persisted_invalidation===true||savedStatus?.status==="STALE_REVIEW_REQUIRED";
  const policy=preview?.ok?preview.policy?.decision:null;
  let outcome={label:"No outcome established",tone:"neutral"};
  if(unresolvedId||commentState?.status==="UNKNOWN_OUTCOME_REVIEW")outcome={label:"Reconciliation required",tone:"danger"};
+ else if(selectedReportUnresolved||savedStatus?.ok===true&&(savedStatus.receipt_status==="UNCONFIRMED"||savedStatus.run_state==="REPORT_OUTCOME_REVIEW_REQUIRED"))outcome={label:"Report receipt review required",tone:"warning"};
  else if(commentState?.ok===true&&commentState.status==="OBSERVED_SUCCESS"&&commentState.execution==="JIRA_COMMENT_READBACK_OBSERVED")outcome={label:"Comment read-back observed",tone:"success"};
- else if(reportState?.ok===true&&reportState.status==="READ_ONLY_REPORT_GENERATED"&&reportState.run_state==="SUCCEEDED"&&/^[a-f0-9]{64}$/.test(reportState.request_id??"")&&/^[a-f0-9]{64}$/.test(reportState.report_digest??""))outcome={label:"Read-only report recorded",tone:"observed"};
+ else if(reportState?.ok===true&&reportState.report_integrity==="SHA256_MATCH"&&reportState.status==="READ_ONLY_REPORT_GENERATED"&&reportState.run_state==="SUCCEEDED"&&/^[a-f0-9]{64}$/.test(reportState.request_id??"")&&/^[a-f0-9]{64}$/.test(reportState.report_digest??""))outcome={label:"Read-only report recorded",tone:"observed"};
  else if(commentState?.status==="BLOCKED_BEFORE_DISPATCH")outcome={label:"Blocked before dispatch",tone:"warning"};
  else if(commentState?.status==="DEFINITE_REJECTION")outcome={label:"Jira rejected request",tone:"warning"};
  return {issue:context?.ok?context.key??"Unknown":"Unavailable",sourceCount:Array.isArray(observed?.sources)?observed.sources.length:null,unknownCount:count(observed?.unknown_count),coverage:observed?.coverage??"Not observed",policy:stale?"Saved review invalidated":policy==="ALLOW_PREVIEW"?"Preview only":policy==="REVIEW"?"Review required":policy==="DENY"?"Denied":"Not assessed",policyTone:stale||policy==="DENY"?"danger":policy==="REVIEW"?"warning":"neutral",outcome,busy:busy===true};
@@ -23,12 +24,13 @@ export function requestMatches(request,result){
 }
 export function requestStage(kind,request,result,deadline,unresolvedId=""){
  if(kind==="comment"&&unresolvedId)return {label:"Reconciliation required",tone:"danger"};
+ if(kind==="report"&&unresolvedId)return {label:"Receipt review required",tone:"warning"};
  if(!requestMatches(request,result))return {label:"Current request status not established",tone:"neutral"};
  const s=result.status;
  if(result.ok===true&&s===(kind==="comment"?"AWAITING_COMMENT_APPROVAL":"AWAITING_READ_ONLY_APPROVAL"))return {label:deadline?.ready?"Awaiting explicit approval":"Approval window unavailable or expired",tone:"warning"};
  if(result.ok===true&&s===(kind==="comment"?"COMMENT_APPROVED":"READ_ONLY_APPROVED"))return {label:deadline?.ready?"Approved · not executed":"Approval window unavailable or expired",tone:"warning"};
  if(kind==="comment"&&result.ok===true&&s==="OBSERVED_SUCCESS"&&result.execution==="JIRA_COMMENT_READBACK_OBSERVED")return {label:"Read-back observed",tone:"success"};
- if(kind==="report"&&result.ok===true&&s==="READ_ONLY_REPORT_GENERATED"&&result.run_state==="SUCCEEDED"&&/^[a-f0-9]{64}$/.test(result.report_digest??""))return {label:"Read-only report recorded",tone:"observed"};
+ if(kind==="report"&&result.ok===true&&result.report_integrity==="SHA256_MATCH"&&s==="READ_ONLY_REPORT_GENERATED"&&result.run_state==="SUCCEEDED"&&/^[a-f0-9]{64}$/.test(result.report_digest??""))return {label:"Read-only report recorded",tone:"observed"};
  if(s==="UNKNOWN_OUTCOME_REVIEW")return {label:"Reconciliation required",tone:"danger"};
  if(s==="BLOCKED_BEFORE_DISPATCH"||s==="DEFINITE_REJECTION"||s==="COMMENT_APPROVAL_REVOKED"||s==="READ_ONLY_APPROVAL_REVOKED")return {label:s,tone:"warning"};
  return {label:"Outcome not established",tone:"neutral"};
@@ -42,14 +44,14 @@ export function evidenceDistribution(evidence,review){
 }
 
 // Navigation hints, not a workflow completion score or a permission grant.
-export function workbenchGuide({context,issue,preview,savedStatus,reviewId,reportRequest,reportState,reportDeadline,commentRequest,commentState,commentDeadline,unresolvedId,safety}){
+export function workbenchGuide({context,issue,preview,savedStatus,reviewId,reportRequest,reportState,reportDeadline,commentRequest,commentState,commentDeadline,unresolvedId,safety,selectedReportUnresolved=false}){
  const hex=id=>typeof id==="string"&&/^[a-f0-9]{64}$/.test(id),saved=hex(reviewId)&&savedStatus?.ok===true&&savedStatus.review_id===reviewId;
  const stale=saved&&(savedStatus.persisted_invalidation===true||savedStatus.status==="STALE_REVIEW_REQUIRED");
  const observed=preview?.ok===true?preview.evidence:issue?.ok===true?issue.evidence:null;
  const draft=preview?.ok===true&&hex(preview.plan?.plan_hash);
  const reportBound=hex(reviewId)&&reportRequest?.review_id===reviewId&&requestMatches(reportRequest,reportState);
  const commentBound=hex(reviewId)&&commentRequest?.review_id===reviewId&&requestMatches(commentRequest,commentState);
- const reportUncertain=saved&&(savedStatus.receipt_status==="UNCONFIRMED"||savedStatus.run_state==="REPORT_OUTCOME_REVIEW_REQUIRED");
+ const reportUncertain=selectedReportUnresolved||saved&&(savedStatus.receipt_status==="UNCONFIRMED"||savedStatus.run_state==="REPORT_OUTCOME_REVIEW_REQUIRED");
  const commentUncertain=!!unresolvedId||commentState?.status==="UNKNOWN_OUTCOME_REVIEW"||saved&&["UNKNOWN_OUTCOME_REVIEW","JOURNAL_UNKNOWN"].includes(savedStatus.comment_journal?.status);
  const reportVerified=reportBound&&reportState.ok===true&&reportState.report_integrity==="SHA256_MATCH"&&reportState.status==="READ_ONLY_REPORT_GENERATED";
  const commentVerified=commentBound&&commentState.ok===true&&commentState.status==="OBSERVED_SUCCESS"&&commentState.execution==="JIRA_COMMENT_READBACK_OBSERVED";
