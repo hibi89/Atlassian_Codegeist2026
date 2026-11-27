@@ -29,6 +29,15 @@ export function reportContentShape(report){
  if(b!==undefined&&(!b||b.schema_version!=="hae.incident.assessment.v1"||b.authorization!=="NONE"||b.execution!=="NO_JIRA_MUTATION"||b.certification!=="REPORTED_EVIDENCE_ONLY"||!state(b.status)||b.source_count!==visible.size||!list(b.ownership,x=>bounded(x?.subject)&&strings(x.teams)&&state(x.state)&&refs(x.source_uris))||!list(b.unmatched_owners,x=>bounded(x?.subject)&&strings(x.teams)&&state(x.state)&&refs(x.source_uris))||!list(b.policy_versions,x=>bounded(x?.subject)&&strings(x.versions)&&state(x.state)&&refs(x.source_uris))))return false;
  return true;
 }
+// Lineage is outside the report's content digest. Validate the rendered
+// topology and bind its approval/receipt digests to the exact response.
+// This is structural validation, not independent verification of storage.
+export function reportLineageShape(lineage,requestId,reportDigest){
+ if(!hex(requestId)||!hex(reportDigest)||lineage?.schema_version!=="hae.report.lineage.v1"||!hex(lineage.graph_revision)||!Array.isArray(lineage.nodes)||lineage.nodes.length!==3||!Array.isArray(lineage.edges)||lineage.edges.length!==3)return false;
+ const [approval,step,receipt]=lineage.nodes,[policyEdge,stepEdge,receiptEdge]=lineage.edges;
+ if(![approval,step,receipt].every(n=>hex(n?.id)&&hex(n.digest))||new Set(lineage.nodes.map(n=>n.id)).size!==3||approval.kind!=="APPROVAL"||approval.digest!==requestId||step.kind!=="STEP"||receipt.kind!=="RECEIPT"||receipt.digest!==reportDigest)return false;
+ return hex(policyEdge?.from_dependency)&&!lineage.nodes.some(n=>n.id===policyEdge.from_dependency)&&policyEdge.to_dependent===approval.id&&policyEdge.relation==="AUTHORIZED_READ_ONLY"&&stepEdge?.from_dependency===approval.id&&stepEdge.to_dependent===step.id&&stepEdge.relation==="APPROVED_STEP"&&receiptEdge?.from_dependency===step.id&&receiptEdge.to_dependent===receipt.id&&receiptEdge.relation==="OBSERVED_REPORT";
+}
 // This verifies the exact returned bytes, not the truth of claims or a new approval.
 export async function verifyGeneratedReport(reviewId,requestId,result,subtle=globalThis.crypto?.subtle){
  const fail=code=>({ok:false,code,request_id:requestId,report_integrity:"UNCONFIRMED"});
@@ -42,6 +51,7 @@ export async function verifyGeneratedReport(reviewId,requestId,result,subtle=glo
   const hash=Array.from(new Uint8Array(await subtle.digest("SHA-256",bytes)),b=>b.toString(16).padStart(2,"0")).join("");
   if(hash!==result.report_digest)return fail("REPORT_CONTENT_DIGEST_MISMATCH");
   if(!reportContentShape(report))return fail("REPORT_CONTENT_SCHEMA_UNCONFIRMED");
+  if(!reportLineageShape(result.lineage,requestId,result.report_digest))return fail("REPORT_LINEAGE_SCHEMA_UNCONFIRMED");
   return {...result,report_integrity:"SHA256_MATCH",canonical_report:json};
  }catch{return fail("REPORT_CLIENT_DIGEST_UNKNOWN")}
 }

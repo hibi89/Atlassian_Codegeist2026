@@ -77,12 +77,18 @@ test("dashboard does not turn malformed responses into observed sample counts",(
  assert.deepEqual(projectSampleCounts({...base,rows:[]}),{total:0,changed_or_invalidated:0,report_receipts:0,comment_observations:0,unconfirmed:0});
 });
 
-import {verifyGeneratedReport} from "./report-integrity.js";
+import {verifyGeneratedReport,reportLineageShape} from "./report-integrity.js";
+import {reportLineage} from "../lineage/receipt-lineage.js";
 import {webcrypto,createHash as reportHash} from "node:crypto";
 import {canonical as canonicalReport} from "../core/ir/plan.js";
+function reportFixtureLineage(review,request,reportDigest){
+ const digest=x=>reportHash("sha256").update(x).digest("hex");
+ return reportLineage({tenant:"synthetic"}, {id:review,graph:{graph_revision:"d".repeat(64),nodes:[{id:"e".repeat(64),kind:"POLICY"}]}},request,{step_id:"report"}, "f".repeat(64),reportDigest,digest);
+}
 test("generated report display requires exact review, request and independently computed content digest",async()=>{
  const review="a".repeat(64),request="b".repeat(64),report={schema_version:"hae.readonly.report.v1",review_id:review,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",generated_at:Date.parse("2026-11-24T12:00:00Z"),sources:[{uri:"/browse/HTF-2",version:"2026-11-24T11:00:00Z",status:"VERSION_OBSERVED"}],checks:[],missing:[],policy:"cg-readonly-report-v1"};
  const result={ok:true,request_id:request,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",authorization:"CONSUMED",execution:"NO_JIRA_MUTATION",report,report_digest:reportHash("sha256").update(canonicalReport(report)).digest("hex")};
+ result.lineage=reportFixtureLineage(review,request,result.report_digest);
  const verified=await verifyGeneratedReport(review,request,result,webcrypto.subtle);assert.equal(verified.report_integrity,"SHA256_MATCH");assert.equal(verified.canonical_report,canonicalReport(report));
  for(const bad of [{...result,request_id:review},{...result,report:{...report,review_id:request}},{...result,report:{...report,missing:["tampered"]}},{...result,run_state:"RUNNING"},{...result,report_digest:"c".repeat(64)},{...result,ok:false}]){const rejected=await verifyGeneratedReport(review,request,bad,webcrypto.subtle);assert.equal(rejected.ok,false);assert.equal(rejected.report,undefined);assert.equal(rejected.canonical_report,undefined)}
  assert.equal((await verifyGeneratedReport(review,request,result,null)).code,"REPORT_CLIENT_DIGEST_UNAVAILABLE");assert.equal((await verifyGeneratedReport(review,request,result,{digest:async()=>{throw Error("unavailable")}})).code,"REPORT_CLIENT_DIGEST_UNKNOWN");
@@ -204,4 +210,17 @@ test("selected unresolved report consistently overrides optimistic display witho
  assert.equal(workbenchGuide({...base,selectedReportUnresolved:true,unresolvedId:requestId}).next,"comment");
  assert.equal(workbenchGuide({...base,selectedReportUnresolved:false}).steps.find(s=>s.key==="report").label,"Read-only report recorded");
  assert.equal(workbenchGuide({...base,selectedReportUnresolved:false}).next,"history");
+});
+
+
+test("matching report digest cannot establish a malformed or mismatched receipt lineage",async()=>{
+ const review="a".repeat(64),request="b".repeat(64),report={schema_version:"hae.readonly.report.v1",review_id:review,status:"OBSERVED_NOT_INDEPENDENTLY_CERTIFIED",generated_at:Date.parse("2026-11-24T12:00:00Z"),sources:[{uri:"/browse/HTF-2",version:"2026-11-24T11:00:00Z",status:"VERSION_OBSERVED"}],checks:[],missing:[],policy:"cg-readonly-report-v1"};
+ const report_digest=reportHash("sha256").update(canonicalReport(report)).digest("hex"),lineage=reportFixtureLineage(review,request,report_digest);
+ const result={ok:true,request_id:request,status:"READ_ONLY_REPORT_GENERATED",run_state:"SUCCEEDED",authorization:"CONSUMED",execution:"NO_JIRA_MUTATION",report,report_digest,lineage};
+ assert.equal(reportLineageShape(lineage,request,report_digest),true);
+ assert.equal((await verifyGeneratedReport(review,request,result,webcrypto.subtle)).ok,true);
+ for(const bad of [undefined,null,{}, {...lineage,nodes:null},{...lineage,edges:[]},{...lineage,graph_revision:"bad"},{...lineage,nodes:[{...lineage.nodes[0],digest:review},...lineage.nodes.slice(1)]},{...lineage,nodes:[...lineage.nodes.slice(0,2),{...lineage.nodes[2],digest:review}]},{...lineage,nodes:[lineage.nodes[0],{...lineage.nodes[1],id:lineage.nodes[0].id},lineage.nodes[2]]},{...lineage,edges:[{...lineage.edges[0],from_dependency:lineage.nodes[2].id},...lineage.edges.slice(1)]},{...lineage,edges:[lineage.edges[0],{...lineage.edges[1],to_dependent:lineage.nodes[2].id},lineage.edges[2]]}]){
+  const rejected=await verifyGeneratedReport(review,request,{...result,lineage:bad},webcrypto.subtle);
+  assert.equal(rejected.code,"REPORT_LINEAGE_SCHEMA_UNCONFIRMED");assert.equal(rejected.report,undefined);assert.equal(rejected.lineage,undefined);assert.deepEqual(unresolvedReports([],"generateReadOnlyReport",review,rejected),[review]);
+ }
 });
