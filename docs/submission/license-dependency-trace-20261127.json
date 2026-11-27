@@ -1,0 +1,235 @@
+{
+  "date_kst": "2026-11-27",
+  "source_sha": "1dfb09b173c3148b4024af3c6af90e912ff55c2f",
+  "lock_blob_sha": "1f295946263a2eedcc5ce82fc9ec5438a18bdcd8",
+  "prior_inventory_source": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+  "scope": "LOCKFILE_REACHABILITY_NOT_RUNTIME_BUNDLE_OR_LEGAL_CLEARANCE",
+  "summary": {
+    "manual_paths": 10,
+    "unique_name_versions": 9,
+    "production_reachable_paths": 9,
+    "dev_only_paths": 1,
+    "manual_checks_remaining": 10
+  },
+  "method": "Breadth-first traversal from root production dependencies and root devDependencies separately, following dependencies/optionalDependencies/peerDependencies using nearest ancestor node_modules lookup; one shortest observed chain per installed path. Absent peers recorded; no claims of actual module execution, deployment inclusion or complete legal review.",
+  "entries": [
+    {
+      "path": "node_modules/@atlaskit/adf-schema-generator",
+      "name": "@atlaskit/adf-schema-generator",
+      "version": "4.0.4",
+      "license": "Apache-2.0",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/adf-schema",
+        "node_modules/@atlaskit/adf-schema-generator"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/@atlaskit/ds-lib/node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "0.3.0",
+      "license": "Apache-2.0",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/tokens",
+        "node_modules/@atlaskit/ds-lib",
+        "node_modules/@atlaskit/ds-lib/node_modules/@atlaskit/platform-feature-flags"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "2.2.2",
+      "license": "Apache-2.0",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/adf-schema",
+        "node_modules/@atlaskit/platform-feature-flags"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/@atlaskit/tokens/node_modules/@atlaskit/platform-feature-flags",
+      "name": "@atlaskit/platform-feature-flags",
+      "version": "0.3.0",
+      "license": "Apache-2.0",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/tokens",
+        "node_modules/@atlaskit/tokens/node_modules/@atlaskit/platform-feature-flags"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/@esbuild/linux-x64",
+      "name": "@esbuild/linux-x64",
+      "version": "0.25.12",
+      "license": "MIT",
+      "lock_dev": true,
+      "production_dependency_chain": null,
+      "development_dependency_chain": [
+        "node_modules/esbuild",
+        "node_modules/@esbuild/linux-x64"
+      ]
+    },
+    {
+      "path": "node_modules/@statsig/client-core",
+      "name": "@statsig/client-core",
+      "version": "3.30.2",
+      "license": "ISC",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/adf-schema",
+        "node_modules/@atlaskit/platform-feature-flags",
+        "node_modules/@atlaskit/feature-gate-js-client",
+        "node_modules/@statsig/client-core"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/boolbase",
+      "name": "boolbase",
+      "version": "1.0.0",
+      "license": "ISC",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/api",
+        "node_modules/@forge/manifest",
+        "node_modules/cheerio",
+        "node_modules/cheerio-select",
+        "node_modules/boolbase"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/css-color-names",
+      "name": "css-color-names",
+      "version": "0.0.4",
+      "license": "MIT",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/@atlaskit/adf-schema",
+        "node_modules/css-color-names"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/headers-utils",
+      "name": "headers-utils",
+      "version": "3.0.2",
+      "license": "MIT",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/api",
+        "node_modules/headers-utils"
+      ],
+      "development_dependency_chain": null
+    },
+    {
+      "path": "node_modules/iframe-resizer",
+      "name": "iframe-resizer",
+      "version": "4.4.5",
+      "license": "MIT",
+      "lock_dev": false,
+      "production_dependency_chain": [
+        "node_modules/@forge/bridge",
+        "node_modules/iframe-resizer"
+      ],
+      "development_dependency_chain": null
+    }
+  ],
+  "unresolved_production_edges": [
+    {
+      "from": "node_modules/@forge/api",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/bridge",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/kvs",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/resolver",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/auth",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/egress",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/i18n",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/manifest",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/bridge/node_modules/@forge/i18n",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/@forge/manifest/node_modules/@forge/i18n",
+      "name": "typescript"
+    },
+    {
+      "from": "node_modules/react-uid",
+      "name": "@types/react"
+    }
+  ],
+  "unresolved_development_edges": [],
+  "additional_upstream_evidence": [
+    {
+      "name": "boolbase",
+      "version": "1.0.0",
+      "license": "ISC",
+      "upstream_commit": "19c780781b1b7aa006a27f39561b29ff96198e82",
+      "package_json_blob": "a6aa788e71e2c200a4ad0703827651e8dee2267a",
+      "source_url": "https://github.com/fb55/boolbase/blob/19c780781b1b7aa006a27f39561b29ff96198e82/package.json",
+      "root_files": [
+        "README.md",
+        "index.js",
+        "package.json",
+        "tests.js"
+      ],
+      "readme_blob": "85eefa5e5048913b08ec4eb37d0a78473f88505d",
+      "status": "EXACT_VERSION_DECLARATION_ONLY"
+    },
+    {
+      "name": "css-color-names",
+      "version": "0.0.4",
+      "license": "MIT",
+      "upstream_commit": "a179883c822d62eb84d6114be1a3a5044ad3d781",
+      "package_json_blob": "283f9395851d8e5cf52f786e970668ad2866b9b1",
+      "source_url": "https://github.com/bahamas10/css-color-names/blob/a179883c822d62eb84d6114be1a3a5044ad3d781/package.json",
+      "root_files": [
+        "Makefile",
+        "README.md",
+        "css-color-names.json",
+        "getcolors.sh",
+        "package.json",
+        "stringify.js"
+      ],
+      "readme_blob": "bfe6263b7911f0bb6b9cbab5dcbc90459c037e5e",
+      "status": "EXACT_VERSION_DECLARATION_AND_README_MIT_LABEL_ONLY"
+    }
+  ],
+  "registry_access": "DNS_FAILURE_IN_LOCAL_RUNTIME; CDN_URLS_UNAVAILABLE; NPM_PAGE_403",
+  "legal_review": "NOT_RUN",
+  "distribution": "HOLD"
+}
