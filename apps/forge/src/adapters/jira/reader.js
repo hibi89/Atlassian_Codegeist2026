@@ -1,3 +1,4 @@
+import { observationTime } from "../../evidence/observation-time.js";
 import { typedTags } from "../../evidence/typed-claims.js";
 import { fail, issueHint } from "../../security-context.js";
 function classifyReadStatus(status){
@@ -13,12 +14,12 @@ function normalizeIssue(raw,key,retrievedAt){
   if(!raw||typeof raw!=="object"||!safeString(raw.id,64)||raw.key!==key||!raw.fields||typeof raw.fields!=="object")return fail("JIRA_RESPONSE_INVALID");
   const fields=raw.fields;
   const updated=safeString(fields.updated,80);
-  const updatedMs=updated?Date.parse(updated):NaN;
+  const updatedMs=observationTime(updated);
   const summary=safeString(fields.summary,500);
   const status=safeString(fields.status?.name,120);
   const issueType=safeString(fields.issuetype?.name,120);
   if(!summary||!status||!issueType)return fail("JIRA_RESPONSE_INVALID");
-  const snapshot={objectId:raw.id,key,summary,status,issueType,reportedTags:typedTags(fields.labels),updatedAt:Number.isFinite(updatedMs)?new Date(updatedMs).toISOString():null};
+  const snapshot={objectId:raw.id,key,summary,status,issueType,reportedTags:typedTags(fields.labels),updatedAt:updatedMs!==null?new Date(updatedMs).toISOString():null};
   return {ok:true,snapshot,source:{provider:"jira",objectId:raw.id,sourceRef:"jira:issue:"+raw.id,uri:"/browse/"+key,version:snapshot.updatedAt,retrievedAt,visibility:"OBSERVED_AS_USER",status:snapshot.updatedAt?"VERSION_OBSERVED":"UNVERIFIED_VERSION"}};
 }
 

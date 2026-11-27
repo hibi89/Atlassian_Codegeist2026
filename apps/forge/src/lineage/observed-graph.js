@@ -22,13 +22,20 @@ function buildObservedGraph(p,draft,evidence,review,policy,digest,canonical){
     for(const c of evidence.claims){
       const source=sourceMap.get(c.source_ref);
       if(!source||c.revision_key!==source.revision||!hash(c.claim_id)||claimMap.has(c.claim_id))throw Error("GRAPH_CLAIM_INVALID");
-      const id=node("CLAIM",c.claim_id,c.revision_key,[c.predicate,c.status,c.value]);claimMap.set(c.claim_id,{id,source:c.source_ref});edge(source.node,id,"OBSERVED_CLAIM");
+      const id=node("CLAIM",c.claim_id,c.revision_key,[c.predicate,c.status,c.value]);claimMap.set(c.claim_id,{id,source:c.source_ref,subject:c.subject,predicate:c.predicate,value:c.value});edge(source.node,id,"OBSERVED_CLAIM");
     }
-    const covered=new Set();
+    const covered=new Set(),groups=new Set();
     for(const c of review.checks){
       if(!Array.isArray(c.claim_ids)||!c.claim_ids.length||new Set(c.claim_ids).size!==c.claim_ids.length||!Array.isArray(c.source_refs))throw Error("GRAPH_CHECK_INVALID");
       const linked=c.claim_ids.map(id=>claimMap.get(id));
       if(linked.some(x=>!x)||new Set(linked.map(x=>x.source)).size!==new Set(c.source_refs).size||linked.some(x=>!c.source_refs.includes(x.source)))throw Error("GRAPH_CHECK_INVALID");
+      const group=canonical([c.subject,c.predicate]);
+      if(groups.has(group)||linked.some(x=>x.subject!==c.subject||x.predicate!==c.predicate)||!Array.isArray(c.values)||new Set(c.values).size!==c.values.length||new Set(linked.map(x=>x.value)).size!==c.values.length||linked.some(x=>!c.values.includes(x.value)))throw Error("GRAPH_CHECK_CONTENT_MISMATCH");
+      groups.add(group);
+      const conflict=c.values.length>1,observed=c.predicate.startsWith("jira.")||c.predicate==="confluence.page_version";
+      const expectedStatus=conflict?"CONFLICT_FOUND":observed?"SOURCE_OBSERVED":"UNVERIFIED_CLAIM";
+      const expectedReason=conflict?"COMPARABLE_VALUES_DIFFER":observed?"OBSERVED_FIELD_NOT_CERTIFICATION":"REPORTED_LABEL_NOT_INDEPENDENT_TEST_OR_POLICY";
+      if(c.status!==expectedStatus||c.reason!==expectedReason)throw Error("GRAPH_CHECK_CLASSIFICATION_MISMATCH");
       const ref=digest(canonical([c.subject,c.predicate,[...c.claim_ids].sort()]));
       const id=node("CHECK",ref,"cg-claims-v1",[c.status,c.reason]);checkIds.push(id);
       for(let i=0;i<linked.length;i++){if(covered.has(c.claim_ids[i]))throw Error("GRAPH_CHECK_DUPLICATE");covered.add(c.claim_ids[i]);edge(linked[i].id,id,"COMPARE_CLAIM");}

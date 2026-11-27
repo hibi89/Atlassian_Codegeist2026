@@ -1,3 +1,5 @@
+import { observationTime } from "./observation-time.js";
+
 function goodId(v,max=256){return typeof v==="string"&&v.length>0&&v.length<=max&&!/[\u0000-\u001f\u007f]/u.test(v)}
 
 function validKey(v){return typeof v==="string"&&v.length<=64&&/^[A-Z][A-Z0-9_]*-[1-9][0-9]*$/.test(v)}
@@ -14,20 +16,20 @@ function boundedLinks(raw,target){
   for(const link of raw.slice(0,64)){
     const inward=link?.inwardIssue?.key,outward=link?.outwardIssue?.key;
     const k=inward??outward;
-    if((inward&&outward)||!validKey(k)||k===target){malformed++;continue}
+    if((link?.inwardIssue!=null&&link?.outwardIssue!=null)||!validKey(k)||k===target){malformed++;continue}
     keys.add(k);
   }
   const sorted=[...keys].sort();
   return {ok:true,keys:sorted.slice(0,6),complete:raw.length<=64&&sorted.length<=6&&malformed===0};
 }
 
-function validDate(v){return typeof v==="string"&&Number.isFinite(Date.parse(v))&&/^\d{4}-\d\d-\d\dT/.test(v)}
+function validDate(v){return observationTime(v)!==null}
 
 function normalizedEvidence(result,p,digest,now){
   if(!result?.ok||!result.source||!result.snapshot)return null;
   const {source:s,snapshot:x}=result;
   if(s.provider!=="jira"||!goodId(s.objectId,64)||s.objectId!==x.objectId||!validKey(x.key)||s.uri!=="/browse/"+x.key||!validDate(s.retrievedAt)||!Number.isFinite(now)||Date.parse(s.retrievedAt)>now||s.visibility!=="OBSERVED_AS_USER"||typeof s.contentHash!=="string"||!/^[a-f0-9]{64}$/.test(s.contentHash))return null;
-  const version=validDate(s.version)&&Date.parse(s.version)<=now?new Date(Date.parse(s.version)).toISOString():null;
+  const version=validDate(s.version)&&Date.parse(s.version)<=Date.parse(s.retrievedAt)?new Date(Date.parse(s.version)).toISOString():null;
   const stable=digest("jira:"+p.tenant+":"+s.objectId);
   const revision=digest(JSON.stringify([stable,version,s.contentHash]));
   const record={schema_version:"hae.evidence.v2",source_ref:stable,installation_ref:p.tenant,source_kind:"JIRA_ISSUE",object_id:s.objectId,uri:s.uri,version,revision_key:revision,content_digest:s.contentHash,retrieved_at:s.retrievedAt,permission_check_at:s.retrievedAt,freshness_deadline:new Date(Date.parse(s.retrievedAt)+120000).toISOString(),claim_ids:[digest(revision+":status"),digest(revision+":issue_type")],comparison_rule_version:"cg-claims-v1",independent_source_group:null,status:version?"VERSION_OBSERVED":"UNVERIFIED_VERSION",status_reason:version?"AUTHORIZED_READ":"SOURCE_VERSION_UNKNOWN"};
@@ -45,7 +47,7 @@ function normalizedEvidence(result,p,digest,now){
 
 function normalizedPage(result,p,digest,now){
  const s=result?.page;
- if(!result?.ok||!s||!(/^[1-9][0-9]{0,30}$/.test(s.objectId))||s.visibility!=="OBSERVED_AS_USER"||!validDate(s.version)||!validDate(s.retrievedAt)||Date.parse(s.version)>now||Date.parse(s.retrievedAt)>now||!Number.isSafeInteger(s.versionNumber)||s.versionNumber<1||typeof s.contentHash!=="string"||!/^[a-f0-9]{64}$/.test(s.contentHash))return null;
+ if(!result?.ok||!s||typeof s.objectId!=="string"||!(/^[1-9][0-9]{0,30}$/.test(s.objectId))||s.visibility!=="OBSERVED_AS_USER"||!validDate(s.version)||!validDate(s.retrievedAt)||Date.parse(s.version)>Date.parse(s.retrievedAt)||Date.parse(s.retrievedAt)>now||!Number.isSafeInteger(s.versionNumber)||s.versionNumber<1||typeof s.contentHash!=="string"||!/^[a-f0-9]{64}$/.test(s.contentHash))return null;
  const stable=digest("confluence:"+p.tenant+":"+s.objectId),revision=digest(JSON.stringify([stable,s.version,s.versionNumber,s.contentHash])),claim_id=digest(revision+":page_version");
  return {record:{schema_version:"hae.evidence.v2",source_ref:stable,installation_ref:p.tenant,source_kind:"CONFLUENCE_PAGE",object_id:s.objectId,uri:"/wiki/pages/viewpage.action?pageId="+s.objectId,version:s.version,revision_key:revision,content_digest:s.contentHash,retrieved_at:s.retrievedAt,permission_check_at:s.retrievedAt,freshness_deadline:new Date(Date.parse(s.retrievedAt)+120000).toISOString(),claim_ids:[claim_id],comparison_rule_version:"cg-claims-v1",independent_source_group:null,status:"VERSION_OBSERVED",status_reason:"AUTHORIZED_READ"},claims:[{claim_id,source_ref:stable,revision_key:revision,subject:stable,predicate:"confluence.page_version",value:String(s.versionNumber),status:"SOURCE_OBSERVED"}]};
 }

@@ -26,6 +26,11 @@ test("observed graph only links authorized sources and complete claims",()=>{
  assert.equal(run({...e,claims:[{...c,source_ref:h("other")}]}).ok,false);
  assert.equal(run(e,{checks:[]}).ok,false);
  assert.equal(run(e,{checks:[...reviewClaims(e).checks,...reviewClaims(e).checks]}).ok,false);
+ const check=reviewClaims(e).checks[0];
+ for(const patch of [{subject:"wrong"},{predicate:"jira.issue_type"},{values:["closed"]},{status:"CONFLICT_FOUND",reason:"COMPARABLE_VALUES_DIFFER"},{values:["open","open"]}])assert.equal(run(e,{checks:[{...check,...patch}]}).ok,false);
+ const other={...c,claim_id:h("other-claim"),value:"closed"},conflicting={...e,claims:[c,other]},checks=reviewClaims(conflicting).checks;
+ assert.equal(run(conflicting).ok,true);
+ assert.equal(run(conflicting,{checks:[{...checks[0],claim_ids:[c.claim_id],values:["open"],status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD_NOT_CERTIFICATION"},{...checks[0],claim_ids:[other.claim_id],values:["closed"],status:"SOURCE_OBSERVED",reason:"OBSERVED_FIELD_NOT_CERTIFICATION"}]}).ok,false);
 });
 
 test("P2 malformed reserved labels do not become silently missing evidence",()=>{for(const label of ["tf-test-REQ-1-FAIL","tf-policy-OPS-v0","TF-REQ-REQ-1","tf-owner"])assert.equal(typedTags(["tf-req-REQ-1",label]).status,"UNKNOWN");assert.equal(typedTags(["ordinary-label","tf-other-label"]).status,"OBSERVED")});

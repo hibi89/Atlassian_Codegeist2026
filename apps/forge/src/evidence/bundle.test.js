@@ -143,3 +143,29 @@ test("incident assessment links ownership to requirements and exposes conflictin
  labels.push("tf-owner-DEMO-1-OPS");x=await run();assert.equal(x.incident_assessment.status,"HUMAN_COORDINATION_REVIEW_REQUIRED");assert.equal(x.incident_assessment.authorization,"NONE");assert.equal(x.incident_assessment.execution,"NO_JIRA_MUTATION");
  denied=true;x=await run();assert.equal(x.incident_assessment.status,"ACCESS_OR_COVERAGE_UNKNOWN");assert.equal(JSON.stringify(x.incident_assessment).includes("/browse/DEMO-2"),false);
 });
+
+import {observationTime} from "./observation-time.js";
+import {readIssue} from "../adapters/jira/reader.js";
+test("TruthGate rejects ambiguous or impossible source timestamps before normalization",async()=>{
+ const invalid=["2026-02-30T11:00:00Z","2026-11-24T24:00:00Z","2026-11-24T11:00:00","2026-11-24","2026-11-24T11:00:00+0060"];
+ for(const version of invalid){
+  assert.equal(observationTime(version),null);
+  const jira=await readIssue(ctx,async()=>({status:200,text:async()=>JSON.stringify({id:"1",key:"DEMO-1",fields:{summary:"Fixture",status:{name:"Open"},issuetype:{name:"Task"},updated:version,labels:[]}})}),()=>new Date(now).toISOString(),digest);
+  assert.equal(jira.ok,true);assert.equal(jira.source.version,null);
+  const page=await readPage("123",async()=>({status:200,text:async()=>JSON.stringify({id:"123",status:"current",title:"Fixture",version:{number:1,createdAt:version},body:{storage:{representation:"storage",value:"Fixture"}}})}),clock,digest);
+  assert.equal(page.code,"CONFLUENCE_VERSION_OR_CONTENT_UNKNOWN");
+  const observed=await collectEvidence(ctx,{read:async k=>sample(k,version),links:async()=>({ok:true,keys:[],complete:true})},digest,clock);
+  assert.equal(observed.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");
+ }
+ assert.equal(observationTime("2024-02-29T12:00:00.000+0900"),Date.parse("2024-02-29T03:00:00Z"));
+ assert.equal(observationTime("2026-11-24T11:00:00.123456Z"),Date.parse("2026-11-24T11:00:00.123Z"));
+});
+test("TruthGate rejects ambiguous links and versions later than their observation",async()=>{
+ assert.equal(boundedLinks([{inwardIssue:{},outwardIssue:{key:"DEMO-2"}}],"DEMO-1").complete,false);
+ const a={...adapter,read:async k=>{const result=sample(k);return {...result,source:{...result.source,retrievedAt:"2026-11-24T10:59:59Z"}}}};
+ const x=await collectEvidence(ctx,a,digest,clock);
+ assert.equal(x.evidence.coverage,"INCOMPLETE_OR_UNKNOWN");
+ assert.equal(x.evidence.sources.every(s=>s.status==="UNVERIFIED_VERSION"),true);
+ const y=await guardedPreview(ctx,"review change",{adapter:a,digest,clock,preview:previewTypedIntent,checkPlan:validatePlan,planDigest:p=>digest(canonical(p))});
+ assert.equal(y.policy.decision,"REVIEW");assert.equal(y.policy.execution,"DISABLED");
+});
