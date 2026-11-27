@@ -1,0 +1,45 @@
+{
+  "verification_date_kst": "2026-11-27",
+  "source_sha": "efd84f6e4cec4bae604bc311a0f6a131a615851e",
+  "run_id": 45690184303,
+  "run_attempt": 1,
+  "artifact_id": 15058521554,
+  "archive_bytes": 239612,
+  "archive_sha256": "3909ac3bdac683303a74b910a57bf3e7dffe8303612867c04f91fe067063b307",
+  "github_artifact_digest_match": "PASS",
+  "zip_crc": "PASS",
+  "archive_entry_set": "12_EXPECTED_UNIQUE_ENTRIES_PASS",
+  "manifest_sha256": "9902e56803b1cd5e6c58fb5e40fb63001217e685e0a6448aa2c853070828d859",
+  "separately_recorded_manifest_digest_match": "PASS",
+  "source_run_attempt_match": "PASS",
+  "file_bytes_and_sha256_match": "11/11 PASS",
+  "verification_method": "Downloaded exact GitHub artifact; Python zipfile/hashlib read-only checks without extraction; canonical manifest JSON sorted by file path, digest compared with prior CI log record and archive SHA-256 compared with GitHub artifact API metadata.",
+  "license_followup": {
+    "inventory_summary": {
+      "lock_entries": 164,
+      "installed": 139,
+      "manual_review": 10,
+      "optional_absent": 25
+    },
+    "iframe_resizer": {
+      "version": "4.4.5",
+      "upstream_ref": "v4.4.5",
+      "package_json_blob_sha": "6563baf8db939270757d9d36a6de9111729886b5",
+      "declared_license": "MIT",
+      "root_license_file": "ABSENT_IN_LISTED_ROOT",
+      "status": "EXACT_TAG_DECLARATION_OBSERVED_NOTICE_UNVERIFIED",
+      "url": "https://github.com/davidjbradshaw/iframe-resizer/blob/v4.4.5/package.json"
+    },
+    "unresolved": [
+      "boolbase@1.0.0 exact tag unavailable",
+      "css-color-names@0.0.4 exact license retrieval unavailable",
+      "headers-utils@3.0.2 exact license retrieval unavailable"
+    ],
+    "manual_review_remaining": 10,
+    "legal_review": "NOT_RUN"
+  },
+  "deployment": "NOT_RUN",
+  "signature": "NONE",
+  "independent_audit": "NOT_RUN",
+  "archive_retention": "Original GitHub artifact expiry unchanged; local verification does not extend retention."
+}
